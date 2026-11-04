@@ -32,20 +32,24 @@ mod E2e {
     pub def table(): Flow.Table[Resources.With[Res.Res, World.World]] =
         { roles = _ -> roles(),
           probes =
-              { name = "x", doc = "足元の x（m）", read = Flow.Probe.Num(Resources.read((_, w) -> World.walkerOf(w)#x)) } ::
-              { name = "z", doc = "足元の z（m）", read = Flow.Probe.Num(Resources.read((_, w) -> World.walkerOf(w)#z)) } ::
+              { name = "x", doc = "足元の x（m）", read = Flow.Probe.Num(Resources.read((_, w) -> playing(w, s -> World.walkerOf(s)#x))) } ::
+              { name = "z", doc = "足元の z（m）", read = Flow.Probe.Num(Resources.read((_, w) -> playing(w, s -> World.walkerOf(s)#z))) } ::
               { name = "zone", doc = "今いる区画の文字（壁の中は -）", read = Flow.Probe.Text(Resources.read((res, w) -> zoneName(res, w))) } ::
               { name = "quit", doc = "終了の確認（Playing・Asking・Confirmed）", read = Flow.Probe.Text(Resources.read((_, w) -> "${w#quit}")) } ::
-              { name = "shots", doc = "撃った回数の合計", read = Flow.Probe.Num(Resources.read((_, w) -> Int32.toFloat64(World.arsenalOf(w)#shots))) } ::
-              { name = "health", doc = "プレイヤーの体力", read = Flow.Probe.Num(Resources.read((_, w) -> World.healthOf(w)#points)) } ::
-              { name = "enemies", doc = "倒れていない敵の数", read = Flow.Probe.Num(Resources.read((_, w) -> Int32.toFloat64(Horde.aliveCount(World.hordeOf(w))))) } :: Nil
+              { name = "shots", doc = "撃った回数の合計", read = Flow.Probe.Num(Resources.read((_, w) -> playing(w, s -> Int32.toFloat64(World.arsenalOf(s)#shots)))) } ::
+              { name = "health", doc = "プレイヤーの体力", read = Flow.Probe.Num(Resources.read((_, w) -> playing(w, s -> World.healthOf(s)#points))) } ::
+              { name = "enemies", doc = "倒れていない敵の数", read = Flow.Probe.Num(Resources.read((_, w) -> playing(w, s -> Int32.toFloat64(Horde.aliveCount(World.hordeOf(s)))))) } :: Nil
           | Flow.emptyTable() }
+
+    /// 遊んでいる場面の数（ほかの画面では 0）。
+    def playing(w: World.World, f: World.Session -> Float64): Float64 = World.sessionOf(w) |> Option.map(f) |> Option.getWithDefault(0.0)
 
     def zoneName(res: Res.Res, w: World.World): String =
         World.zoneOf(res, w) |> Option.map(c -> "${c}") |> Option.getWithDefault("-")
 
     /// 指紋の元（記録の再生が比べる）: 進行に効く欄だけ。
     pub def fingerprint(res: Res.Res, w: World.World): String =
-        let b = World.walkerOf(w);
-        "at=${b#x},${b#z}|zone=${zoneName(res, w)}|quit=${w#quit}|shots=${World.arsenalOf(w)#shots}"
+        let at = World.sessionOf(w) |> Option.map(s -> { let b = World.walkerOf(s); "${b#x},${b#z}" }) |> Option.getWithDefault("-");
+        let shots = World.sessionOf(w) |> Option.map(s -> World.arsenalOf(s)#shots) |> Option.getWithDefault(0);
+        "at=${at}|zone=${zoneName(res, w)}|quit=${w#quit}|shots=${shots}"
 }

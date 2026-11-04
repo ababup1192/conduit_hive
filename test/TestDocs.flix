@@ -46,8 +46,8 @@ mod TestDocs {
                 |> Option.map(d -> (KeysDoc.rec(d)#left, KeysDoc.rec(d)#sprint)))
 
     @Test
-    def testSampleBrokenJsonIsNone(): Unit \ Assert =
-        Assert.assertEq(expected = true, Option.isEmpty(SampleDoc.fromJson("{ broken")))
+    def testUiTextBrokenJsonIsNone(): Unit \ Assert =
+        Assert.assertEq(expected = true, Option.isEmpty(UiTextDoc.fromJson("{ broken")))
 
     @Test
     def testWeaponsBrokenJsonIsNone(): Unit \ Assert =
@@ -63,8 +63,8 @@ mod TestDocs {
 
     @Test
     def testViewmodelOverridesOneField(): Unit \ Assert =
-        Assert.assertEq(expected = Some((40.0, HandsDoc.rec(HandsDoc.defaults())#near)),
-            HandsDoc.fromJson("{\"fovY\": 40.0}") |> Option.map(d -> (HandsDoc.rec(d)#fovY, HandsDoc.rec(d)#near)))
+        Assert.assertEq(expected = Some((40.0, FpViewmodelDoc.rec(FpViewmodelDoc.defaults())#near)),
+            FpViewmodelDoc.fromJson("{\"fovY\": 40.0}") |> Option.map(d -> (FpViewmodelDoc.rec(d)#fovY, FpViewmodelDoc.rec(d)#near)))
 
     /// 粒の欄の 1 つだけを上書きすると、同じ粒のほかの欄は既定のまま。
     @Test
@@ -92,4 +92,14 @@ mod TestDocs {
         Assert.assertEq(expected = pack |> Option.map(g -> (1, Some((7, g#ranged)))),
             SpawnsDoc.fromJson("{\"groups\": {\"swarm\": {\"melee\": 7}}}")
                 |> Option.map(x -> (Map.size(SpawnsDoc.rec(x)#groups), Map.get("swarm", SpawnsDoc.rec(x)#groups) |> Option.map(g -> (g#melee, g#ranged)))))
+
+    @Test
+    def testPlayerBrokenJsonIsNone(): Unit \ Assert =
+        Assert.assertEq(expected = true, Option.isEmpty(PlayerDoc.fromJson("{ broken")))
+
+    /// 欄の 1 つだけを上書きすると、ほかの欄は既定のまま。
+    @Test
+    def testPlayerOverridesOneField(): Unit \ Assert =
+        Assert.assertEq(expected = Some((80.0, PlayerDoc.rec(PlayerDoc.defaults())#respawnSeconds)),
+            PlayerDoc.fromJson("{\"health\": 80.0}") |> Option.map(d -> (PlayerDoc.rec(d)#health, PlayerDoc.rec(d)#respawnSeconds)))
 }

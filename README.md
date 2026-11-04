@@ -1,76 +1,60 @@
 # Conduit Hive
 
-flix_game_engine のスターター。主人公（ドット絵）を矢印キーで動かせるだけの、
-「ここから自分のゲームを育てる」ための骨組みが入っています。
-`make new-game` で生成された時点で check / test / render が全部通る状態です。
+SF の施設の迷路を一人称で進み、群れで迫るクリーチャーを撃って倒すシューティング（flix_game_engine 0.85.0）。
+画面に出るのは腕と銃（ビューモデル）だけ。最後の広い部屋では 40〜50 体が同時に迫る。計画は `plans/conduit-hive-plan.md`。
 
-## 始め方
+## 遊ぶ
 
-Flix コンパイラはエンジンリポの `bin/flix` ラッパ経由で呼ぶので、devbox shell の外でも動きます。
-エンジンの場所が既定（生成時に埋め込み）と違うときは `ENGINE=/path/to/flix_game_engine` を付けてください。
+| 操作 | |
+|---|---|
+| 窓を押す | マウスを窓にキャプチャして見回す（Esc で放す。放している時の Esc で終了の確認） |
+| WASD・Shift | 歩く・走る |
+| 左ボタン | 撃つ（連射銃は押している間） |
+| 1・2・3・ホイール | 持ち替え（散弾銃と連射銃は拾ってから。拾う所は段 4） |
+| F3 | 1 コマの重さ（GPU・3D の数）を出す |
 
 | コマンド | 何をするか |
 |---|---|
-| `make run`    | ゲームを起動する（ウィンドウが開く） |
-| `make debug`  | 保存即反映(watchFile)と F8 を有効にして起動 |
-| `make check`  | 型検査だけ走らせる（一番速い確認） |
-| `make test`   | テストを実行する |
-| `make palette` | Studio 用の色の写し(`assets/conduit_hive.palette.json`)を作り直す |
-| `make render-all`   | ギャラリー PNG を全部描き出す（決定的） |
-| `make render SHOT=main` | その場面だけ `debug/main.png` へ描き出す |
-| `make reference-check`  | 描き出した絵をリファレンス画像とバイト比較する |
-| `make reference-update` | いまの gallery をリファレンス画像として更新する |
-| `make atelier-preview` | atelier/ の候補と assets/ の現行を debug/atelier/ に描き出す |
-| `make flow FLOW=e2e/walk.flow` | 手順書（1 行 1 手）を画面なしで実機と同じ道に流す |
-| `START="at x=40 y=40" make run` | 始まりの登録簿（`src/Starts.flix`）の場面から起動する |
+| `make run` / `make debug` | 起動する（debug は保存即反映と F8） |
+| `START="at x=66 z=134 yaw=90" make run` | 最後の部屋の入口から始める（始まりの登録簿 `src/Starts.flix`） |
+| `SHOT=horde make run` | ギャラリーの場面を実機で開く（止まった 1 枚） |
+| `make check` / `make test` / `make lint` | 型検査 / テスト / lint |
+| `make render SHOT=horde` | 場面を `debug/horde.png` へ描き出す（場面の名前は `src/Shots.flix`） |
+| `make render-all` / `make reference-update` / `make reference-check` | ギャラリーを全部描き出す / 基準を更新 / 基準と比べる |
+| `make bench-horde BENCH_SETS=horde50` | 50 体の群れの 1 コマの重さを測る（`plans/bench-horde.md`） |
+| `make flow FLOW=e2e/walk.flow` | 手順書を画面なしで実機と同じ道に流す |
 
-## 読む順（全体像のつかみ方）
+## 読む順
 
-**遊ぶ → 読む → JSON をいじる** の順で仕組みが見えます。
+1. **遊ぶ** — `make run`（最初の部屋 A から始まる。部屋に入るとその部屋の spawn の印から群れが湧く）。
+2. **`src/Game.flix`** — App の組み立て。毎フレーム 入力（`Controls.step`）→ 規則（`World.step`）→ 描く（`View`）。音は `Sounds`。
+3. **`src/World.flix`** — 遊びの状態と 1 コマの規則。画面は `Screen`（今は `Play`）で、遊んでいる場面の値は `Session`。
+   1 コマは 歩く（`Walker`）→ 部屋に入る → 撃つ（`Arsenal`・`Hitscan`）→ 群れ（`Horde`）→ 体力（`Health`）。起きた事は `Events`。
+4. **敵** — `src/Horde.flix`（群れの 1 コマ・追う・振る・吐く・撃たれる）→ `FlowField`（共有する距離の地図）・
+   `Separation`（押し合いと壁）・`Projectiles`（ranged の弾）・`Spawner`（印から湧く予定）・`Creatures`（glb・当たり判定の形・姿勢の共有）。
+5. **武器** — `src/Arsenal.flix`（連射・弾・持ち替え）・`src/Hitscan.flix`（レイの当たり）・`src/FpViewmodel.flix`（腕と銃の glb）。
+6. **描く** — `src/View.flix`（入口で画面を選び、HUD も描く）→ `src/StageView.flix`（3D の場面とビューモデル）→ `src/PostView.flix`（ブルームと後処理）。
+   迷路の絵は `Maze`・`MazeMesh`・`Collider`、粒は `Particles3d`。
+7. **Doc** — 値は `assets/` の JSON（保存即反映）。読み込みと読み直しは `src/Controls.flix`、描く元の束は `src/Res.flix`。
 
-1. まず `make run` で遊ぶ（矢印キーで主人公が動く）。
-2. コードは **エントリ→状態→描画** の順で読む:
-   1. `src/Game.flix` … 3 つを App に繋ぐ目次。冒頭 doc に**毎フレームの流れ
-      （入力→状態更新→描画 がどの行か）**が書いてある。まずここ。実機の起動（`src/Main.flix`）・
-      flow・テストが同じ `Game.app` を使う。`src/Main.flix` は窓にだけ効く口（アトラス・終了の確認）を足して起動する。
-   2. `src/World.flix` … 遊びの状態そのものと、次の状態を作る規則（`step` が入力→更新。純粋）。
-      画面は `Screen` の enum（今は `Play` だけ）で、その画面だけの値は payload の中に持つ。
-   3. `src/Res.flix` … 描く元（Doc と、Doc から作る仕上げ済みのドット絵・アトラス）。Doc を読み直した時だけ替わる。
-      Doc を足すときは World でなくここに欄と `with*` を足す。
-   4. `src/View.flix` … 描く元と状態を絵に写す（何をどこに描くか）。冒頭 doc に場面に**積んだ部品**
-      （背景・主役・粒がどの関数か）と、終了の確認の窓・静的な縁の枠が並べてある。
-   5. `src/ZOrder.flix` … 画面全体の層の表（場面・縁の枠・確認の窓の前後）。新しい層はここに case を足す。
-   6. `src/Controls.flix` … キーの割り当てと Doc の読み込み・読み直し。Esc で終了の確認を出す（閉じるボタンは Main の `App.withCloseRequest`）。
-   7. `src/Starts.flix` … 始まりの登録簿。起動（`START=`）・flow の `start`・テストが名前で場面を組む。
-   8. `src/E2e.flix` … `e2e/*.flow` の語彙（役・問い）と指紋。手順書の書き方は engine の `engine_world/src/Flow.flix` 冒頭。
-   9. `src/render/SceneRender.flix` … 決定的な場面を PNG に描き出す（リファレンス画像とアトリエ）。
-3. 手触り・色・絵は下の `assets/` の Doc を保存即反映でいじる。
+## Doc（`assets/`）
 
-数値・色・絵は `assets/` の Doc（保存即反映）:
+| Doc | 中身 | 読む mod |
+|---|---|---|
+| `maze.stage.json` | 迷路のマス目・区画・印（start・spawn・pickup） | `MazeDoc` |
+| `conduit_hive.enemies.json` | 敵の型ごとの体力・速さ・攻撃の距離と時刻・projectile | `EnemiesDoc` |
+| `conduit_hive.spawns.json` | spawn の印の名前ごとの群れ（数・間隔・型） | `SpawnsDoc` |
+| `conduit_hive.player.json` | プレイヤーの体力・被弾の赤み・やり直すまで | `PlayerDoc` |
+| `conduit_hive.weapons.json` | 武器ごとの威力・連射・ばらつき・弾・反動 | `WeaponsDoc` |
+| `conduit_hive.viewmodel.json` | 腕と銃の見え方（画角・揺れ・持ち替え） | `FpViewmodelDoc` |
+| `conduit_hive.particles3d.json` | 3D の粒（マズルフラッシュ・火花・体液・projectile の玉） | `Particles3dDoc` |
+| `conduit_hive.walk.json`・`conduit_hive.look.json` | 歩く手触り・施設の色と光と霧 | `WalkDoc`・`LookDoc` |
+| `conduit_hive.uitext.json`・`conduit_hive.theme.json`・`player.keys.json` | 画面の文言・色・キー割り当て | `UiTextDoc`・`ThemeDoc`・`KeysDoc` |
 
-- `assets/sample.kind.json` … 手触りの数値（例: 速さ）。`src/SampleDoc.flix` が読む。
-- `assets/*.theme.json` … 色票。`src/ThemeDoc.flix` が読む。
-- `assets/conduit_hive.palette.json` … Studio のドット絵エディタに「意味色キー → 実色」を教える写し（生成物）。
-  つや・影のような派生色はコードで導いていて Studio からは見えないので、`make palette` で
-  書き出して `*.sprite.json` の `paletteFile` から指す。手で直さない（色を変えるのはテーマ側）。
-- `assets/*.sprite.json` … ドット絵（文字格子）。entityId は `<パッケージ名>.sprites`。
-  絵は差し色 1 色で平らに塗り、ふち光・影は読み込み時に `PxShade` が乗せます。
-- `assets/*.shader.json` … 背景の塗り（画素ごとの計算）。単色の四角の代わり。
-  書き方は engine の `docs/shader-doc.md`。
+それぞれ schema が並び、`project.json` の `editor.resources` が Studio に宣言している。
+モデル（`assets/models/*.glb`）は `modeling/` の Blender のスクリプトが作る。
 
-それぞれに Studio 用の schema（sections 方言 / sprite は draft-07）が並んでいて、
-`project.json` の `editor.resources` が宣言しています。Studio で開けばそのまま編集できます。
+## 絵
 
-## 絵の開発ループ
-
-- **画風は最初に決めて `AGENTS.local.md` に書く**。この骨組みの見た目は一例で、
-  そのまま引き継ぐ物ではありません（好みの聞き取りは `/style-interview`、部品選びは engine の `docs/art-ref/visual-dict.md`）。
-- `make render-all` で `gallery/` に決定的な PNG を描き出し、`make reference-update` で更新、`make reference-check` で防護。
-- 候補のスプライト・テーマは `atelier/` に置き、`make atelier-preview` で `debug/atelier/` に描き出して目視。
-
-## AI エージェント向け指針の配布（sync-agents）
-
-エンジン側で `make sync-agents GAME=/path/to/このゲーム` を実行すると、エンジン共通の
-エージェント指針（agents-pack/AGENTS.core.md）とこのゲームの `AGENTS.local.md` を連結した
-`AGENTS.md` が生成され、共通スキルが `.claude/skills/` にコピーされます。`AGENTS.md` は
-生成物なので直接編集せず、ゲーム固有の原則は `AGENTS.local.md` に書いて再 sync してください。
+画風は `AGENTS.local.md` の「このゲームの画風」。生成した `gallery/` と `reference/*.png` は git に入れず、
+退行は `reference/SHA256SUMS.txt` で見る（`make reference-check`）。

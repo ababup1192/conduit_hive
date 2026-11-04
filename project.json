@@ -46,10 +46,10 @@
         "role": "material"
       },
       {
-        "id": "sample",
-        "pattern": "assets/sample.kind.json",
+        "id": "uitext",
+        "pattern": "assets/conduit_hive.uitext.json",
         "title": "画面の文言",
-        "schema": "assets/sample.schema.json",
+        "schema": "assets/uitext.schema.json",
         "role": "tuning"
       },
       {
@@ -95,10 +95,10 @@
         "role": "tuning"
       },
       {
-        "id": "hands",
-        "pattern": "assets/conduit_hive.hands.json",
+        "id": "viewmodel",
+        "pattern": "assets/conduit_hive.viewmodel.json",
         "title": "腕と銃（ビューモデル）の見え方（画角・揺れ・持ち替え）",
-        "schema": "assets/hands.schema.json",
+        "schema": "assets/viewmodel.schema.json",
         "role": "tuning"
       },
       {
@@ -109,9 +109,16 @@
         "role": "material"
       },
       {
+        "id": "player",
+        "pattern": "assets/conduit_hive.player.json",
+        "title": "プレイヤーの体力（被弾の赤み・やり直すまで）",
+        "schema": "assets/player.schema.json",
+        "role": "tuning"
+      },
+      {
         "id": "enemies",
         "pattern": "assets/conduit_hive.enemies.json",
-        "title": "敵（体力・速さ・攻撃・projectile）と受ける側の体力",
+        "title": "敵（体力・速さ・攻撃・projectile）",
         "schema": "assets/enemies.schema.json",
         "role": "tuning"
       },

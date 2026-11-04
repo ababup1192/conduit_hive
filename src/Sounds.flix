@@ -1,10 +1,18 @@
-// Sounds — 前後の World から鳴らす音の名前を導く（純粋）。音は project.json の sounds に載せた名前で鳴る。
-// 撃った音は今は全部の武器で 1 つの仮の音（engine の合成。art/sfx.snd.star）。武器ごとの音と Freesound の素材は後の段。
+// Sounds — このコマに起きた事（World.eventsOf）を鳴らす音の名前へ写す（純粋）。音は project.json の sounds に載せた名前で鳴る。
+// 撃った音は今は全部の武器で 1 つの仮の音（engine の合成。art/sfx.snd.star）。敵・被弾の音と Freesound の素材は段 5 で、ここに行を足す。
 mod Sounds {
+    use Events.Event
+
     /// 撃った音の名前。
     def shot(): String = "shot"
 
-    /// このコマに鳴らす音: 撃った回数が増えていれば撃った音を 1 回。
-    pub def events(before: World.World, after: World.World): List[String] =
-        if (World.arsenalOf(after)#shots > World.arsenalOf(before)#shots) shot() :: Nil else Nil
+    /// 起きた事 1 つの音（まだ音の無い事は None）。
+    def soundOf(e: Event): Option[String] = match e {
+        case Event.Fired(_) => Some(shot())
+        case _              => None
+    }
+
+    /// このコマに鳴らす音（同じ名前は 1 回）。
+    pub def events(after: World.World): List[String] =
+        World.sessionOf(after) |> Option.toList |> List.flatMap(World.eventsOf) |> List.filterMap(soundOf) |> List.distinct
 }

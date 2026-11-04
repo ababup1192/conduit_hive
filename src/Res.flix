@@ -7,37 +7,39 @@ mod Res {
 
     /// 起動時と描き出しが同じ形で読む Doc の束と、腕と銃・敵の glb（Controls.loadDocs）。
     pub type alias Docs = {
-        sample = SampleDoc.Doc,
+        uiText = UiTextDoc.Doc,
         keys = KeysDoc.Doc,
         theme = ThemeDoc.Doc,
         walk = WalkDoc.Doc,
         look = LookDoc.Doc,
         maze = MazeDoc.Doc,
         weapons = WeaponsDoc.Doc,
-        hands = HandsDoc.Doc,
+        viewmodel = FpViewmodelDoc.Doc,
         particles = Particles3dDoc.Doc,
+        player = PlayerDoc.Doc,
         enemies = EnemiesDoc.Doc,
         spawns = SpawnsDoc.Doc,
-        rigs = Arms.Rigs,
-        creatures = Creatures.Rigs
+        viewmodels = FpViewmodel.Viewmodels,
+        creatures = Creatures.Bodies
     }
 
     /// 描く元の束。
     pub type alias Res = {
-        sample = SampleDoc.Doc,
+        uiText = UiTextDoc.Doc,
         keys = KeysDoc.Doc,
         theme = ThemeDoc.Doc,
         walk = WalkDoc.Doc,
         look = LookDoc.Doc,
         mazeDoc = MazeDoc.Doc,
         weapons = WeaponsDoc.Doc,
-        hands = HandsDoc.Doc,
+        viewmodel = FpViewmodelDoc.Doc,
         particles = Particles3dDoc.Doc,
+        player = PlayerDoc.Doc,
         enemies = EnemiesDoc.Doc,
         spawns = SpawnsDoc.Doc,
-        rigs = Arms.Rigs,
+        viewmodels = FpViewmodel.Viewmodels,
         // 敵の体と、そのクリップの長さ（glb が読めない型は既定の長さ）。
-        creatures = Creatures.Rigs,
+        creatures = Creatures.Bodies,
         timing = Creatures.Timing,
         // 迷路の spawn の印を spawns.json の群れで引いた点。
         spawnPoints = List[Spawner.Point],
@@ -55,29 +57,44 @@ mod Res {
 
     /// Doc の束から描く元を組む。
     pub def build(docs: Docs): Res =
-        withStage(docs#maze, docs#look,
-            { sample = docs#sample, keys = docs#keys, theme = docs#theme, walk = docs#walk, look = docs#look, mazeDoc = docs#maze,
-              weapons = docs#weapons, hands = docs#hands, particles = docs#particles, enemies = docs#enemies, spawns = docs#spawns,
-              rigs = docs#rigs, creatures = docs#creatures, timing = Creatures.timingOf(docs#creatures), spawnPoints = Nil,
-              maze = Maze.build(0.0, MazeDoc.defaults()), collision = CollisionWorld3d.empty(), props = Nil, hitTargets = Nil, art = Map.empty(),
-              particleTexture = Particles3d.textureOf() })
+        let stage = stageOf(docs#maze, docs#look, docs#spawns);
+        { uiText = docs#uiText, keys = docs#keys, theme = docs#theme, walk = docs#walk, look = docs#look, mazeDoc = docs#maze,
+          weapons = docs#weapons, viewmodel = docs#viewmodel, particles = docs#particles, player = docs#player, enemies = docs#enemies,
+          spawns = docs#spawns, viewmodels = docs#viewmodels, creatures = docs#creatures, timing = Creatures.timingOf(docs#creatures),
+          spawnPoints = stage#spawnPoints, maze = stage#maze, collision = stage#collision, props = stage#props, hitTargets = stage#hitTargets,
+          art = stage#art, particleTexture = Particles3d.textureOf() }
 
-    /// 迷路と見た目から、形・当たり判定・弾の的・絵を作り直す。
+    /// 迷路と見た目と spawn の群れから作る物。
+    type alias Stage = {
+        maze = Maze.Maze,
+        collision = CollisionWorld3d.CollisionWorld3d,
+        props = List[CollisionShape3d.Box3d],
+        hitTargets = Hitscan.Targets,
+        art = Map[Char, MazeMesh.ZoneArt],
+        spawnPoints = List[Spawner.Point]
+    }
+
+    /// 迷路と見た目から、形・当たり判定・弾の的・絵・spawn の点を作る。
     /// WhyNot: 位置や時刻の更新ではここを通らない（作り直すのは迷路か見た目の Doc を読み直した時だけ）。
-    def withStage(mazeDoc: MazeDoc.Doc, look: LookDoc.Doc, res: Res): Res =
+    def stageOf(mazeDoc: MazeDoc.Doc, look: LookDoc.Doc, spawns: SpawnsDoc.Doc): Stage =
         let maze = Maze.build(LookDoc.rec(look)#fogFar, mazeDoc);
         let props = Props.pillarsOf(maze);
         let art = MazeMesh.build(LookDoc.rec(look), maze)
             |> Map.adjust(z -> { instances = List.append(z#instances, Props.artOf(LookDoc.rec(look), props)) | z }, maze#finalZone);
-        { mazeDoc = mazeDoc, look = look, maze = maze, collision = Collider.worldOf(maze, props), props = props,
-          hitTargets = Hitscan.targetsOf(maze, props), art = art, spawnPoints = Spawner.pointsOf(maze, res#spawns) | res }
+        { maze = maze, collision = Collider.worldOf(maze, props), props = props, hitTargets = Hitscan.targetsOf(maze, props), art = art,
+          spawnPoints = Spawner.pointsOf(maze, spawns) }
+
+    def withStage(mazeDoc: MazeDoc.Doc, look: LookDoc.Doc, res: Res): Res =
+        let stage = stageOf(mazeDoc, look, res#spawns);
+        { mazeDoc = mazeDoc, look = look, maze = stage#maze, collision = stage#collision, props = stage#props, hitTargets = stage#hitTargets,
+          art = stage#art, spawnPoints = stage#spawnPoints | res }
 
     /// 粒の種類の絵のコマ。
     pub def particleRegion(res: Res, kind: Particles3d.Kind): Option[Rect2.Rect2] = Particles3d.regionOf(res#particleTexture, kind)
 
     // ── Doc の差し替え（保存即反映。Controls.docTable の reload） ──
 
-    pub def withSample(sample: SampleDoc.Doc, res: Res): Res = { sample = sample | res }
+    pub def withUiText(uiText: UiTextDoc.Doc, res: Res): Res = { uiText = uiText | res }
 
     pub def withKeys(keys: KeysDoc.Doc, res: Res): Res = { keys = keys | res }
 
@@ -91,9 +108,11 @@ mod Res {
 
     pub def withWeapons(weapons: WeaponsDoc.Doc, res: Res): Res = { weapons = weapons | res }
 
-    pub def withHands(hands: HandsDoc.Doc, res: Res): Res = { hands = hands | res }
+    pub def withViewmodel(viewmodel: FpViewmodelDoc.Doc, res: Res): Res = { viewmodel = viewmodel | res }
 
     pub def withParticles(particles: Particles3dDoc.Doc, res: Res): Res = { particles = particles | res }
+
+    pub def withPlayer(player: PlayerDoc.Doc, res: Res): Res = { player = player | res }
 
     pub def withEnemies(enemies: EnemiesDoc.Doc, res: Res): Res = { enemies = enemies | res }
 

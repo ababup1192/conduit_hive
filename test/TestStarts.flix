@@ -8,13 +8,13 @@ mod TestStarts {
     @Test
     def testAtPlacesTheBody(): Unit \ Assert + Fs.FileRead + IO =
         let started = App.startOrBug(app(), "at", Map#{"x" => "14", "z" => "22", "yaw" => "90"});
-        Assert.assertEq(expected = (14.0, 22.0), Resources.read((_, w) -> (World.walkerOf(w)#x, World.walkerOf(w)#z), started))
+        Assert.assertEq(expected = Some((14.0, 22.0)), Resources.read((_, w) -> TestSupport.walkerIn(w) |> Option.map(b -> (b#x, b#z)), started))
 
     /// 数でない座標は組まずに理由を返す。
     @Test
     def testAtRefusesANonNumber(): Unit \ Assert + Fs.FileRead + IO =
         Assert.assertEq(expected = Err("始まり 'at': x は数（'left'）"),
-            App.buildStart(app(), Vec2.zero(), "at", Map#{"x" => "left"}) |> Result.map(Resources.read((_, w) -> World.walkerOf(w)#x)))
+            App.buildStart(app(), Vec2.zero(), "at", Map#{"x" => "left"}) |> Result.map(Resources.read((_, w) -> TestSupport.walkerIn(w) |> Option.map(b -> b#x))))
 
     /// ギャラリーの場面は全部、実機と同じ App から shot:<名前> の始まりで組める。
     @Test

@@ -72,13 +72,13 @@ mod Controls {
     /// （実機は起動画面が進む・描き出しとテストと flow は HeadlessLoad.handle で絵を解く）。
     pub def loadDocs(): Res.Docs \ Fs.FileRead + IO + LoadProgress =
         LoadProgress.report("reading docs...", 0, 0);
-        { sample = SampleDoc.load(SampleDoc.path()), keys = KeysDoc.load(KeysDoc.path()), theme = ThemeDoc.load(ThemeDoc.path()),
+        { uiText = UiTextDoc.load(UiTextDoc.path()), keys = KeysDoc.load(KeysDoc.path()), theme = ThemeDoc.load(ThemeDoc.path()),
           walk = WalkDoc.load(WalkDoc.path()), look = LookDoc.load(LookDoc.path()), maze = MazeDoc.load(MazeDoc.path()),
-          weapons = WeaponsDoc.load(WeaponsDoc.path()), hands = HandsDoc.load(HandsDoc.path()),
-          particles = Particles3dDoc.load(Particles3dDoc.path()), enemies = EnemiesDoc.load(EnemiesDoc.path()),
-          spawns = SpawnsDoc.load(SpawnsDoc.path()), rigs = Arms.load(), creatures = Creatures.load() }
+          weapons = WeaponsDoc.load(WeaponsDoc.path()), viewmodel = FpViewmodelDoc.load(FpViewmodelDoc.path()),
+          particles = Particles3dDoc.load(Particles3dDoc.path()), player = PlayerDoc.load(PlayerDoc.path()), enemies = EnemiesDoc.load(EnemiesDoc.path()),
+          spawns = SpawnsDoc.load(SpawnsDoc.path()), viewmodels = FpViewmodel.load(), creatures = Creatures.load() }
 
-    def reloadSample(res: Res.Res): Res.Res \ Fs.FileRead = Res.withSample(SampleDoc.load(SampleDoc.path()), res)
+    def reloadUiText(res: Res.Res): Res.Res \ Fs.FileRead = Res.withUiText(UiTextDoc.load(UiTextDoc.path()), res)
 
     def reloadKeys(res: Res.Res): Res.Res \ Fs.FileRead = Res.withKeys(KeysDoc.load(KeysDoc.path()), res)
 
@@ -86,9 +86,11 @@ mod Controls {
 
     def reloadWeapons(res: Res.Res): Res.Res \ Fs.FileRead = Res.withWeapons(WeaponsDoc.load(WeaponsDoc.path()), res)
 
-    def reloadHands(res: Res.Res): Res.Res \ Fs.FileRead = Res.withHands(HandsDoc.load(HandsDoc.path()), res)
+    def reloadViewmodel(res: Res.Res): Res.Res \ Fs.FileRead = Res.withViewmodel(FpViewmodelDoc.load(FpViewmodelDoc.path()), res)
 
     def reloadParticles(res: Res.Res): Res.Res \ Fs.FileRead = Res.withParticles(Particles3dDoc.load(Particles3dDoc.path()), res)
+
+    def reloadPlayer(res: Res.Res): Res.Res \ Fs.FileRead = Res.withPlayer(PlayerDoc.load(PlayerDoc.path()), res)
 
     def reloadEnemies(res: Res.Res): Res.Res \ Fs.FileRead = Res.withEnemies(EnemiesDoc.load(EnemiesDoc.path()), res)
 
@@ -105,12 +107,13 @@ mod Controls {
     /// 迷路を読み直したら、体を新しい start の印に立たせ直す（古い迷路の座標のままだと壁の中に残る）。
     pub def docTable(): List[DocTable.Entry[Resources.With[Res.Res, World.World]]] =
         let unchanged = (_, w) -> w;
-        Resources.reloadRow("sample", SampleDoc.path(), reloadSample, unchanged)
+        Resources.reloadRow("uitext", UiTextDoc.path(), reloadUiText, unchanged)
             :: Resources.reloadRow("keys", KeysDoc.path(), reloadKeys, unchanged)
             :: Resources.reloadRow("theme", ThemeDoc.path(), reloadTheme, unchanged)
             :: Resources.reloadRow("weapons", WeaponsDoc.path(), reloadWeapons, unchanged)
-            :: Resources.reloadRow("hands", HandsDoc.path(), reloadHands, unchanged)
+            :: Resources.reloadRow("viewmodel", FpViewmodelDoc.path(), reloadViewmodel, unchanged)
             :: Resources.reloadRow("particles3d", Particles3dDoc.path(), reloadParticles, unchanged)
+            :: Resources.reloadRow("player", PlayerDoc.path(), reloadPlayer, unchanged)
             :: Resources.reloadRow("enemies", EnemiesDoc.path(), reloadEnemies, unchanged)
             :: Resources.reloadRow("spawns", SpawnsDoc.path(), reloadSpawns, unchanged)
             :: Resources.reloadRow("walk", WalkDoc.path(), reloadWalk, unchanged)

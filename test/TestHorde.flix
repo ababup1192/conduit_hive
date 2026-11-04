@@ -1,9 +1,9 @@
-// 敵の規則: 当たり判定（体・頭・壁の向こう）・ダメージと倒れる・spawn（印 → spawns の数）・押し合い・距離の地図で近づく・
-// melee の当たる時刻と扇・ranged の見通し・projectile・プレイヤーが倒れてやり直す。
+// 敵の規則（Horde・Creatures の口を直に）: 当たり判定（体・頭・壁の向こう）・ダメージと倒れる・よろけの間隔・spawn（印 → spawns の数）・
+// 押し合い・距離の地図で近づく・melee の当たる時刻と扇・ranged の見通しと吐く上限・projectile・姿勢の共有の鍵。
 mod TestHorde {
-    use fge::{Camera3d, LogCapture, Num, Vec3}
+    use fge::{Camera3d, LogCapture, Mat4, Num, Vec3}
     use Creatures.Kind
-    use TestSupport.{clockAt, mazeOf, resWith}
+    use TestSupport.{mazeOf, resWith}
 
     // ── 迷路と道具 ──
 
@@ -25,12 +25,15 @@ mod TestHorde {
     def west(): Float64 = Num.pi() * 1.5
 
     /// 足元 (x, z) に立つプレイヤー（体の寸法は歩く Doc の既定）。
-    def playerAt(x: Float64, z: Float64): Horde.Player =
+    def playerAt(x: Float64, z: Float64): PlayerBody.PlayerBody =
         { x = x, feet = 0.0, z = z, eye = Vec3.v3(x, walk()#eyeHeight, z), radius = walk()#radius, height = walk()#height }
 
     /// 型 k の 1 体（番号 0）を x・z に、向き yaw（ラジアン）で立たせた群れ。
     def oneAt(r: Res.Res, k: Kind, x: Float64, z: Float64, yaw: Float64): Horde.Horde =
         Horde.spawnNow(r, { kind = k, x = x, z = z, yaw = yaw, home = 'A' } :: Nil, Horde.empty())
+
+    /// x = 12 m で東を向く melee 1 体。
+    def meleeAt12(): Horde.Horde = oneAt(res(), Kind.Melee, 12.0, 10.0, east())
 
     /// 目 (x, y, 10) から西をまっすぐ見るカメラ。
     def westCamera(x: Float64, y: Float64): Camera3d.Camera3d =
@@ -42,23 +45,33 @@ mod TestHorde {
     def impactOn(part: Hitscan.Part): List[Hitscan.Impact] =
         { struck = Hitscan.Struck.Enemy(0, part), point = Vec3.zero(), normal = Vec3.zero() } :: Nil
 
-    def actOf(h: Horde.Horde): Option[(Float64, Horde.Act)] = Horde.enemyOf(0, h) |> Option.map(e -> (e#health, e#act))
+    def damaged(t: Float64, amount: Float64, part: Hitscan.Part, h: Horde.Horde): Horde.Horde = Horde.applyDamage(res(), t, amount, impactOn(part), h)#horde
+
+    def actOf(h: Horde.Horde): Option[Horde.Act] = Horde.enemyOf(0, h) |> Option.map(e -> e#act)
+
+    def healthOf(h: Horde.Horde): Option[Float64] = Horde.enemyOf(0, h) |> Option.map(e -> e#health)
 
     // ── 当たり判定 ──
 
-    /// x = 12 m で東を向く melee を西向きに撃つ: 頭の高さ（1.88 m。glb の頭の球の真ん中）は頭・腰の高さ（1 m）は体に当たる。
-    /// 東の通路 B（x = 30 m）から撃つと、間の壁（x = 28 m）で止まり敵には当たらない。
+    /// 頭の高さ（1.88 m。glb の頭の球の真ん中）で撃つと頭に当たる。
     @Test
-    def testShotsHitHeadBodyAndStopAtWalls(): Unit \ Assert =
-        let h = oneAt(res(), Kind.Melee, 12.0, 10.0, east());
-        Assert.assertEq(expected = (Hitscan.Struck.Enemy(0, Hitscan.Part.Head) :: Nil, Hitscan.Struck.Enemy(0, Hitscan.Part.Body) :: Nil, Hitscan.Struck.Wall :: Nil),
-            (struckOf(h, westCamera(22.0, 1.88)), struckOf(h, westCamera(22.0, 1.0)), struckOf(h, westCamera(30.0, 1.0))))
+    def testShotAtHeadHeightHitsTheHead(): Unit \ Assert =
+        Assert.assertEq(expected = Hitscan.Struck.Enemy(0, Hitscan.Part.Head) :: Nil, struckOf(meleeAt12(), westCamera(22.0, 1.88)))
+
+    /// 腰の高さ（1 m）で撃つと体に当たる。
+    @Test
+    def testShotAtWaistHeightHitsTheBody(): Unit \ Assert =
+        Assert.assertEq(expected = Hitscan.Struck.Enemy(0, Hitscan.Part.Body) :: Nil, struckOf(meleeAt12(), westCamera(22.0, 1.0)))
+
+    /// 東の通路 B（x = 30 m）から撃つと間の壁（x = 28 m）で止まり、壁の向こうの敵には当たらない。
+    @Test
+    def testWallStopsTheShotBeforeTheEnemy(): Unit \ Assert =
+        Assert.assertEq(expected = Hitscan.Struck.Wall :: Nil, struckOf(meleeAt12(), westCamera(30.0, 1.0)))
 
     /// 倒れた敵は弾の的にならない（倒れる途中の体を撃っても後ろの的の柱に当たる）。
     @Test
     def testFallenEnemiesAreNotTargets(): Unit \ Assert =
-        let fallen = Horde.wound(res(), 0.0, doc()#melee#health, impactOn(Hitscan.Part.Body), oneAt(res(), Kind.Melee, 12.0, 10.0, east()));
-        Assert.assertEq(expected = Hitscan.Struck.Prop(0) :: Nil, struckOf(fallen, westCamera(22.0, 1.0)))
+        Assert.assertEq(expected = Hitscan.Struck.Prop(0) :: Nil, struckOf(damaged(0.0, doc()#melee#health, Hitscan.Part.Body, meleeAt12()), westCamera(22.0, 1.0)))
 
     /// 4 m 先に詰まった 5 体（前に 3 体・その間の後ろに 2 体）へ散弾銃を 1 回: 粒が群れに散り、2 体以上が倒れる（残るのは 3 体以下）。
     @Test
@@ -67,34 +80,49 @@ mod TestHorde {
         let crowd = Horde.spawnNow(res(), at(18.0, 9.2) :: at(18.0, 10.0) :: at(18.0, 10.8) :: at(17.2, 9.6) :: at(17.2, 10.4) :: Nil, Horde.empty());
         let shotgun = WeaponsDoc.statsOf(WeaponsDoc.Weapon.Shotgun, WeaponsDoc.defaults());
         let impacts = Hitscan.fire(List.append(Horde.targetsOf(crowd), res()#hitTargets), westCamera(22.0, 1.4), shotgun, 0);
-        Assert.assertEq(expected = true, Horde.aliveCount(Horde.wound(res(), 0.0, shotgun#damage, impacts, crowd)) <= 3)
+        Assert.assertEq(expected = true, Horde.aliveCount(Horde.applyDamage(res(), 0.0, shotgun#damage, impacts, crowd)#horde) <= 3)
 
     // ── ダメージと倒れる ──
 
-    /// 体に拳銃 1 発: 体力が威力だけ減ってよろける。頭なら威力 × headMultiplier で、体力ちょうどの威力なら倒れる。
+    /// 体に拳銃 1 発: 体力が威力だけ減る。
     @Test
-    def testBodyShotStaggersAndHeadShotDoublesDamage(): Unit \ Assert =
-        let h = oneAt(res(), Kind.Melee, 12.0, 10.0, east());
-        let body = Horde.wound(res(), 1.0, pistol()#damage, impactOn(Hitscan.Part.Body), h);
-        let head = Horde.wound(res(), 1.0, doc()#melee#health / doc()#headMultiplier, impactOn(Hitscan.Part.Head), h);
-        Assert.assertEq(expected = (Some((doc()#melee#health - pistol()#damage, Horde.Act.Hurt(1.0))), Some((0.0, Horde.Act.Dying(1.0)))),
-            (actOf(body), actOf(head)))
+    def testBodyShotTakesTheWeaponDamage(): Unit \ Assert =
+        Assert.assertEq(expected = Some(doc()#melee#health - pistol()#damage), healthOf(damaged(1.0, pistol()#damage, Hitscan.Part.Body, meleeAt12())))
+
+    /// 体に拳銃 1 発: 追っている途中ならよろける。
+    @Test
+    def testBodyShotStaggers(): Unit \ Assert =
+        Assert.assertEq(expected = Some(Horde.Act.Hurt(1.0)), actOf(damaged(1.0, pistol()#damage, Hitscan.Part.Body, meleeAt12())))
+
+    /// 頭は威力 × headMultiplier: 体力 ÷ 倍率の威力の弾 1 粒で倒れる。
+    @Test
+    def testHeadShotMultipliesTheDamage(): Unit \ Assert =
+        Assert.assertEq(expected = Some(Horde.Act.Dying(1.0)),
+            actOf(damaged(1.0, doc()#melee#health / doc()#headMultiplier, Hitscan.Part.Head, meleeAt12())))
+
+    /// よろけてから staggerCooldown の内にもう 1 発当たっても、よろけは始め直さない（連射で一歩も進めない、にならない）。
+    @Test
+    def testStaggerWaitsForTheCooldown(): Unit \ Assert =
+        let once = damaged(1.0, 1.0, Hitscan.Part.Body, meleeAt12());
+        Assert.assertEq(expected = Some(Horde.Act.Hurt(1.0)), actOf(damaged(1.0 + doc()#staggerCooldown * 0.5, 1.0, Hitscan.Part.Body, once)))
 
     /// 振り下ろしている途中の melee は撃たれてもよろけない（振りは止まらない）。
     @Test
     def testAttackIsNotInterruptedByAHit(): Unit \ Assert =
-        let swinging = Horde.step(res(), 0.1, 0.1, playerAt(13.0, 10.0), oneAt(res(), Kind.Melee, 12.0, 10.0, east()))#horde;
-        Assert.assertEq(expected = Some((doc()#melee#health - pistol()#damage, Horde.Act.Attack(0.1))),
-            actOf(Horde.wound(res(), 0.2, pistol()#damage, impactOn(Hitscan.Part.Body), swinging)))
+        let swinging = Horde.step(res(), 0.1, 0.1, playerAt(13.0, 10.0), meleeAt12())#horde;
+        Assert.assertEq(expected = Some(Horde.Act.Attack(0.1, false)), actOf(damaged(0.2, pistol()#damage, Hitscan.Part.Body, swinging)))
 
-    /// 倒れた敵は corpseSeconds の間は残り、過ぎたコマに消える。
+    /// 倒れた敵は corpseSeconds の半分ではまだ残る。
     @Test
-    def testCorpseStaysForTheDocTime(): Unit \ Assert =
-        let fallen = Horde.wound(res(), 0.0, doc()#melee#health, impactOn(Hitscan.Part.Body), oneAt(res(), Kind.Melee, 12.0, 10.0, east()));
-        let far = playerAt(22.0, 10.0);
-        Assert.assertEq(expected = (1, 0),
-            (List.length(Horde.step(res(), doc()#corpseSeconds * 0.5, 0.1, far, fallen)#horde#enemies),
-             List.length(Horde.step(res(), doc()#corpseSeconds, 0.1, far, fallen)#horde#enemies)))
+    def testCorpseStaysWithinTheDocTime(): Unit \ Assert =
+        let fallen = damaged(0.0, doc()#melee#health, Hitscan.Part.Body, meleeAt12());
+        Assert.assertEq(expected = 1, List.length(Horde.step(res(), doc()#corpseSeconds * 0.5, 0.1, playerAt(22.0, 10.0), fallen)#horde#enemies))
+
+    /// 倒れた敵は corpseSeconds が過ぎたコマに消える。
+    @Test
+    def testCorpseIsGoneAfterTheDocTime(): Unit \ Assert =
+        let fallen = damaged(0.0, doc()#melee#health, Hitscan.Part.Body, meleeAt12());
+        Assert.assertEq(expected = 0, List.length(Horde.step(res(), doc()#corpseSeconds, 0.1, playerAt(22.0, 10.0), fallen)#horde#enemies))
 
     // ── spawn ──
 
@@ -107,19 +135,33 @@ mod TestHorde {
 
     def spawnMark(name: String, col: Int32, row: Int32): MazeDoc.Mark = { kind = MazeDoc.MarkKind.Spawn, name = name, col = col, row = row, yaw = 0.0 }
 
-    /// spawns.json の既定の pack の群れ。
-    def pack(): Option[SpawnsDoc.Group] = Map.get("pack", SpawnsDoc.rec(SpawnsDoc.defaults())#groups)
+    /// spawns.json の既定の pack の群れの数。
+    def packSize(): Option[Int32] = Map.get("pack", SpawnsDoc.rec(SpawnsDoc.defaults())#groups) |> Option.map(g -> g#melee + g#ranged)
 
-    /// pack の印 2 つと、spawns.json に無い名前の印 1 つ: 無い名前は 1 行知らせて置かず、部屋に入ると pack 2 つ分が湧く予定になる。
-    /// もう一度入っても足さない。予定の時刻を過ぎた（60 秒後の）コマには全部出ている。
+    def packRes(): Res.Res = resWith(roomMaze(spawnMark("pack", 4, 1) :: spawnMark("pack", 5, 2) :: Nil))
+
+    /// spawns.json に無い名前の印は 1 行知らせて置かない（pack の印 1 つだけが残る）。
     @Test
-    def testEnteringARoomSpawnsTheMarkedGroupsOnce(): Unit \ {Assert, IO} =
-        let (r, lines) = LogCapture.capture(() -> resWith(roomMaze(spawnMark("pack", 4, 1) :: spawnMark("pack", 5, 2) :: spawnMark("nope", 3, 2) :: Nil)));
-        let entered = Horde.enter(r, 'A', 0.0, Horde.empty());
-        let twice = Horde.enter(r, 'A', 1.0, entered);
-        let later = Horde.step(r, 60.0, 0.1, playerAt(6.0, 10.0), twice)#horde;
-        Assert.assertEq(expected = pack() |> Option.map(g -> (1, 2 * (g#melee + g#ranged), 2 * (g#melee + g#ranged), 2 * (g#melee + g#ranged))),
-            Some((List.length(lines), List.length(entered#pending), List.length(twice#pending), Horde.aliveCount(later))))
+    def testUnknownSpawnNameIsReportedAndDropped(): Unit \ {Assert, IO} =
+        let (r, lines) = LogCapture.capture(() -> resWith(roomMaze(spawnMark("pack", 4, 1) :: spawnMark("nope", 3, 2) :: Nil)));
+        Assert.assertEq(expected = (1, 1), (List.length(lines), List.length(r#spawnPoints)))
+
+    /// pack の印 2 つの部屋に入ると、pack 2 つ分が湧く予定になる。
+    @Test
+    def testEnteringARoomSchedulesTheMarkedGroups(): Unit \ Assert =
+        Assert.assertEq(expected = packSize() |> Option.map(n -> 2 * n), Some(List.length(Horde.enter(packRes(), 'A', 0.0, Horde.empty())#pending)))
+
+    /// もう一度入っても予定を足さない（1 部屋 1 回だけ）。
+    @Test
+    def testEnteringTwiceSpawnsOnce(): Unit \ Assert =
+        let twice = Horde.enter(packRes(), 'A', 1.0, Horde.enter(packRes(), 'A', 0.0, Horde.empty()));
+        Assert.assertEq(expected = packSize() |> Option.map(n -> 2 * n), Some(List.length(twice#pending)))
+
+    /// 予定の時刻を過ぎた（60 秒後の）コマには全部出ている。
+    @Test
+    def testScheduledEnemiesAppearByTheirTime(): Unit \ Assert =
+        let entered = Horde.enter(packRes(), 'A', 0.0, Horde.empty());
+        Assert.assertEq(expected = packSize() |> Option.map(n -> 2 * n), Some(Horde.aliveCount(Horde.step(packRes(), 60.0, 0.1, playerAt(6.0, 10.0), entered)#horde)))
 
     // ── 押し合い ──
 
@@ -144,59 +186,98 @@ mod TestHorde {
 
     // ── melee の振り下ろし ──
 
-    /// プレイヤーの 1 m 手前の melee: 1 コマ目に振り始め、始めてから hitTime の手前のコマまではダメージ 0・hitTime のコマに Doc の威力
-    /// （刻みは hitTime の 1/4。始めたコマから 4 コマ目が hitTime）。
+    def meleeInFront(): Horde.Horde = oneAt(res(), Kind.Melee, 13.0, 10.0, east())
+
+    /// プレイヤーの 1 m 手前の melee: 振り始めてから hitTime の手前のコマまではダメージ 0（刻みは hitTime の 1/4・4 コマ）。
+    @Test
+    def testMeleeDoesNotHitBeforeTheDocTime(): Unit \ Assert =
+        Assert.assertEq(expected = 0.0, Horde.simulate(res(), 0.0, doc()#melee#hitTime / 4.0, 4, playerAt(14.0, 10.0), meleeInFront())#damage)
+
+    /// 振り始めたコマから hitTime のコマに Doc の威力（5 コマ目）。
     @Test
     def testMeleeHitsAtTheDocTime(): Unit \ Assert =
-        let dt = doc()#melee#hitTime / 4.0;
-        let h = oneAt(res(), Kind.Melee, 13.0, 10.0, east());
-        Assert.assertEq(expected = (0.0, doc()#melee#damage),
-            (Horde.simulate(res(), 0.0, dt, 4, playerAt(14.0, 10.0), h)#damage, Horde.simulate(res(), 0.0, dt, 5, playerAt(14.0, 10.0), h)#damage))
+        Assert.assertEq(expected = doc()#melee#damage, Horde.simulate(res(), 0.0, doc()#melee#hitTime / 4.0, 5, playerAt(14.0, 10.0), meleeInFront())#damage)
 
-    /// 振り下ろしの扇: 北を向く melee の 1 m 前は内・1 m 後ろは外・前でも reach と体の半径より 0.2 m 遠ければ外。
+    /// 振り始めた次のコマが hitTime を一度に飛び越えても（時計は 0.6 秒進み、dt は 0.05 に切り詰められたコマ）、当たるのは 1 回だけ。
     @Test
-    def testMeleeSwingCoversTheFrontArc(): Unit \ Assert =
-        let m = doc()#melee;
-        Assert.assertEq(expected = Some((true, false, false)),
-            Horde.enemyOf(0, oneAt(res(), Kind.Melee, 10.0, 10.0, 0.0)) |> Option.map(e ->
-                (Horde.isInSwing(m, e, playerAt(10.0, 11.0)), Horde.isInSwing(m, e, playerAt(10.0, 9.0)),
-                 Horde.isInSwing(m, e, playerAt(10.0, 10.0 + m#reach + walk()#radius + 0.2)))))
+    def testMeleeHitsOnceAcrossALongFrame(): Unit \ Assert =
+        let p = playerAt(14.0, 10.0);
+        let swinging = Horde.step(res(), 0.1, 0.05, p, meleeInFront())#horde;
+        let first = Horde.step(res(), 0.7, 0.05, p, swinging);
+        let second = Horde.step(res(), 0.75, 0.05, p, first#horde);
+        Assert.assertEq(expected = doc()#melee#damage, first#damage + second#damage)
+
+    def northMelee(): Option[Horde.Enemy] = Horde.enemyOf(0, oneAt(res(), Kind.Melee, 10.0, 10.0, 0.0))
+
+    /// 北を向く melee の 1 m 前は扇の内。
+    @Test
+    def testMeleeSwingCoversTheFront(): Unit \ Assert =
+        Assert.assertEq(expected = Some(true), northMelee() |> Option.map(e -> Horde.isInSwing(doc()#melee, e, playerAt(10.0, 11.0))))
+
+    /// 北を向く melee の 1 m 後ろは扇の外。
+    @Test
+    def testMeleeSwingMissesBehind(): Unit \ Assert =
+        Assert.assertEq(expected = Some(false), northMelee() |> Option.map(e -> Horde.isInSwing(doc()#melee, e, playerAt(10.0, 9.0))))
+
+    /// 前でも reach と体の半径より 0.2 m 遠ければ扇の外。
+    @Test
+    def testMeleeSwingMissesBeyondTheReach(): Unit \ Assert =
+        Assert.assertEq(expected = Some(false),
+            northMelee() |> Option.map(e -> Horde.isInSwing(doc()#melee, e, playerAt(10.0, 10.0 + doc()#melee#reach + walk()#radius + 0.2))))
 
     // ── ranged ──
 
-    /// ranged は見通しがある時だけ吐き始める: 同じ部屋（12 m 先）なら 1 コマ目に attack・間に壁がある通路 B（16 m 先）なら追うまま。
-    @Test
-    def testRangedAttacksOnlyWithLineOfSight(): Unit \ Assert =
-        let actAfter = (player: Horde.Player) -> Horde.step(res(), 0.1, 0.1, player, oneAt(res(), Kind.Ranged, 10.0, 10.0, east()))#horde |> actOf;
-        Assert.assertEq(expected = (Some(Horde.Act.Attack(0.1)), Some(Horde.Act.Chase)),
-            (actAfter(playerAt(22.0, 10.0)) |> Option.map(snd), actAfter(playerAt(30.0, 10.0)) |> Option.map(snd)))
+    def rangedActAfterOneFrame(player: PlayerBody.PlayerBody): Option[Horde.Act] =
+        Horde.step(res(), 0.1, 0.1, player, oneAt(res(), Kind.Ranged, 10.0, 10.0, east()))#horde |> actOf
 
-    /// 西の壁（x = 4 m）の 1 m 手前から西へ飛ぶ projectile は壁で弾けて消え（ダメージ 0）、プレイヤーへ飛ぶ物は当たって Doc の威力。
+    /// 同じ部屋（12 m 先）で見通しがあれば 1 コマ目に吐き始める。
     @Test
-    def testProjectileBurstsOnWallsAndHurtsThePlayer(): Unit \ Assert =
+    def testRangedAttacksWithLineOfSight(): Unit \ Assert =
+        Assert.assertEq(expected = Some(Horde.Act.Attack(0.1, false)), rangedActAfterOneFrame(playerAt(22.0, 10.0)))
+
+    /// 間に壁がある通路 B（20 m 先）なら吐き始めない（追うまま）。
+    @Test
+    def testRangedDoesNotAttackThroughWalls(): Unit \ Assert =
+        Assert.assertEq(expected = Some(Horde.Act.Chase), rangedActAfterOneFrame(playerAt(30.0, 10.0)))
+
+    /// 吐き始めた後で飛んでいる数が上限（limit 1 の Doc）に届いたら、吐く時刻が来ても吐かない（飛んでいるのは止まった 1 本のまま）。
+    @Test
+    def testRangedDoesNotSpitPastTheLimit(): Unit \ Assert =
+        let r = { enemies = EnemiesDoc.Doc.Doc({ projectile = { limit = 1 | doc()#projectile } | doc() }) | res() };
+        let p = playerAt(22.0, 10.0);
+        let started = Horde.step(r, 0.1, 0.1, p, oneAt(r, Kind.Ranged, 10.0, 10.0, east()))#horde;
+        let full = Horde.launch(Vec3.v3(10.0, 1.5, 14.0), Vec3.zero(), 0.1, started);
+        Assert.assertEq(expected = 1, List.length(Horde.simulate(r, 0.1, 0.1, 7, p, full)#horde#projectiles))
+
+    /// 西の壁（x = 4 m）の 1 m 手前から西へ飛ぶ projectile は壁で弾けて消える（弾けた所が 1 つ・ダメージ 0）。
+    @Test
+    def testProjectileBurstsOnWalls(): Unit \ Assert =
         let speed = doc()#projectile#speed;
-        let atWall = Horde.simulate(res(), 0.0, 0.05, 4, playerAt(22.0, 10.0), Horde.launch(Vec3.v3(5.0, 1.5, 14.0), Vec3.v3(0.0 - speed, 0.0, 0.0), 0.0, Horde.empty()));
-        let atPlayer = Horde.simulate(res(), 0.0, 0.05, 20, playerAt(22.0, 10.0), Horde.launch(Vec3.v3(18.0, 1.5, 10.0), Vec3.v3(speed, 0.0, 0.0), 0.0, Horde.empty()));
-        Assert.assertEq(expected = ((0, 1, 0.0), (0, doc()#projectile#damage)),
-            ((List.length(atWall#horde#projectiles), List.length(atWall#splashes), atWall#damage),
-             (List.length(atPlayer#horde#projectiles), atPlayer#damage)))
+        let o = Horde.simulate(res(), 0.0, 0.05, 4, playerAt(22.0, 10.0), Horde.launch(Vec3.v3(5.0, 1.5, 14.0), Vec3.v3(0.0 - speed, 0.0, 0.0), 0.0, Horde.empty()));
+        Assert.assertEq(expected = (0, 1, 0.0), (List.length(o#horde#projectiles), List.length(o#splashes), o#damage))
 
-    // ── 倒れてやり直す ──
-
-    /// 体力 5 の Doc で、部屋 A に入ったコマに 1 m 前の melee が振り始め、hitTime のコマの 1 撃（威力 10）で倒れる。
-    /// respawnSeconds の後のコマに、入った所（start の x 6 m・z 10 m）で体力を満たして立ち、敵は消えている。次のコマに部屋へ入り直して pack が湧き直す。
+    /// プレイヤーへ飛ぶ projectile は当たって Doc の威力。
     @Test
-    def testDeathRespawnsAtTheRoomEntranceAndRearmsTheRoom(): Unit \ Assert =
-        let base = resWith(roomMaze(spawnMark("pack", 5, 2) :: Nil));
-        let r = { enemies = EnemiesDoc.Doc.Doc({ playerHealth = 5.0 | doc() }) | base };
-        let idle = World.walking(Walker.idle());
-        let hit = doc()#melee#hitTime;
-        let w0 = World.withHorde(oneAt(r, Kind.Melee, 7.0, 10.0, west()), World.initial(r));
-        let swung = World.step(r, idle, { play = clockAt(0.125, 0.125) | w0 });
-        let down = World.step(r, idle, { play = clockAt(0.125 + hit, 0.05) | swung });
-        let back = World.step(r, idle, { play = clockAt(0.125 + hit + doc()#respawnSeconds, 0.05) | down });
-        let again = World.step(r, idle, { play = clockAt(0.175 + hit + doc()#respawnSeconds, 0.05) | back });
-        Assert.assertEq(expected = pack() |> Option.map(g -> (true, 5.0, 0, (6.0, 10.0), g#melee + g#ranged)),
-            Some((Health.isDown(World.healthOf(down)), World.healthOf(back)#points, Horde.aliveCount(World.hordeOf(back)),
-                  (World.walkerOf(back)#x, World.walkerOf(back)#z), Horde.aliveCount(World.hordeOf(again)) + List.length(World.hordeOf(again)#pending))))
+    def testProjectileHurtsThePlayer(): Unit \ Assert =
+        let speed = doc()#projectile#speed;
+        let o = Horde.simulate(res(), 0.0, 0.05, 20, playerAt(22.0, 10.0), Horde.launch(Vec3.v3(18.0, 1.5, 10.0), Vec3.v3(speed, 0.0, 0.0), 0.0, Horde.empty()));
+        Assert.assertEq(expected = doc()#projectile#damage, o#damage)
+
+    // ── 姿勢の共有の鍵 ──
+
+    /// die のクリップを時刻 start に始めた体（world は使わない）。
+    def corpse(k: Kind, start: Float64): Creatures.Posed =
+        { kind = k, group = 0, anim = { now = { clip = Creatures.Clip.Die, start = start }, before = None, switchedAt = -1000.0 }, world = Mat4.identity() }
+
+    /// die を過ぎた（最後のコマで止まった）2 体は、倒れた時刻が違っても同じ姿勢を共有する。
+    @Test
+    def testFinishedCorpsesShareOnePose(): Unit \ Assert =
+        Assert.assertEq(expected = true,
+            Creatures.sharesPose(Creatures.timingOf(Map.empty()), doc()#blendSeconds, 10.0, corpse(Kind.Melee, 0.0), corpse(Kind.Melee, 3.0)))
+
+    /// 型の違う敵は同じ時刻でも姿勢を共有しない。
+    @Test
+    def testDifferentKindsDoNotSharePoses(): Unit \ Assert =
+        Assert.assertEq(expected = false,
+            Creatures.sharesPose(Creatures.timingOf(Map.empty()), doc()#blendSeconds, 10.0, corpse(Kind.Melee, 0.0), corpse(Kind.Ranged, 0.0)))
 }

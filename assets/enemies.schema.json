@@ -2,51 +2,41 @@
   "//": "conduit_hive.enemies.json の形（Studio の sections 方言）。既定は src/EnemiesDoc.flix の defaults() が正。",
   "version": 1,
   "sections": {
-    "playerHealth": {
-      "kind": "field",
-      "type": "float",
-      "label": "プレイヤーの体力",
-      "order": 1,
-      "default": 100.0,
-      "min": 1,
-      "max": 1000,
-      "group": "受ける側"
-    },
-    "hurtSeconds": {
-      "kind": "field",
-      "type": "float",
-      "label": "被弾で画面の縁が赤い長さ（秒）",
-      "order": 2,
-      "default": 0.6,
-      "min": 0.05,
-      "max": 3,
-      "group": "受ける側"
-    },
-    "respawnSeconds": {
-      "kind": "field",
-      "type": "float",
-      "label": "倒れてからやり直すまで（秒）",
-      "order": 3,
-      "default": 2.0,
-      "min": 0.2,
-      "max": 10,
-      "group": "受ける側"
-    },
     "headMultiplier": {
       "kind": "field",
       "type": "float",
       "label": "頭に当たった弾の威力の倍率",
-      "order": 4,
+      "order": 1,
       "default": 2.0,
       "min": 1,
       "max": 10,
+      "group": "敵の共通"
+    },
+    "staggerCooldown": {
+      "kind": "field",
+      "type": "float",
+      "label": "よろけてから次によろけられるまで（秒）",
+      "order": 2,
+      "default": 0.8,
+      "min": 0,
+      "max": 10,
+      "group": "敵の共通"
+    },
+    "turnRate": {
+      "kind": "field",
+      "type": "float",
+      "label": "向きを変える速さ（度/秒）",
+      "order": 3,
+      "default": 570.0,
+      "min": 30,
+      "max": 2000,
       "group": "敵の共通"
     },
     "corpseSeconds": {
       "kind": "field",
       "type": "float",
       "label": "倒れたまま残る長さ（秒）",
-      "order": 5,
+      "order": 4,
       "default": 4.0,
       "min": 0,
       "max": 30,
@@ -56,7 +46,7 @@
       "kind": "field",
       "type": "float",
       "label": "クリップを切り替える時に混ぜる長さ（秒）",
-      "order": 6,
+      "order": 5,
       "default": 0.12,
       "min": 0,
       "max": 1,
@@ -66,7 +56,7 @@
       "kind": "field",
       "type": "float",
       "label": "距離の地図を塗り直す間隔（秒）",
-      "order": 7,
+      "order": 6,
       "default": 0.25,
       "min": 0.02,
       "max": 2,
@@ -75,7 +65,7 @@
     "melee": {
       "kind": "record",
       "label": "melee（腕を振り下ろす）",
-      "order": 8,
+      "order": 7,
       "fields": {
         "health": {
           "type": "float",
@@ -101,10 +91,18 @@
           "min": 0.3,
           "max": 5
         },
+        "stopDistance": {
+          "type": "float",
+          "label": "振れない間に寄るのをやめる距離（m）",
+          "order": 4,
+          "default": 1.2,
+          "min": 0.3,
+          "max": 5
+        },
         "reach": {
           "type": "float",
           "label": "届く距離（足元から体の縁まで・m）",
-          "order": 4,
+          "order": 5,
           "default": 1.3,
           "min": 0.3,
           "max": 5
@@ -112,7 +110,7 @@
         "arc": {
           "type": "float",
           "label": "前の扇の角（度）",
-          "order": 5,
+          "order": 6,
           "default": 100.0,
           "min": 10,
           "max": 360
@@ -120,7 +118,7 @@
         "hitTime": {
           "type": "float",
           "label": "当たる時刻（秒）",
-          "order": 6,
+          "order": 7,
           "default": 0.5,
           "min": 0,
           "max": 3
@@ -128,7 +126,7 @@
         "damage": {
           "type": "float",
           "label": "威力",
-          "order": 7,
+          "order": 8,
           "default": 10.0,
           "min": 0,
           "max": 200
@@ -136,7 +134,7 @@
         "cooldown": {
           "type": "float",
           "label": "次を振れるまで（秒）",
-          "order": 8,
+          "order": 9,
           "default": 0.4,
           "min": 0,
           "max": 10
@@ -146,7 +144,7 @@
     "ranged": {
       "kind": "record",
       "label": "ranged（projectile を吐く）",
-      "order": 9,
+      "order": 8,
       "fields": {
         "health": {
           "type": "float",
@@ -172,10 +170,26 @@
           "min": 1,
           "max": 40
         },
+        "approachMargin": {
+          "type": "float",
+          "label": "保つ距離より遠いと寄る幅（m）",
+          "order": 4,
+          "default": 1.0,
+          "min": 0,
+          "max": 10
+        },
+        "retreatMargin": {
+          "type": "float",
+          "label": "保つ距離より近いと下がる幅（m）",
+          "order": 5,
+          "default": 1.5,
+          "min": 0,
+          "max": 10
+        },
         "sightRange": {
           "type": "float",
           "label": "吐き始める一番遠い距離（m）",
-          "order": 4,
+          "order": 6,
           "default": 22.0,
           "min": 1,
           "max": 80
@@ -183,7 +197,7 @@
         "hitTime": {
           "type": "float",
           "label": "吐く時刻（秒）",
-          "order": 5,
+          "order": 7,
           "default": 0.6,
           "min": 0,
           "max": 3
@@ -191,7 +205,7 @@
         "cooldown": {
           "type": "float",
           "label": "次を吐けるまで（秒）",
-          "order": 6,
+          "order": 8,
           "default": 2.0,
           "min": 0,
           "max": 20
@@ -201,7 +215,7 @@
     "projectile": {
       "kind": "record",
       "label": "projectile",
-      "order": 10,
+      "order": 9,
       "fields": {
         "speed": {
           "type": "float",

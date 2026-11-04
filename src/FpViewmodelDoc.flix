@@ -1,8 +1,8 @@
-// HandsDoc — conduit_hive.hands.json（画面の手前に重ねる腕と銃 = ビューモデルの見え方と手触り）の宣言ドキュメント層。
+// FpViewmodelDoc — conduit_hive.viewmodel.json（画面の手前に重ねる腕と銃 = ビューモデルの見え方と手触り）の宣言ドキュメント層。
 // 画角・写す奥行き・歩く揺れ・見回しの遅れ・持ち替えの長さ・反動の戻り・光の倍率。光の色と向きはステージの look と灯りに合わせ、霧は掛けない。
 // 長さは m・角度は度・時間は秒。
 // fail-open — 読めない・壊れているときは defaults() へ落とし、欄が無ければその欄だけ既定。
-mod HandsDoc {
+mod FpViewmodelDoc {
     use fge::{DocJson, JsonCodec}
     use Util.Json.Json
 
@@ -32,9 +32,9 @@ mod HandsDoc {
     pub enum Doc(Rec)
     pub def rec(d: Doc): Rec = match d { case Doc.Doc(r) => r }
 
-    pub def path(): String = "assets/conduit_hive.hands.json"
+    pub def path(): String = "assets/conduit_hive.viewmodel.json"
 
-    /// コード側の既定値（assets/conduit_hive.hands.json と同じ値から出発する）。
+    /// コード側の既定値（assets/conduit_hive.viewmodel.json と同じ値から出発する）。
     pub def defaults(): Doc =
         Doc.Doc({ version = 1, fovY = 55.0, near = 0.01, far = 4.0, bobSide = 0.012, bobLift = 0.008,
                   swayScale = 0.6, swayMax = 4.0, swayFollow = 0.12, drawSeconds = 0.35, recoilRecover = 0.18,

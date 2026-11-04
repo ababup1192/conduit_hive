@@ -1,6 +1,6 @@
-// SampleDoc — sample.kind.json（画面に出す文言）の宣言ドキュメント層。
+// UiTextDoc — conduit_hive.uitext.json（画面に出す文言）の宣言ドキュメント層。
 // fail-open — 読めない・壊れているときは defaults() へ落とし、ゲームは必ず起動する。
-mod SampleDoc {
+mod UiTextDoc {
     use fge::{DocJson, JsonCodec}
     use Util.Json.Json
 
@@ -11,9 +11,9 @@ mod SampleDoc {
     pub enum Doc(Rec)
     pub def rec(d: Doc): Rec = match d { case Doc.Doc(r) => r }
 
-    pub def path(): String = "assets/sample.kind.json"
+    pub def path(): String = "assets/conduit_hive.uitext.json"
 
-    /// コード側の既定値（assets/sample.kind.json と同じ値から出発する）。
+    /// コード側の既定値（assets/conduit_hive.uitext.json と同じ値から出発する）。
     pub def defaults(): Doc = Doc.Doc({ version = 1, quitPrompt = "Quit?  Enter: yes  /  Esc: no" })
 
     /// テキストから Doc へ（fail-open）。JSON でない・形が違うフィールドは既定へ落とす。

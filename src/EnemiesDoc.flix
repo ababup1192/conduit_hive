@@ -1,4 +1,5 @@
-// EnemiesDoc — conduit_hive.enemies.json（敵の型ごとの体力・速さ・攻撃の距離と時刻・projectile と、受ける側の体力）の宣言ドキュメント層。
+// EnemiesDoc — conduit_hive.enemies.json（敵の型ごとの体力・速さ・攻撃の距離と時刻・projectile）の宣言ドキュメント層。
+// プレイヤーの体力は PlayerDoc。
 // 追う・押し合う・当てる規則と当たり判定の形はコード（Horde・FlowField・Creatures）で、ここは調整する数だけ。
 // 長さは m・角度は度・時間は秒・速さは 1 秒あたり。
 // fail-open — 読めない・壊れているときは defaults() へ落とし、欄が無ければその欄だけ既定。
@@ -11,8 +12,9 @@ mod EnemiesDoc {
         health = Float64,
         // 走る速さ（walk のクリップの足が滑らない速さに合わせる）。
         speed = Float64,
-        // 振り下ろしを始める距離（足元どうし）。
+        // 振り下ろしを始める距離（足元どうし）と、振れない間に寄るのをやめる距離（プレイヤーの体へ押し込まない）。
         attackRange = Float64,
+        stopDistance = Float64,
         // 振り下ろしが届く距離（足元からプレイヤーの体の縁まで）と、前の扇の角（全体）。
         reach = Float64,
         arc = Float64,
@@ -27,8 +29,10 @@ mod EnemiesDoc {
     pub type alias Ranged = {
         health = Float64,
         speed = Float64,
-        // 保つ距離（これより近いと下がり、遠いと寄る）と、吐き始める一番遠い距離。
+        // 保つ距離と、吐き始める一番遠い距離。保つ距離 + approachMargin より遠いと寄り、保つ距離 − retreatMargin より近いと下がる。
         keepDistance = Float64,
+        approachMargin = Float64,
+        retreatMargin = Float64,
         sightRange = Float64,
         // attack のクリップの始まりから吐く時刻。
         hitTime = Float64,
@@ -40,12 +44,12 @@ mod EnemiesDoc {
 
     pub type alias Rec = {
         version = Int32,
-        // プレイヤーの体力・被弾で画面の縁が赤くなる長さ・倒れてからやり直すまで。
-        playerHealth = Float64,
-        hurtSeconds = Float64,
-        respawnSeconds = Float64,
         // 頭に当たった弾の威力の倍率。
         headMultiplier = Float64,
+        // よろけてから次によろけられるまで（連射でずっとよろけて一歩も進めない、を防ぐ）。
+        staggerCooldown = Float64,
+        // 向きを変える速さ（度/秒）。
+        turnRate = Float64,
         // 倒れたまま残る長さ・クリップを切り替える時に混ぜる長さ・距離の地図を塗り直す間隔。
         corpseSeconds = Float64,
         blendSeconds = Float64,
@@ -61,10 +65,10 @@ mod EnemiesDoc {
 
     /// コード側の既定値（assets/conduit_hive.enemies.json と同じ値から出発する）。
     pub def defaults(): Doc =
-        Doc.Doc({ version = 1, playerHealth = 100.0, hurtSeconds = 0.6, respawnSeconds = 2.0,
-                  headMultiplier = 2.0, corpseSeconds = 4.0, blendSeconds = 0.12, fieldInterval = 0.25,
-                  melee = { health = 50.0, speed = 3.0, attackRange = 1.5, reach = 1.3, arc = 100.0, hitTime = 0.5, damage = 10.0, cooldown = 0.4 },
-                  ranged = { health = 40.0, speed = 1.0, keepDistance = 9.0, sightRange = 22.0, hitTime = 0.6, cooldown = 2.0 },
+        Doc.Doc({ version = 1, headMultiplier = 2.0, staggerCooldown = 0.8, turnRate = 570.0,
+                  corpseSeconds = 4.0, blendSeconds = 0.12, fieldInterval = 0.25,
+                  melee = { health = 50.0, speed = 3.0, attackRange = 1.5, stopDistance = 1.2, reach = 1.3, arc = 100.0, hitTime = 0.5, damage = 10.0, cooldown = 0.4 },
+                  ranged = { health = 40.0, speed = 1.0, keepDistance = 9.0, approachMargin = 1.0, retreatMargin = 1.5, sightRange = 22.0, hitTime = 0.6, cooldown = 2.0 },
                   projectile = { speed = 9.0, damage = 12.0, radius = 0.18, life = 4.0, limit = 8 } })
 
     pub def fromJson(text: String): Option[Doc] = DocJson.decodeObject(fromRoot, text)
@@ -77,12 +81,13 @@ mod EnemiesDoc {
     def meleeOr(d: Melee, o: Map[String, Json]): Melee =
         let f = (k, v) -> JsonCodec.floatOr(k, v, o);
         { health = f("health", d#health), speed = f("speed", d#speed), attackRange = f("attackRange", d#attackRange),
-          reach = f("reach", d#reach), arc = f("arc", d#arc), hitTime = f("hitTime", d#hitTime), damage = f("damage", d#damage),
+          stopDistance = f("stopDistance", d#stopDistance), reach = f("reach", d#reach), arc = f("arc", d#arc), hitTime = f("hitTime", d#hitTime), damage = f("damage", d#damage),
           cooldown = f("cooldown", d#cooldown) }
 
     def rangedOr(d: Ranged, o: Map[String, Json]): Ranged =
         let f = (k, v) -> JsonCodec.floatOr(k, v, o);
         { health = f("health", d#health), speed = f("speed", d#speed), keepDistance = f("keepDistance", d#keepDistance),
+          approachMargin = f("approachMargin", d#approachMargin), retreatMargin = f("retreatMargin", d#retreatMargin),
           sightRange = f("sightRange", d#sightRange), hitTime = f("hitTime", d#hitTime), cooldown = f("cooldown", d#cooldown) }
 
     def projectileOr(d: Projectile, o: Map[String, Json]): Projectile =
@@ -94,8 +99,8 @@ mod EnemiesDoc {
         let d = rec(defaults());
         let f = (k, v) -> JsonCodec.floatOr(k, v, root);
         Doc.Doc({ version = JsonCodec.intOr("version", d#version, root),
-                  playerHealth = f("playerHealth", d#playerHealth), hurtSeconds = f("hurtSeconds", d#hurtSeconds),
-                  respawnSeconds = f("respawnSeconds", d#respawnSeconds), headMultiplier = f("headMultiplier", d#headMultiplier),
+                  headMultiplier = f("headMultiplier", d#headMultiplier), staggerCooldown = f("staggerCooldown", d#staggerCooldown),
+                  turnRate = f("turnRate", d#turnRate),
                   corpseSeconds = f("corpseSeconds", d#corpseSeconds), blendSeconds = f("blendSeconds", d#blendSeconds),
                   fieldInterval = f("fieldInterval", d#fieldInterval),
                   melee = meleeOr(d#melee, objectOf("melee", root)), ranged = rangedOr(d#ranged, objectOf("ranged", root)),

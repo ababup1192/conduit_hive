@@ -1,5 +1,5 @@
 {
-  "//": "conduit_hive.hands.json の形（Studio の sections 方言）。既定は src/HandsDoc.flix の defaults() が正。",
+  "//": "conduit_hive.viewmodel.json の形（Studio の sections 方言）。既定は src/FpViewmodelDoc.flix の defaults() が正。",
   "version": 1,
   "sections": {
     "fovY": {

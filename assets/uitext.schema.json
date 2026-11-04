@@ -1,5 +1,5 @@
 {
-  "//": "sample.kind.json の形の宣言（Studio の sections 方言）。画面に出す文言。",
+  "//": "conduit_hive.uitext.json の形の宣言（Studio の sections 方言）。画面に出す文言。",
   "version": 1,
   "sections": {
     "quitPrompt": {

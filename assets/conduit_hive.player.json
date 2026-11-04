@@ -1,0 +1,8 @@
+{
+  "version": 1,
+  "title": "プレイヤー",
+  "note": "プレイヤーの体力。傷を足す・倒れる・やり直す規則はコード（src/Health.flix・World.flix）。hurtSeconds = 被弾で画面の縁が赤くなる長さ・respawnSeconds = 倒れてから最後に入った部屋の入口でやり直すまで（秒）。",
+  "health": 100.0,
+  "hurtSeconds": 0.6,
+  "respawnSeconds": 2.0
+}

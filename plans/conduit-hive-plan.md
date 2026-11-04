@@ -60,7 +60,7 @@ AI・当たり判定・spawn の決め方はコード。どの Doc も 1 本 30 
 | ステージの当たり判定 | マス目から箱を作る（`CollisionWorld3d`） | night_apartment `Collider.flix` |
 | 撃つ | `Camera3d.forwardRay`・`Ray3d.hitCapsule`（体はカプセル・頭は球）。壁で止まる | night_apartment `src/Inspect.flix` |
 | 敵の動き | `GridSearch.distances` でプレイヤーへの距離の地図を数コマに 1 回だけ塗り、全員で共有する。隣のマスの値を読んで進む（`Steering.chase` は呼ぶたびに地図を作るので使わない）。敵どうしの押し合いは、マスごとに敵の番号を引ける Map を毎コマ 1 回作り、同じマスと隣のマスの敵とだけ押し離す。ranged は壁の列にレイを当てて見通しを確かめる。melee は振り下ろしのクリップの決まった時刻に、決まった距離の内なら当てる | — |
-| 敵の絵 | 骨つき glb（idle・walk・attack・hit・die）を `Pose3d` で混ぜる。予算（段 0.5 で決める）: ジョイント 20 前後・1 体 1 材質・三角形の数。同じクリップは時刻を数通りに丸めて姿勢を共有する。遠い敵・背中側の敵は 2〜3 コマに 1 回だけ姿勢を作る | night_apartment `src/People.flix`（`poseAt`）・fps3d_lab `modeling/character.py` |
+| 敵の絵 | 骨つき glb（idle・walk・attack・hit・die）を `Pose3d` で混ぜる。予算（段 0.5 で決める）: ジョイント 20 前後・1 体 1 材質・三角形の数。同じクリップは時刻を丸めて姿勢を共有する（ループは 8 通りの組・1 回のクリップは 1/30 秒）。描くのは見える区画にいて視錐台に掛かる敵だけ（骨つきは engine が視錐台で間引かないので、ゲームが球で見る）。遠い敵・背中側の敵を数コマに 1 回にする間引きは入れない（共有の後では作る本数が減らず、bench で 50 体 8.7 ms と足りた・plans/bench-horde.md） | night_apartment `src/People.flix`（`poseAt`）・fps3d_lab `modeling/character.py` |
 | ビューモデル | 2 つ目の `Scene3dCmd` を上の zIndex で同じ "scene" の Pass へ重ねる。深度は場面ごとに消える（GL は `Render3d.beginScene` の `glClear`・CPU は描くたびに深度の配列を作り直す）。2 つ目は `background` と `sky` を None・near を小さく・fovY を別に・霧なし・撃った瞬間の点光源を両方の場面に入れる（ビューモデルには lightmap が付かないので ambient と hemisphere も合わせる） | — |
 | パーティクル | ゲームの小さな emitter モジュール（出す・動かす・消す）＋ `Billboard3d`。マズルフラッシュ・火花・体液・projectile。光る物は emission で見せ、点光源（上限 8 本）は撃った瞬間と projectile の近い数個だけ | — |
 | 後処理 | ブルームと霧 | night_apartment `src/PostView.flix`（scene → bright → bloomA/B → post） |

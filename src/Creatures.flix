@@ -51,15 +51,15 @@ mod Creatures {
     def isLooping(c: Clip): Bool = c == Clip.Idle or c == Clip.Walk
 
     /// 型 1 つの体。
-    pub type alias Rig = { model = Model3d.Model3d, skin = Skin3d.Skin3d, clips = Map[Clip, AnimationClip3d.AnimationClip3d] }
+    pub type alias Body = { model = Model3d.Model3d, skin = Skin3d.Skin3d, clips = Map[Clip, AnimationClip3d.AnimationClip3d] }
 
     /// 型ごとの体（読めなかった型は無い。その型の敵は描かないが、動きと当たり判定は残る）。
-    pub type alias Rigs = Map[Kind, Rig]
+    pub type alias Bodies = Map[Kind, Body]
 
     def pathOf(k: Kind): String = "assets/models/creature_${keyOf(k)}.glb"
 
     /// 全部の型の glb を絵つきで読む。読めない型は理由を 1 行出して置かない。
-    pub def load(): Rigs \ Fs.FileRead + IO + LoadProgress =
+    pub def load(): Bodies \ Fs.FileRead + IO + LoadProgress =
         let dec = LoadProgress.imageDecoder();
         all()
             |> LoadProgress.mapWithProgress("reading creatures...", k -> (k, Fs.FileRead.readBytes(pathOf(k)) |> Result.mapErr(e -> "${pathOf(k)}: 読めない（${e}）")))
@@ -70,7 +70,7 @@ mod Creatures {
             })
             |> List.toMap
 
-    def decode(dec: ImageData.ImageDecoder, raw: (Kind, Result[String, Vector[Int8]])): Result[String, (Kind, Rig)] \ IO =
+    def decode(dec: ImageData.ImageDecoder, raw: (Kind, Result[String, Vector[Int8]])): Result[String, (Kind, Body)] \ IO =
         let (k, bytes) = raw;
         bytes
             |> Result.flatMap(b -> Gltf.fromGlbTexturedUsing(dec, Gltf.noTextureLimits(), b) |> Result.mapErr(why -> "${pathOf(k)}: ${why}"))
@@ -78,7 +78,7 @@ mod Creatures {
             |> Result.map(rig -> (k, rig))
 
     /// 読んだ glb から体を組む（骨か 5 つのクリップのどれかが無ければ Err）。
-    def rigOf(path: String, model: Model3d.Model3d): Result[String, Rig] =
+    def rigOf(path: String, model: Model3d.Model3d): Result[String, Body] =
         let found = clips() |> List.map(c -> (c, Map.get(clipName(c), model#clips)));
         let missing = found |> List.filter(e -> Option.isEmpty(snd(e))) |> List.map(e -> clipName(fst(e)));
         forM (
@@ -103,7 +103,7 @@ mod Creatures {
     /// 型ごと・クリップごとの長さ（秒）。読めた体はクリップの長さ・読めなかった型は fallbackSeconds。
     pub type alias Timing = Map[(Kind, Clip), Float64]
 
-    pub def timingOf(rigs: Rigs): Timing =
+    pub def timingOf(rigs: Bodies): Timing =
         all() |> List.flatMap(k -> clips() |> List.map(c -> {
             let fromRig = Map.get(k, rigs) |> Option.flatMap(r -> Map.get(c, r#clips)) |> Option.map(AnimationClip3d.duration);
             ((k, c), fromRig |> Option.getWithDefault(fallbackSeconds(k, c)))
@@ -163,12 +163,21 @@ mod Creatures {
 
     def framesPerSecond(): Float64 = 30.0
 
-    def poseKeyOf(k: Kind, group: Int32, t: Float64, track: Track): PoseKey =
+    /// 1 回のクリップは始めてからの秒をクリップの長さで頭打ちにする（最後のコマで止まった死体どうしが同じ鍵になる）。
+    def poseKeyOf(timing: Timing, k: Kind, group: Int32, t: Float64, track: Track): PoseKey =
         if (isLooping(track#clip)) PoseKey.Loop(k, track#clip, Int32.modulo(group, groups()))
-        else PoseKey.Once(k, track#clip, Num.floorInt(Float64.max(0.0, t - track#start) * framesPerSecond()))
+        else {
+            let elapsed = Num.clamp(0.0, secondsOf(timing, k, track#clip), t - track#start);
+            PoseKey.Once(k, track#clip, Num.floorInt(elapsed * framesPerSecond()))
+        }
+
+    /// 時刻 t に 2 体が同じ姿勢を共有するか（混ぜている途中の体は共有しない）。
+    pub def sharesPose(timing: Timing, blendSeconds: Float64, t: Float64, a: Posed, b: Posed): Bool =
+        Option.isEmpty(blendOf(blendSeconds, t, a#anim)) and Option.isEmpty(blendOf(blendSeconds, t, b#anim)) and
+            poseKeyOf(timing, a#kind, a#group, t, a#anim#now) == poseKeyOf(timing, b#kind, b#group, t, b#anim#now)
 
     /// 鍵の局所の姿勢（時刻 t のコマ）。クリップが無ければ休みの姿勢。
-    def localOf(rig: Rig, t: Float64, key: PoseKey): Vector[Skin3d.JointPose] =
+    def localOf(rig: Body, t: Float64, key: PoseKey): Vector[Skin3d.JointPose] =
         let at = (c: Clip, time: Float64, looping: Bool) ->
             Map.get(c, rig#clips) |> Option.map(clip -> AnimationClip3d.sample(rig#skin, clip, time, looping)) |> Option.getWithDefault(Skin3d.restPose(rig#skin));
         match key {
@@ -190,16 +199,16 @@ mod Creatures {
             |> Option.map(b -> (b, Num.clamp01((t - a#switchedAt) / blendSeconds)))
 
     /// 時刻 t の敵の置いた物（体が読めていない型は描かない）。
-    pub def drawnOf(rigs: Rigs, blendSeconds: Float64, t: Float64, bodies: List[Posed]): Drawn =
-        let steady = bodies |> List.filter(b -> Option.isEmpty(blendOf(blendSeconds, t, b#anim)))
-            |> List.map(b -> poseKeyOf(b#kind, b#group, t, b#anim#now)) |> List.toSet;
-        let shared = steady |> Set.toList |> List.filterMap(key -> rigOfKey(rigs, key) |> Option.map(rig -> (key, Pose3d.compute(rig#skin, localOf(rig, t, key)))))
+    pub def drawnOf(models: Bodies, timing: Timing, blendSeconds: Float64, t: Float64, posed: List[Posed]): Drawn =
+        let steady = posed |> List.filter(b -> Option.isEmpty(blendOf(blendSeconds, t, b#anim)))
+            |> List.map(b -> poseKeyOf(timing, b#kind, b#group, t, b#anim#now)) |> List.toSet;
+        let shared = steady |> Set.toList |> List.filterMap(key -> bodyOfKey(models, key) |> Option.map(body -> (key, Pose3d.compute(body#skin, localOf(body, t, key)))))
             |> List.toMap;
-        let instances = bodies |> List.flatMap(b -> Map.get(b#kind, rigs) |> Option.toList |> List.flatMap(rig -> {
-            let pose = poseOf(rig, shared, blendSeconds, t, b);
-            Model3d.partInstances(b#world, rig#model) |> List.map(Scene3d.withPose(pose))
+        let instances = posed |> List.flatMap(b -> Map.get(b#kind, models) |> Option.toList |> List.flatMap(body -> {
+            let pose = poseOf(body, timing, shared, blendSeconds, t, b);
+            Model3d.partInstances(b#world, body#model) |> List.map(Scene3d.withPose(pose))
         }));
-        let blended = bodies |> List.count(b -> Option.nonEmpty(blendOf(blendSeconds, t, b#anim)));
+        let blended = posed |> List.count(b -> Option.nonEmpty(blendOf(blendSeconds, t, b#anim)));
         { instances = instances, poses = Map.size(shared) + blended }
 
     def kindOfKey(key: PoseKey): Kind = match key {
@@ -207,14 +216,14 @@ mod Creatures {
         case PoseKey.Once(k, _, _) => k
     }
 
-    def rigOfKey(rigs: Rigs, key: PoseKey): Option[Rig] = Map.get(kindOfKey(key), rigs)
+    def bodyOfKey(models: Bodies, key: PoseKey): Option[Body] = Map.get(kindOfKey(key), models)
 
     /// 1 体の姿勢: 混ぜている途中なら 2 つのクリップを混ぜて作り、ほかは共有の姿勢。
-    def poseOf(rig: Rig, shared: Map[PoseKey, Pose3d.Pose3d], blendSeconds: Float64, t: Float64, b: Posed): Pose3d.Pose3d =
-        let nowKey = poseKeyOf(b#kind, b#group, t, b#anim#now);
+    def poseOf(body: Body, timing: Timing, shared: Map[PoseKey, Pose3d.Pose3d], blendSeconds: Float64, t: Float64, b: Posed): Pose3d.Pose3d =
+        let nowKey = poseKeyOf(timing, b#kind, b#group, t, b#anim#now);
         match blendOf(blendSeconds, t, b#anim) {
             case Some((before, w)) =>
-                Pose3d.compute(rig#skin, Pose3d.blend(localOf(rig, t, poseKeyOf(b#kind, b#group, t, before)), localOf(rig, t, nowKey), w))
-            case None => Map.get(nowKey, shared) |> Option.getWithDefault(Pose3d.compute(rig#skin, localOf(rig, t, nowKey)))
+                Pose3d.compute(body#skin, Pose3d.blend(localOf(body, t, poseKeyOf(timing, b#kind, b#group, t, before)), localOf(body, t, nowKey), w))
+            case None => Map.get(nowKey, shared) |> Option.getWithDefault(Pose3d.compute(body#skin, localOf(body, t, nowKey)))
         }
 }

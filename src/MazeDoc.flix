@@ -48,7 +48,7 @@ mod MazeDoc {
 
     /// コード側の既定: 1 部屋だけの小さな迷路（Doc が読めない時に歩ける所を残す）。
     /// 読めた Doc に zones・marks の欄が無ければ、その欄は空（既定の部屋の行は既定のマス目にだけ合う）。
-    pub def defaults(): Doc =
+    def defaults(): Doc =
         Doc.Doc({ version = 1, cellSize = 4.0, wallHeight = 4.0, finalZone = 'A',
                   rows = "#####" :: "#AAA#" :: "#AAA#" :: "#AAA#" :: "#####" :: Nil,
                   zones = { id = 'A', name = "fallback", kind = ZoneKind.Room, height = 4.0 } :: Nil,

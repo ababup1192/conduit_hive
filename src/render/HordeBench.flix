@@ -128,10 +128,15 @@ mod HordeBench {
 
     /// 本編の Pass の計画に、見える区画のパイプを足す。
     def passPlan(kit: Kit, s: State): Render.PassPlan =
-        let base = View.stageIn(kit#res, s#game);
-        let b = World.walkerOf(s#game);
-        let pipes = Maze.visibleFrom(kit#res#maze, b#x, b#z) |> Set.toList |> List.flatMap(id -> Map.getWithDefault(id, Nil, kit#pipes));
-        StageView.passPlan({ zones = { instances = pipes, lights = Nil } :: base#zones | base })
+        // WhyNot: Option.getWithDefault(View.passPlan(..)) にしない — 既定の値は先に計算されるので、毎コマ木を 2 回組んで測りが倍に出る。
+        match World.sessionOf(s#game) {
+            case None => View.passPlan(kit#res, s#game)
+            case Some(session) =>
+                let base = View.stageIn(kit#res, World.seconds(s#game), session);
+                let b = World.walkerOf(session);
+                let pipes = Maze.visibleFrom(kit#res#maze, b#x, b#z) |> Set.toList |> List.flatMap(id -> Map.getWithDefault(id, Nil, kit#pipes));
+                StageView.passPlan({ zones = { instances = pipes, lights = Nil } :: base#zones | base })
+        }
 
     // ── 窓の前の CPU だけの測り ──
 
@@ -154,8 +159,11 @@ mod HordeBench {
     def stampAfter(n: Int32): Int64 \ IO = if (n < 0) 0i64 else System.nanoTime()
 
     def posesOf(kit: Kit, w: World.World): Int32 =
-        let bodies = World.hordeOf(w)#enemies |> List.map(e -> { kind = e#kind, group = e#id, anim = e#anim, world = Horde.worldOf(e) });
-        Creatures.drawnOf(kit#res#creatures, EnemiesDoc.rec(kit#res#enemies)#blendSeconds, World.seconds(w), bodies)#poses
+        let posed = hordeIn(w)#enemies |> List.map(e -> { kind = e#kind, group = e#id, anim = e#anim, world = Horde.worldOf(e) });
+        Creatures.drawnOf(kit#res#creatures, kit#res#timing, EnemiesDoc.rec(kit#res#enemies)#blendSeconds, World.seconds(w), posed)#poses
+
+    /// 遊んでいる場面の群れ（ほかの画面なら空）。
+    def hordeIn(w: World.World): Horde.Horde = World.sessionOf(w) |> Option.map(World.hordeOf) |> Option.getWithDefault(Horde.empty())
 
     def microLoop(kit: Kit, a: App.App[State, {}], left: Int32, acc: Micro): Micro \ IO =
         if (left <= 0) acc
@@ -163,7 +171,7 @@ mod HordeBench {
             let t0 = System.nanoTime();
             let (traced, stepState) = App.traceFrame(a, { dt = 1.0 / 60.0 | App.emptyFrame() }, acc#stepState, acc#state);
             let next = traced#after;
-            let t1 = stampAfter(Horde.aliveCount(World.hordeOf(next#game)));
+            let t1 = stampAfter(Horde.aliveCount(hordeIn(next#game)));
             let passes = List.length(passPlan(kit, next)#passes);
             let t2 = stampAfter(passes);
             microLoop(kit, a, left - 1, { state = next, stepState = stepState, rows = (t1 - t0, t2 - t1) :: acc#rows,
@@ -201,7 +209,7 @@ mod HordeBench {
         let gpu = xs |> List.filterMap(x -> x#diag#gpuNs) |> List.map(ms);
         let lines =
             "label ${cfg#label}" ::
-            "config enemies=${cfg#enemies} pipes=${cfg#pipes} pipeMesh=${cfg#pipeMesh} alive_at_end=${Horde.aliveCount(World.hordeOf(s#game))}" ::
+            "config enemies=${cfg#enemies} pipes=${cfg#pipes} pipeMesh=${cfg#pipeMesh} alive_at_end=${Horde.aliveCount(hordeIn(s#game))}" ::
             "frames ${List.length(xs)}" ::
             "interval_ms   ${spread(xs |> List.map(x -> ms(x#intervalNs)))}" ::
             "work_ms       ${spread(xs |> List.map(x -> ms(x#intervalNs - x#diag#swapNs)))}" ::

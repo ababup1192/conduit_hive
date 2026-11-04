@@ -1,6 +1,6 @@
 // Arsenal — 持っている武器・弾・連射の間隔・持ち替え・反動の規則（純粋）。
 // 弾の当たりは Hitscan、粒は Particles3d。ここは「撃てるか」と「撃った後の状態」だけを決める。
-// 時刻は遊びの時計の秒（ポーズの間は進まない）。値は WeaponsDoc（武器ごと）と HandsDoc（持ち替えと反動の戻り）。
+// 時刻は遊びの時計の秒（ポーズの間は進まない）。値は WeaponsDoc（武器ごと）と FpViewmodelDoc（持ち替えと反動の戻り）。
 mod Arsenal {
     use fge::Num
     use WeaponsDoc.Weapon
@@ -71,7 +71,7 @@ mod Arsenal {
         picked |> Option.filter(w -> w != a#current)
 
     /// 持ち替える（行き先が無ければそのまま）。持ち替えの間（drawSeconds）は撃てない。
-    pub def equip(vm: HandsDoc.Rec, t: Float64, c: Choice, a: Arsenal): Arsenal =
+    pub def equip(vm: FpViewmodelDoc.Rec, t: Float64, c: Choice, a: Arsenal): Arsenal =
         match targetOf(c, a) {
             case None    => a
             case Some(w) => { current = w, hands = Hands.Drawing(t), readyAt = Float64.max(a#readyAt, t + vm#drawSeconds) | a }
@@ -85,21 +85,24 @@ mod Arsenal {
     pub def canFire(doc: WeaponsDoc.Doc, t: Float64, a: Arsenal): Bool =
         t >= a#readyAt and (ammoOf(doc, a) |> Option.forAll(n -> n > 0))
 
-    /// 時刻 t に 1 回撃った後の状態（弾を 1 つ減らし、次を撃てる時刻を間隔だけ先へ）。撃てるかは呼ぶ側が canFire で見る。
-    pub def fire(doc: WeaponsDoc.Doc, t: Float64, a: Arsenal): Arsenal =
+    /// 時刻 t（このコマは dt 秒）に 1 回撃った後の状態（弾を 1 つ減らし、次を撃てる時刻を間隔だけ先へ）。撃てるかは呼ぶ側が canFire で見る。
+    /// 撃てる時刻から 1 コマの内に撃った時（押し続けている連射）は、撃てる時刻から間隔を数える。
+    // WhyNot: いつも t + interval にしない — 間隔がコマの長さで割り切れないと、毎回コマの境目まで遅れて連射が遅くなる（0.1 秒の連射が 60 Hz で 1 秒 9 発）。
+    pub def fire(doc: WeaponsDoc.Doc, t: Float64, dt: Float64, a: Arsenal): Arsenal =
         let stats = statsOf(doc, a);
         let ammo = if (stats#infinite) a#ammo else Map.adjust(n -> Int32.max(0, n - 1), a#current, a#ammo);
-        { ammo = ammo, readyAt = t + stats#interval, shots = a#shots + 1,
+        let since = if (t - a#readyAt < dt) a#readyAt else t;
+        { ammo = ammo, readyAt = since + stats#interval, shots = a#shots + 1,
           last = Some({ weapon = a#current, at = t, index = a#shots }) | a }
 
     /// 時刻 t に持ち替えの最中か。
-    pub def isDrawing(vm: HandsDoc.Rec, t: Float64, a: Arsenal): Bool = match a#hands {
+    pub def isDrawing(vm: FpViewmodelDoc.Rec, t: Float64, a: Arsenal): Bool = match a#hands {
         case Hands.Ready      => false
         case Hands.Drawing(s) => t - s < vm#drawSeconds
     }
 
     /// 時刻 t の反動で照準が跳ね上がっている角（度。撃った瞬間が recoil で、recoilRecover 秒で 0 へ戻る）。
-    pub def punchAt(doc: WeaponsDoc.Doc, vm: HandsDoc.Rec, t: Float64, a: Arsenal): Float64 =
+    pub def punchAt(doc: WeaponsDoc.Doc, vm: FpViewmodelDoc.Rec, t: Float64, a: Arsenal): Float64 =
         a#last |> Option.map(s -> {
             let k = 1.0 - Num.clamp01((t - s#at) / Float64.max(0.001, vm#recoilRecover));
             WeaponsDoc.statsOf(s#weapon, doc)#recoil * k * k

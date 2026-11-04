@@ -1,7 +1,7 @@
 // 撃つ規則: 弾の当たり（壁で止まる・的の柱に当たる）・連射の間隔・弾の数・持ち替え・粒の寿命・腕と銃の glb の銃口。
 mod TestShooting {
     use fge::{Gltf, Mat4, Pose3d, Skin3d, Vec3}
-    use TestSupport.{clockOf, mazeOf, resWith}
+    use TestSupport.{arsenalIn, cameraIn, clockOf, mazeOf, particlesIn, resWith}
     use WeaponsDoc.Weapon
 
     // ── 迷路 ──
@@ -16,7 +16,7 @@ mod TestShooting {
 
     def pistol(): WeaponsDoc.Stats = WeaponsDoc.statsOf(Weapon.Pistol, weapons())
 
-    def vm(): HandsDoc.Rec = HandsDoc.rec(HandsDoc.defaults())
+    def vm(): FpViewmodelDoc.Rec = FpViewmodelDoc.rec(FpViewmodelDoc.defaults())
 
     /// 散弾銃と連射銃も始めから持っている Doc。
     def armed(): WeaponsDoc.Doc =
@@ -31,27 +31,26 @@ mod TestShooting {
     @Test
     def testShotHitsThePillar(): Unit \ Assert =
         let res = resWith(twoRooms());
-        let w = World.initial(res);
-        let hits = Hitscan.fire(res#hitTargets, World.cameraOf(res, w), pistol(), 0);
-        Assert.assertEq(expected = (Hitscan.Struck.Prop(0) :: Nil, true),
-            (struckOf(hits), hits |> List.forAll(h -> Float64.abs(h#point#x - 6.5) < 0.001)))
+        let hits = cameraIn(res, World.initial(res)) |> Option.map(c -> Hitscan.fire(res#hitTargets, c, pistol(), 0));
+        Assert.assertEq(expected = Some((Hitscan.Struck.Prop(0) :: Nil, true)),
+            hits |> Option.map(hs -> (struckOf(hs), hs |> List.forAll(h -> Float64.abs(h#point#x - 6.5) < 0.001))))
 
     /// 東の通路 B（x = 30 m）から西を向いて撃つと、A との間の壁の東の面（x = 28 m）で止まり、壁の向こうの柱には当たらない。
     @Test
     def testWallStopsTheShot(): Unit \ Assert =
         let res = resWith(twoRooms());
         let w = World.placeWalker(res, { x = 30.0, z = 10.0 }, 270.0, 0.0, World.initial(res));
-        let hits = Hitscan.fire(res#hitTargets, World.cameraOf(res, w), pistol(), 0);
-        Assert.assertEq(expected = (Hitscan.Struck.Wall :: Nil, true),
-            (struckOf(hits), hits |> List.forAll(h -> Float64.abs(h#point#x - 28.0) < 0.001)))
+        let hits = cameraIn(res, w) |> Option.map(c -> Hitscan.fire(res#hitTargets, c, pistol(), 0));
+        Assert.assertEq(expected = Some((Hitscan.Struck.Wall :: Nil, true)),
+            hits |> Option.map(hs -> (struckOf(hs), hs |> List.forAll(h -> Float64.abs(h#point#x - 28.0) < 0.001))))
 
     /// 散弾は Doc の粒の数だけレイを飛ばす（間の広い部屋なら全部どこかに当たる）。
     @Test
     def testShotgunFiresEveryPellet(): Unit \ Assert =
         let res = resWith(twoRooms());
         let shotgun = WeaponsDoc.statsOf(Weapon.Shotgun, weapons());
-        Assert.assertEq(expected = shotgun#pellets,
-            List.length(Hitscan.fire(res#hitTargets, World.cameraOf(res, World.initial(res)), shotgun, 0)))
+        Assert.assertEq(expected = Some(shotgun#pellets),
+            cameraIn(res, World.initial(res)) |> Option.map(c -> List.length(Hitscan.fire(res#hitTargets, c, shotgun, 0))))
 
     // ── 連射の間隔と弾の数 ──
 
@@ -59,7 +58,7 @@ mod TestShooting {
     @Test
     def testPistolWaitsForTheInterval(): Unit \ Assert =
         let interval = pistol()#interval;
-        let fired = Arsenal.fire(weapons(), 0.0, Arsenal.initial(weapons()));
+        let fired = Arsenal.fire(weapons(), 0.0, 1.0 / 60.0, Arsenal.initial(weapons()));
         Assert.assertEq(expected = (false, true),
             (Arsenal.canFire(weapons(), interval * 0.5, fired), Arsenal.canFire(weapons(), interval, fired)))
 
@@ -70,7 +69,7 @@ mod TestShooting {
         let rifle = Arsenal.equip(vm(), 0.0, Arsenal.Choice.Slot(Weapon.Rifle), a);
         let start = WeaponsDoc.statsOf(Weapon.Rifle, armed())#ammo;
         Assert.assertEq(expected = (None, Some(start - 1)),
-            (Arsenal.ammoOf(armed(), Arsenal.fire(armed(), 0.0, a)), Arsenal.ammoOf(armed(), Arsenal.fire(armed(), 1.0, rifle))))
+            (Arsenal.ammoOf(armed(), Arsenal.fire(armed(), 0.0, 1.0 / 60.0, a)), Arsenal.ammoOf(armed(), Arsenal.fire(armed(), 1.0, 1.0 / 60.0, rifle))))
 
     /// 弾が 0 の武器は、間隔が過ぎても撃てない。
     @Test
@@ -87,14 +86,17 @@ mod TestShooting {
 
     // ── 持ち替え ──
 
-    /// 持っていない武器（始めの散弾銃）へは替わらない。持っていれば替わり、持ち替えの間（drawSeconds）は撃てない。
+    /// 持っていない武器（始めの散弾銃）へは替わらない（拳銃のまま）。
     @Test
-    def testSwitchingNeedsTheWeaponAndTakesTheDrawTime(): Unit \ Assert =
-        let slot = Arsenal.Choice.Slot(Weapon.Shotgun);
-        let refused = Arsenal.equip(vm(), 0.0, slot, Arsenal.initial(weapons()));
-        let switched = Arsenal.equip(vm(), 0.0, slot, Arsenal.initial(armed()));
-        Assert.assertEq(expected = (Weapon.Pistol, Weapon.Shotgun, false, true),
-            (refused#current, switched#current, Arsenal.canFire(armed(), vm()#drawSeconds * 0.5, switched), Arsenal.canFire(armed(), vm()#drawSeconds, switched)))
+    def testSwitchingNeedsTheWeapon(): Unit \ Assert =
+        Assert.assertEq(expected = Weapon.Pistol, Arsenal.equip(vm(), 0.0, Arsenal.Choice.Slot(Weapon.Shotgun), Arsenal.initial(weapons()))#current)
+
+    /// 持っていれば替わり、持ち替えの間（drawSeconds の半分）は撃てず、drawSeconds で撃てる。
+    @Test
+    def testSwitchingTakesTheDrawTime(): Unit \ Assert =
+        let switched = Arsenal.equip(vm(), 0.0, Arsenal.Choice.Slot(Weapon.Shotgun), Arsenal.initial(armed()));
+        Assert.assertEq(expected = (Weapon.Shotgun, false, true),
+            (switched#current, Arsenal.canFire(armed(), vm()#drawSeconds * 0.5, switched), Arsenal.canFire(armed(), vm()#drawSeconds, switched)))
 
     /// ホイールの次・前は持っている武器の並びを回る（拳銃 → 散弾銃・拳銃の前は連射銃）。
     @Test
@@ -112,8 +114,8 @@ mod TestShooting {
         let pdoc = Particles3dDoc.rec(res#particles);
         let input = { trigger = { pressed = true, held = true } | World.walking(Walker.idle()) };
         let after = World.step(res, input, { play = clockOf(1.0 / 60.0) | World.initial(res) });
-        Assert.assertEq(expected = (1, pdoc#muzzle#count + pdoc#spark#count),
-            (World.arsenalOf(after)#shots, List.length(World.particlesOf(after))))
+        Assert.assertEq(expected = Some((1, pdoc#muzzle#count + pdoc#spark#count)),
+            forM (a <- arsenalIn(after); ps <- particlesIn(after)) yield (a#shots, List.length(ps)))
 
     // ── 粒の寿命 ──
 
@@ -133,9 +135,9 @@ mod TestShooting {
     /// （engine の座標で (0.038, −0.043, 0.399) m）に 2 mm の内で重なる。
     @Test
     def testPistolMuzzleSitsAtTheBlenderPoint(): Unit \ {Assert, Fs.FileRead} =
-        let path = Arms.pathOf(Weapon.Pistol);
-        let rig = Gltf.load(path) |> Result.flatMap(Arms.rigOf(path));
-        let muzzle = rig |> Result.map(r -> Arms.muzzleAt(r, Pose3d.compute(r#skin, Skin3d.restPose(r#skin)), Mat4.identity()));
+        let path = FpViewmodel.pathOf(Weapon.Pistol);
+        let rig = Gltf.load(path) |> Result.flatMap(FpViewmodel.viewmodelOf(path));
+        let muzzle = rig |> Result.map(r -> FpViewmodel.muzzleAt(r, Pose3d.compute(r#skin, Skin3d.restPose(r#skin)), Mat4.identity()));
         Assert.assertEq(expected = Ok(true),
             muzzle |> Result.map(m -> Vec3.length(Vec3.sub(m, Vec3.v3(0.038, -0.043, 0.399))) < 0.002))
 }

@@ -33,61 +33,68 @@ mod View {
     }
 
     /// 描く元と World から描くのに要る値だけを写す（View の中で World を読むのは入口の frame・passPlan・hudFrame とここだけ）。
-    pub def inputOf(res: Res.Res, w: World.World): In =
-        { stage = stageIn(res, w), theme = res#theme, askingQuit = World.isAskingQuit(w), quitPrompt = SampleDoc.rec(res#sample)#quitPrompt }
+    /// 先に画面を選び、遊んでいる場面の部品は Session を受ける。
+    pub def inputOf(res: Res.Res, w: World.World): In = match w#screen {
+        case World.Screen.Play(s) =>
+            { stage = stageIn(res, World.seconds(w), s), theme = res#theme, askingQuit = World.isAskingQuit(w), quitPrompt = UiTextDoc.rec(res#uiText)#quitPrompt }
+    }
 
     /// HUD の入口（Game の App.withHudView と描き出しが呼ぶ）。
-    pub def hudFrame(ctx: App.ViewCtx, res: Res.Res, w: World.World): List[Render.PlacedItem] =
-        let d = EnemiesDoc.rec(res#enemies);
-        let t = World.seconds(w);
-        let health = World.healthOf(w);
-        hud(ctx, { theme = res#theme, askingQuit = World.isAskingQuit(w), looking = World.isLooking(w),
-                   showsDiagnostics = World.showsDiagnostics(w), ammo = Arsenal.ammoOf(res#weapons, World.arsenalOf(w)),
-                   health = Health.fraction(d, health), hurt = Health.flash(d, t, health), down = Health.downProgress(d, t, health) })
+    pub def hudFrame(ctx: App.ViewCtx, res: Res.Res, w: World.World): List[Render.PlacedItem] = match w#screen {
+        case World.Screen.Play(s) => hud(ctx, playHud(res, World.seconds(w), World.isAskingQuit(w), World.isLooking(w), s))
+    }
 
-    /// 一人称の場面の値: 照準のカメラ・今いる区画から見える区画の絵・その区画の敵と projectile・粒・手前の腕と銃・撃った瞬間の灯り。
-    pub def stageIn(res: Res.Res, w: World.World): StageView.In =
-        let body = World.walkerOf(w);
-        let t = World.seconds(w);
-        let camera = World.cameraOf(res, w);
-        let a = World.arsenalOf(w);
-        let particles = World.particlesOf(w);
+    /// 遊んでいる場面の HUD の値。
+    def playHud(res: Res.Res, t: Float64, askingQuit: Bool, looking: Bool, s: World.Session): Hud =
+        let pd = PlayerDoc.rec(res#player);
+        let health = World.healthOf(s);
+        { theme = res#theme, askingQuit = askingQuit, looking = looking, showsDiagnostics = World.showsDiagnosticsIn(s),
+          ammo = Arsenal.ammoOf(res#weapons, World.arsenalOf(s)),
+          health = Health.fraction(pd, health), hurt = Health.flash(pd, t, health), down = Health.downProgress(pd, t, health) }
+
+    /// 一人称の場面の値（時刻 t）: 照準のカメラ・今いる区画から見える区画の絵・その区画の敵と projectile・粒・手前の腕と銃・撃った瞬間の灯り。
+    pub def stageIn(res: Res.Res, t: Float64, s: World.Session): StageView.In =
+        let body = World.walkerOf(s);
+        let camera = World.cameraOf(res, t, s);
+        let a = World.arsenalOf(s);
+        let particles = World.particlesOf(s);
         let drawn = Maze.visibleFrom(res#maze, body#x, body#z);
-        let motion = { phase = Walker.stridePhase(WalkDoc.rec(res#walk), body), sway = World.swayOf(w) };
-        let hands = handsIn(res, a, particles, motion, t);
-        let horde = World.hordeOf(w);
+        let motion = { phase = Walker.stridePhase(WalkDoc.rec(res#walk), body), sway = World.swayOf(s) };
+        let viewmodel = viewmodelIn(res, a, particles, motion, t);
+        let horde = World.hordeOf(s);
+        let frustum = Camera3d.frustum(camera, World.width() / World.height());
         let seen = (x: Float64, y: Float64, z: Float64, radius: Float64) ->
-            Maze.zoneAt(res#maze, x, z) |> Option.exists(id -> Set.memberOf(id, drawn)) and
-            Frustum.intersectsSphere(Camera3d.frustum(camera, World.width() / World.height()), Vec3.v3(x, y, z), radius);
+            Maze.zoneAt(res#maze, x, z) |> Option.exists(id -> Set.memberOf(id, drawn)) and Frustum.intersectsSphere(frustum, Vec3.v3(x, y, z), radius);
         let shots = horde#projectiles |> List.filter(p -> seen(p#at#x, p#at#y, p#at#z, 1.0));
         { t = t, camera = camera, look = LookDoc.rec(res#look),
           zones = drawn |> Set.toList |> List.filterMap(id -> Map.get(id, res#art)),
           billboards = List.append(
               shots |> List.filterMap(p -> Particles3d.spitBillboard(res#particles, Particles3d.textureName(), Res.particleRegion(res, Particles3d.Kind.Spark), p#at)),
               Particles3d.billboards(res#particles, Particles3d.textureName(), Res.particleRegion(res), Particles3d.Space.World, Mat4.identity(), t, particles)),
-          flash = hands |> Option.toList |> List.flatMap(h -> flashLights(res, a, t, StageView.fromEye(camera, fst(h)))),
+          flash = viewmodel |> Option.toList |> List.flatMap(h -> flashLights(res, a, t, StageView.fromEye(camera, fst(h)))),
           creatures = creaturesIn(res, t, horde#enemies |> List.filter(e -> seen(e#x, 1.0, e#z, creatureReach()))),
-          creatureTextures = res#creatures |> Map.valuesOf |> List.flatMap(r -> r#model#textures),
+          creatureTextures = res#creatures |> Map.valuesOf |> List.flatMap(b -> b#model#textures),
           glows = shots |> List.map(p -> Particles3d.spitLight(res#particles, p#at)),
-          hands = hands |> Option.map(snd) }
+          viewmodel = viewmodel |> Option.map(snd) }
 
     /// 敵を囲む球の半径（足元から 1 m の高さが真ん中。振り下ろした腕の先まで）。
+    // WhyNot: Doc へ出さない — 調整する値ではなく glb の形（背丈約 2 m・爪の先が前へ約 1.14 m）から決まる大きさ。
     def creatureReach(): Float64 = 1.7
 
     /// 敵の置いた物（同じクリップの姿勢は共有する。Creatures.drawnOf）。
     def creaturesIn(res: Res.Res, t: Float64, enemies: List[Horde.Enemy]): List[Scene3d.Instance3d] =
-        let bodies = enemies |> List.map(e -> { kind = e#kind, group = e#id, anim = e#anim, world = Horde.worldOf(e) });
-        Creatures.drawnOf(res#creatures, EnemiesDoc.rec(res#enemies)#blendSeconds, t, bodies)#instances
+        let posed = enemies |> List.map(e -> { kind = e#kind, group = e#id, anim = e#anim, world = Horde.worldOf(e) });
+        Creatures.drawnOf(res#creatures, res#timing, EnemiesDoc.rec(res#enemies)#blendSeconds, t, posed)#instances
 
     /// 手前の腕と銃: 今の銃口（目の座標）と、場面に入れる物。構えている武器の glb が読めていなければ None。
-    def handsIn(res: Res.Res, a: Arsenal.Arsenal, particles: List[Particles3d.Particle], motion: Arms.Motion, t: Float64): Option[(Vec3.Vec3, StageView.Hands)] =
-        let hd = HandsDoc.rec(res#hands);
-        Map.get(a#current, res#rigs) |> Option.map(rig -> {
-            let pose = Arms.poseOf(rig, Arms.playingAt(hd, Arms.clipLength(rig, "fire"), t, a));
-            let place = Arms.placeOf(hd, motion);
-            let frame = Arms.muzzleFrame(rig, pose, place);
+    def viewmodelIn(res: Res.Res, a: Arsenal.Arsenal, particles: List[Particles3d.Particle], motion: FpViewmodel.Motion, t: Float64): Option[(Vec3.Vec3, StageView.Viewmodel)] =
+        let hd = FpViewmodelDoc.rec(res#viewmodel);
+        Map.get(a#current, res#viewmodels) |> Option.map(model -> {
+            let pose = FpViewmodel.poseOf(model, FpViewmodel.playingAt(hd, FpViewmodel.clipLength(model, "fire"), t, a));
+            let place = FpViewmodel.placeOf(hd, motion);
+            let frame = FpViewmodel.muzzleFrame(model, pose, place);
             let muzzle = Mat4.apply(frame, Vec3.zero());
-            (muzzle, { instances = Arms.instancesOf(rig, pose, place), textures = rig#model#textures,
+            (muzzle, { instances = FpViewmodel.instancesOf(model, pose, place), textures = model#model#textures,
                        billboards = Particles3d.billboards(res#particles, Particles3d.textureName(), Res.particleRegion(res), Particles3d.Space.Muzzle, frame, t, particles),
                        flash = flashLights(res, a, t, muzzle), fovY = hd#fovY, near = hd#near, far = hd#far,
                        ambientScale = hd#ambientScale, lampScale = hd#lampScale })
@@ -108,7 +115,9 @@ mod View {
         SortingLayer.compose(ctx, layers(ctx, w))
 
     /// 本編より先に描く Pass の計画（Main の App.withPassPlan と描き出しが呼ぶ）。
-    pub def passPlan(res: Res.Res, w: World.World): Render.PassPlan = StageView.passPlan(stageIn(res, w))
+    pub def passPlan(res: Res.Res, w: World.World): Render.PassPlan = match w#screen {
+        case World.Screen.Play(s) => StageView.passPlan(stageIn(res, World.seconds(w), s))
+    }
 
     /// 層ごとの木（絵と押せる物の当たり）。Controls.tapAt も同じ木から押した物を選ぶ。
     pub def layers(ctx: App.ViewCtx, w: In): List[(Layer, ZStack.Tree[Layer, World.Press])] =
@@ -172,7 +181,7 @@ mod View {
         { at = at, item = panel } :: count
 
     /// 傷の色（暖かい赤。クリーチャーの発光と同じ側の色）。
-    def wound(): Color = Color.rgb(0.66, 0.07, 0.04)
+    def bloodColor(): Color = Color.rgb(0.66, 0.07, 0.04)
 
     /// 左下の体力の板: 角の丸い縦のグラデの板に差し色の細い縁、中に残りの割合の帯（左が濃く右へ明るむ・減ると傷の色へ寄る）と数。
     def healthPanel(ctx: App.ViewCtx, ink: Color, bg: Color, health: Float64): List[Render.PlacedItem] =
@@ -183,7 +192,7 @@ mod View {
         let left = at#x + 6.0;
         let right = at#x + size#x - 30.0;
         let (top, bottom) = (at#y + 7.0, at#y + size#y - 7.0);
-        let tone = Color.mix(wound(), ink, Num.clamp01(health * 1.6 - 0.3));
+        let tone = Color.mix(bloodColor(), ink, Num.clamp01(health * 1.6 - 0.3));
         let end = left + (right - left) * Num.clamp01(health);
         let track = gradAt((p(left, top), Color.darken(bg, 0.6), 0.9) :: (p(right, top), Color.darken(bg, 0.6), 0.9)
                                :: (p(right, bottom), Color.darken(bg, 0.3), 0.9) :: (p(left, bottom), Color.darken(bg, 0.3), 0.9) :: Nil, 1);
@@ -198,7 +207,7 @@ mod View {
         let (wd, ht) = (World.width(), World.height());
         let inset = 20.0 + 26.0 * hurt;
         let a = Num.clamp01(hurt) * 0.55;
-        let red = wound();
+        let red = bloodColor();
         let band = (o1: Vec2.Vec2, o2: Vec2.Vec2, i2: Vec2.Vec2, i1: Vec2.Vec2) ->
             gradAt((o1, red, a) :: (o2, red, a) :: (i2, red, 0.0) :: (i1, red, 0.0) :: Nil, 0);
         let (tl, tr, br, bl) = (p(0.0, 0.0), p(wd, 0.0), p(wd, ht), p(0.0, ht));
@@ -219,7 +228,7 @@ mod View {
 
     // ── 終了の確認の窓（Layer.Prompt） ──
 
-    /// Esc か閉じるボタンで出る確認。場面を薄く沈める幕・窓・文言（文言は sample.kind.json の quitPrompt）。
+    /// Esc か閉じるボタンで出る確認。場面を薄く沈める幕・窓・文言（文言は conduit_hive.uitext.json の quitPrompt）。
     /// 窓の中を押すと QuitYes・外を押すと QuitNo（blocking が奥の当たりを塞ぐ）。
     def quitPrompt(ctx: App.ViewCtx, w: In): ZStack.Tree[Layer, World.Press] =
         if (not w#askingQuit) ZStack.leaf(Nil)

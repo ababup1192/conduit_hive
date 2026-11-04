@@ -2,7 +2,7 @@
 mod TestRules {
     use fge::{App, SortingLayer}
     use fge::GameEngine.Key
-    use TestSupport.{eastRoom, resWith}
+    use TestSupport.{eastRoom, resWith, walkerIn}
 
     def res(): Res.Res = resWith(eastRoom())
 
@@ -10,31 +10,44 @@ mod TestRules {
 
     def pressing(k: Key): App.Frame = { justPressed = Set#{k}, down = Set#{k} | App.emptyFrame() }
 
+    /// Esc で確認の窓が出る（まだ終わらない）。
     @Test
-    def testQuitAskedThenNoReturnsToPlay(): Unit \ Assert =
+    def testQuitAskedIsNotQuitting(): Unit \ Assert =
         let asked = World.askQuit(w0());
-        Assert.assertEq(expected = (true, false, false),
-            (World.isAskingQuit(asked), World.isQuitting(asked), World.isAskingQuit(World.answerQuit(false, asked))))
+        Assert.assertEq(expected = (true, false), (World.isAskingQuit(asked), World.isQuitting(asked)))
+
+    /// 確認の窓でいいえを選ぶと遊びへ戻る。
+    @Test
+    def testQuitAnsweredNoReturnsToPlay(): Unit \ Assert =
+        Assert.assertEq(expected = false, World.isAskingQuit(World.answerQuit(false, World.askQuit(w0()))))
 
     @Test
     def testQuitConfirmedOnlyAfterYes(): Unit \ Assert =
         Assert.assertEq(expected = true, World.isQuitting(World.answerQuit(true, World.askQuit(w0()))))
 
-    /// 窓を押すとキャプチャ・キャプチャ中の Esc はキャプチャを放すだけ・放している時の Esc で終了の確認。
+    /// 窓を押すとマウスをキャプチャする。
     @Test
-    def testEscapeReleasesCaptureBeforeAskingQuit(): Unit \ Assert =
+    def testClickCapturesTheMouse(): Unit \ Assert =
+        Assert.assertEq(expected = true, World.isLooking(Controls.step({ mouseClicked = true | App.emptyFrame() }, res(), w0())))
+
+    /// キャプチャ中の Esc はキャプチャを放すだけで、終了の確認は出さない。
+    @Test
+    def testEscapeWhileCapturedOnlyReleases(): Unit \ Assert =
         let captured = Controls.step({ mouseClicked = true | App.emptyFrame() }, res(), w0());
         let released = Controls.step(pressing(Key.Escape), res(), captured);
-        let asked = Controls.step(pressing(Key.Escape), res(), released);
-        Assert.assertEq(expected = (true, false, false, true),
-            (World.isLooking(captured), World.isLooking(released), World.isAskingQuit(released), World.isAskingQuit(asked)))
+        Assert.assertEq(expected = (false, false), (World.isLooking(released), World.isAskingQuit(released)))
+
+    /// 放している時の Esc で終了の確認を出す。
+    @Test
+    def testEscapeWhileReleasedAsksQuit(): Unit \ Assert =
+        Assert.assertEq(expected = true, World.isAskingQuit(Controls.step(pressing(Key.Escape), res(), w0())))
 
     /// 終了の確認の窓が出ている間は、前へ押しても歩かない。
     @Test
     def testBodyStaysWhileAskingQuit(): Unit \ Assert =
         let asked = World.askQuit(w0());
         let after = World.step(res(), World.walking({ forward = 1.0 | Walker.idle() }), asked);
-        Assert.assertEq(expected = World.walkerOf(asked)#x, World.walkerOf(after)#x)
+        Assert.assertEq(expected = walkerIn(asked) |> Option.map(b -> b#x), walkerIn(after) |> Option.map(b -> b#x))
 
     @Test
     def testClickInsideQuitWindowQuits(): Unit \ Assert =

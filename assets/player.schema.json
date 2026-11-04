@@ -1,0 +1,36 @@
+{
+  "//": "conduit_hive.player.json の形（Studio の sections 方言）。既定は src/PlayerDoc.flix の defaults() が正。",
+  "version": 1,
+  "sections": {
+    "health": {
+      "kind": "field",
+      "type": "float",
+      "label": "体力の最大",
+      "order": 1,
+      "default": 100.0,
+      "min": 1,
+      "max": 1000,
+      "group": "体力"
+    },
+    "hurtSeconds": {
+      "kind": "field",
+      "type": "float",
+      "label": "被弾で画面の縁が赤い長さ（秒）",
+      "order": 2,
+      "default": 0.6,
+      "min": 0.05,
+      "max": 3,
+      "group": "体力"
+    },
+    "respawnSeconds": {
+      "kind": "field",
+      "type": "float",
+      "label": "倒れてからやり直すまで（秒）",
+      "order": 3,
+      "default": 2.0,
+      "min": 0.2,
+      "max": 10,
+      "group": "体力"
+    }
+  }
+}

@@ -9,25 +9,32 @@ mod TestWalk {
     def testWalksAtTheDocSpeed(): Unit \ Assert =
         let res = resWith(eastRoom());
         let walk = WalkDoc.rec(res#walk);
-        let start = World.walkerOf(World.initial(res));
+        let start = World.startWalker(res);
         let after = Walker.simulate(res#collision, walk, ahead(false), clockOf(1.0 / 60.0), 60, start);
         Assert.assertTrue(Float64.abs(after#x - (start#x + walk#walkSpeed)) < 0.01)
 
-    /// 東の壁（x = 16 m）へ 3 秒走り続けても、体の真ん中は壁から半径より内に入らず、壁に食い込まない（食い込みは 1 mm 未満）。
+    /// 東の壁（x = 16 m）へ 3 秒走り続けると、体の真ん中は壁から半径の所（5 cm の内）で止まる。
     @Test
     def testRunningIntoAWallStopsAtTheRadius(): Unit \ Assert =
         let res = resWith(eastRoom());
         let walk = WalkDoc.rec(res#walk);
-        let after = Walker.simulate(res#collision, walk, ahead(true), clockOf(1.0 / 60.0), 180, World.walkerOf(World.initial(res)));
-        Assert.assertEq(expected = (true, true, true),
-            (after#x <= 16.0 - walk#radius + 0.001, after#x > 16.0 - walk#radius - 0.05, Walker.overlapDepth(res#collision, walk, after) < 0.001))
+        let after = Walker.simulate(res#collision, walk, ahead(true), clockOf(1.0 / 60.0), 180, World.startWalker(res));
+        Assert.assertEq(expected = (true, true), (after#x <= 16.0 - walk#radius + 0.001, after#x > 16.0 - walk#radius - 0.05))
+
+    /// 壁へ走り続けても壁に食い込まない（食い込みは 1 mm 未満）。
+    @Test
+    def testRunningIntoAWallDoesNotSink(): Unit \ Assert =
+        let res = resWith(eastRoom());
+        let walk = WalkDoc.rec(res#walk);
+        let after = Walker.simulate(res#collision, walk, ahead(true), clockOf(1.0 / 60.0), 180, World.startWalker(res));
+        Assert.assertTrue(Walker.overlapDepth(res#collision, walk, after) < 0.001)
 
     /// 北を向いて 2 秒歩いても、幅 1 マスの部屋の北の壁（z = 8 m）で止まる。
     @Test
     def testSideWallStopsTheBody(): Unit \ Assert =
         let res = resWith(eastRoom());
         let walk = WalkDoc.rec(res#walk);
-        let facingNorth = { yaw = 0.0 | World.walkerOf(World.initial(res)) };
+        let facingNorth = { yaw = 0.0 | World.startWalker(res) };
         let after = Walker.simulate(res#collision, walk, ahead(false), clockOf(1.0 / 60.0), 120, facingNorth);
         Assert.assertTrue(after#z <= 8.0 - walk#radius + 0.001)
 }
