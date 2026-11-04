@@ -1,0 +1,20 @@
+{
+  "note": "sync-agents（agents-pack をゲームのリポへ配る道具）の規約データ。この JSON が source of truth で、bin/fge sync-agents はこれを読んで動く。配る物の一覧そのものは agents-pack/manifest.json にあり、この JSON は持たない（二重に持つと片方が古くなる）。",
+  "manifestPath": "agents-pack/manifest.json",
+  "manifestKeys": ["copy", "copyIfAbsent", "copyDirs"],
+  "skillsDir": "agents-pack/skills",
+  "rulesDir": "agents-pack/rules",
+  "ledgerPath": ".agents-pack.json",
+  "coreDoc": "agents-pack/AGENTS.core.md",
+  "localDoc": "AGENTS.local.md",
+  "agentsMd": "AGENTS.md",
+  "claudeMd": "CLAUDE.md",
+  "claudeMdBody": "@AGENTS.md\n",
+  "skillFile": "SKILL.md",
+  "skillLinkPattern": "\\.claude/skills/([A-Za-z0-9_-]+)/",
+  "skillLinkRoots": ["agents-pack/skills", "agents-pack/rules", "docs"],
+  "lintPrefix": "lint-",
+  "sentenceSep": "。",
+  "triggerSuffix": "使う",
+  "clauseSep": "、"
+}

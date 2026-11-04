@@ -1,0 +1,81 @@
+{
+  "hooks": {
+    "SessionStart": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "make -s status",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "bin/fge hook-index-warm",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PreToolUse": [
+      {
+        "matcher": "Edit|Write|apply_patch|Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bin/fge hook-asset-guard",
+            "timeout": 10
+          }
+        ]
+      },
+      {
+        "matcher": "Bash",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bin/fge hook-read-guard",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "PostToolUse": [
+      {
+        "matcher": "Edit|Write|apply_patch",
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bin/fge hook-art-edit",
+            "timeout": 30
+          },
+          {
+            "type": "command",
+            "command": "bin/fge hook-flix-touch",
+            "timeout": 10
+          }
+        ]
+      }
+    ],
+    "Stop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bin/fge hook-flix-work",
+            "timeout": 40
+          }
+        ]
+      }
+    ],
+    "SubagentStop": [
+      {
+        "hooks": [
+          {
+            "type": "command",
+            "command": "bin/fge hook-flix-work",
+            "timeout": 40
+          }
+        ]
+      }
+    ]
+  }
+}

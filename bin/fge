@@ -1,0 +1,29 @@
+#!/bin/sh
+# fge — bin/ の検査・要約ツールの呼び口を 1 本にまとめる薄い前面。
+#
+# 中身は全部 bin/fge-go (Go) が持っていて、ここには判定が 1 つも無い。
+# 引数・標準出力・標準エラー・終了コードは一切加工せず通す。
+#
+#     bin/fge                 サブコマンドの一覧
+#     bin/fge --version       engine のバージョン
+#     bin/fge <名前> [引数...]  委譲
+#
+# WhyNot: この 1 行の起動役を挟むのは、bin/fge-go 自体を git に入れないため
+# (OS ごとに別物のバイナリで、差分圧縮が効かないまま履歴に積み上がる)。
+# 呼ぶ側 (Makefile・フック・スキル・docs) は bin/fge という名前だけ覚えていればよく、
+# 実体が別の言語や別の場所へ移っても呼び口は動かないで済む。
+#
+# Windows の cmd / PowerShell からは隣の bin/fge.cmd が同じことをする。
+set -u
+
+here=$(cd "$(dirname "$0")" && pwd)
+go=$here/fge-go
+
+if [ ! -x "$go" ]; then
+  echo "fge: bin/fge-go がありません。" >&2
+  echo "     engine のリポジトリなら: make go-build" >&2
+  echo "     ゲームのリポジトリなら:   engine 側で make sync-agents GAME=$(pwd)" >&2
+  exit 127
+fi
+
+exec "$go" "$@"

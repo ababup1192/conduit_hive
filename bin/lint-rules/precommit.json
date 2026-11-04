@@ -1,0 +1,375 @@
+{
+  "note": "precommit（git commit の直前に走るゲート）の規約データ。この JSON が source of truth で、bin/fge precommit はこれを読んで動く。checks の並びはそのまま出力の並びになるので配列で持つ。",
+  "stagedImages": {
+    "sub": "images",
+    "imageExts": [
+      ".png",
+      ".gif",
+      ".jpg",
+      ".jpeg",
+      ".webp",
+      ".bmp"
+    ],
+    "galleryPrefix": "docs/gallery/",
+    "galleryMaxFileBytes": 307200,
+    "allowedPrefixes": [
+      "docs/gallery/",
+      "docs/brand/",
+      "assets/"
+    ],
+    "allowedSubstrings": [
+      "/assets/",
+      "/testdata/"
+    ],
+    "allowedSuffixes": [
+      "/reference/title.png"
+    ],
+    "allowedExact": [
+      "reference/title.png"
+    ]
+  },
+  "checks": [
+    {
+      "id": "flix-reserved",
+      "sub": "flix-reserved",
+      "flags": [],
+      "pass": "matched",
+      "when": {
+        "suffixes": [
+          ".flix"
+        ]
+      }
+    },
+    {
+      "id": "value-discard",
+      "sub": "value-discard",
+      "flags": [],
+      "pass": "matched",
+      "when": {
+        "suffixes": [
+          ".flix"
+        ]
+      }
+    },
+    {
+      "id": "view",
+      "sub": "view",
+      "flags": [],
+      "pass": "matched",
+      "when": {
+        "suffixes": [
+          ".flix"
+        ]
+      }
+    },
+    {
+      "id": "palette",
+      "sub": "palette",
+      "flags": [],
+      "pass": "none",
+      "when": {
+        "anyOf": [
+          {
+            "suffixes": [
+              ".sprite.json",
+              ".theme.json"
+            ]
+          },
+          {
+            "substrings": [
+              "palette"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "ui-overflow",
+      "sub": "ui-overflow",
+      "flags": [
+        "--strict"
+      ],
+      "pass": "matched",
+      "when": {
+        "suffixes": [
+          ".ui.json"
+        ]
+      }
+    },
+    {
+      "id": "fallback",
+      "sub": "fallback",
+      "flags": [],
+      "pass": "none",
+      "when": {
+        "suffixes": [
+          ".flix"
+        ]
+      }
+    },
+    {
+      "id": "f32",
+      "sub": "f32",
+      "flags": [],
+      "pass": "none",
+      "when": {
+        "suffixes": [
+          ".flix"
+        ],
+        "prefixes": [
+          "engine/src/",
+          "engine_world/src/",
+          "engine_tools/src/"
+        ]
+      }
+    },
+    {
+      "id": "max-lines",
+      "sub": "max-lines",
+      "flags": [],
+      "pass": "matched",
+      "when": {
+        "suffixes": [
+          ".flix"
+        ],
+        "prefixes": [
+          "engine/src/",
+          "render_gl/src/",
+          "engine_world/src/",
+          "engine_tools/src/"
+        ]
+      }
+    },
+    {
+      "id": "z-table",
+      "sub": "z-table",
+      "flags": [],
+      "pass": "matched",
+      "when": {
+        "suffixes": [
+          ".flix"
+        ]
+      }
+    },
+    {
+      "id": "forbid",
+      "sub": "forbid",
+      "flags": [],
+      "pass": "matched",
+      "when": {
+        "anyOf": [
+          {
+            "suffixes": [
+              ".flix",
+              ".java"
+            ]
+          },
+          {
+            "basenames": [
+              "Makefile",
+              "project.json"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "quadratic",
+      "sub": "quadratic",
+      "flags": [],
+      "pass": "none",
+      "when": {
+        "suffixes": [
+          ".flix"
+        ]
+      }
+    },
+    {
+      "id": "hoist",
+      "sub": "hoist",
+      "flags": [],
+      "pass": "matched",
+      "when": {
+        "suffixes": [
+          ".flix"
+        ]
+      }
+    },
+    {
+      "id": "record-wrap",
+      "sub": "record-wrap",
+      "flags": [],
+      "pass": "matched",
+      "when": {
+        "suffixes": [
+          ".flix"
+        ],
+        "exceptPrefixes": [
+          "testdata/"
+        ]
+      }
+    },
+    {
+      "id": "verb-names",
+      "sub": "verb-names",
+      "flags": [],
+      "pass": "matched",
+      "when": {
+        "suffixes": [
+          ".flix"
+        ]
+      }
+    },
+    {
+      "id": "state-shape",
+      "sub": "state-shape",
+      "flags": [],
+      "pass": "matched",
+      "when": {
+        "suffixes": [
+          ".flix"
+        ]
+      }
+    },
+    {
+      "id": "doc-shape",
+      "sub": "doc-shape",
+      "flags": [],
+      "pass": "matched",
+      "when": {
+        "anyOf": [
+          {
+            "prefixes": [
+              "assets/"
+            ],
+            "suffixes": [
+              ".json"
+            ]
+          },
+          {
+            "substrings": [
+              "/assets/"
+            ],
+            "suffixes": [
+              ".json"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "yarn",
+      "sub": "yarn",
+      "flags": ["check"],
+      "pass": "matched",
+      "when": {
+        "anyOf": [
+          {
+            "suffixes": [
+              ".yarn"
+            ]
+          },
+          {
+            "basenames": [
+              "dialogue.json",
+              "vocab.json"
+            ]
+          }
+        ]
+      }
+    },
+    {
+      "id": "makefile-dup",
+      "sub": "makefile-dup",
+      "flags": [],
+      "pass": "matched",
+      "when": {
+        "basenames": [
+          "Makefile"
+        ]
+      }
+    },
+    {
+      "id": "notes-rotate",
+      "sub": "notes-rotate",
+      "flags": ["--check", "--staged"],
+      "pass": "none",
+      "when": {
+        "basenames": ["NOTES.md"]
+      }
+    },
+    {
+      "id": "doc-refs",
+      "sub": "doc-refs",
+      "flags": [],
+      "pass": "matched",
+      "when": {
+        "suffixes": [
+          ".md",
+          ".flix"
+        ]
+      }
+    },
+    {
+      "id": "jargon",
+      "sub": "jargon",
+      "flags": [],
+      "pass": "none",
+      "when": {
+        "anyOf": [
+          {
+            "suffixes": [
+              ".md",
+              ".flix",
+              ".elm",
+              ".json",
+              ".py"
+            ]
+          },
+          {
+            "basenames": [
+              "Makefile"
+            ]
+          }
+        ]
+      }
+    }
+  ],
+  "docsSync": {
+    "target": "check-docs-sync",
+    "when": {
+      "anyOf": [
+        {
+          "basenames": [
+            "Makefile"
+          ]
+        },
+        {
+          "prefixes": [
+            ".claude/",
+            "agents-pack/",
+            "templates/",
+            "go/internal/genrules/",
+            "go/internal/apidigest/",
+            "go/internal/apiindex/",
+            "go/internal/checkrefs/"
+          ]
+        },
+        {
+          "suffixes": [
+            ".md",
+            ".flix"
+          ]
+        }
+      ]
+    }
+  },
+  "localGate": {
+    "target": "precommit-local"
+  },
+  "failOpen": {
+    "makeMissing": "[pre-commit] make が見つからないので配線検査 (check-docs-sync) は飛ばします",
+    "targetMissing": "[pre-commit] make check-docs-sync が無いので配線検査は飛ばします",
+    "targetMissingExitCode": 2
+  }
+}

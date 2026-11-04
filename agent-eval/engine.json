@@ -1,0 +1,396 @@
+{
+  "version": 1,
+  "note": "エンジン共通のお題（どのゲームの足元でも同じ道具が当たるべき物）。bin/fge agent-eval が読む（make agent-eval）。prompt は依頼の言葉だけにし、道具の名前を入れない。expect は答えに出てほしい道具（1 つ 1 点）、avoid は古い書き方（打ち消しの無い行に出たら 1 点引く）。新しい仕組みを入れた人は、早見表の 1 行と一緒にここへお題を 1 本足す。 avoid の正規表現は、ゲームに実在する名前（bgmFightIntro など）や道具の説明（use-engine が local.mk を書き換える）に当てない。今のコードや道具を説明しただけで減点になる。",
+  "tasks": [
+    {
+      "id": "half-res-bloom",
+      "prompt": "明るい所だけを抜き出して広くにじませる光のにじみ（ブルーム）を、画面全体に掛けたい。重くならないよう、にじませる所は画面より小さい解像度で計算して、なめらかに引き伸ばして足したい",
+      "expect": [
+        { "re": "withPassPlan|passPlan", "why": "App.withPassPlan / Render.passPlan" },
+        { "re": "RenderTarget\\.Descriptor|defaultDescriptor|scale\\s*=\\s*0\\.", "why": "RenderTarget.Descriptor の scale" },
+        { "re": "Sampler|\"sampler\"|FilterMode\\.Linear", "why": "ShaderDoc の sampler（Linear）" }
+      ],
+      "avoid": [
+        { "re": "Render\\.sprite\\([^)]*\\)\\s*\\|>\\s*Render\\.scaled", "why": "縮んだ pass を sprite で引き伸ばす（Nearest の塊になる）" }
+      ]
+    },
+    {
+      "id": "view-input",
+      "prompt": "主人公の頭の上に体力のゲージを描きたい。体力の値は World にある。描く関数の引数はどうすればいい？ 足した後、この作り方が崩れていないことも確かめたい",
+      "expect": [
+        {"re": "inputOf|\\bIn\\b", "why": "View.inputOf で組む In に欄を足す"},
+        {"re": "lint-flixlint", "why": "make lint-flixlint"}
+      ],
+      "avoid": [
+        {"re": "\\(\\s*w\\s*:\\s*World\\.World\\s*\\)\\s*:\\s*List\\[Render", "why": "View の部品に World を丸ごと渡す"}
+      ]
+    },
+    {
+      "id": "hud-timer",
+      "prompt": "画面の右上に残り時間の表示を足したい。ゲームの絵（爆発など）がどれだけ手前に出ても、この表示は隠れないようにしたい",
+      "expect": [
+        {"re": "App\\.withHudView", "why": "App.withHudView"},
+        {"re": "ZStack\\.(of|leaf)", "why": "ZStack の木（of / leaf）"}
+      ],
+      "avoid": [
+        {"re": "\\bz[A-Z]\\w*\\(\\)\\s*(:\\s*Int32\\s*)?=\\s*[1-9]\\d{2,}|\\bzIndex\\s*[=:]\\s*[1-9]\\d{2,}", "why": "z の大きな数を直に書く"}
+      ]
+    },
+    {
+      "id": "topdown-behind-tree",
+      "prompt": "見下ろしの町で、人が木の裏に回ったら木に隠れ、手前に来たら木の前に出るようにしたい",
+      "expect": [
+        {"re": "Depth\\.orderAt", "why": "Depth.orderAt"},
+        {"re": "ZStack\\.zIndex", "why": "ZStack.zIndex"}
+      ]
+    },
+    {
+      "id": "tooltip-front",
+      "prompt": "カードの一覧の中で、選んだカードの説明の窓を、ほかのどの部品よりも必ず手前に出したい。窓が画面からはみ出さない所に置きたい",
+      "expect": [
+        {"re": "ZStack\\.topLayer", "why": "ZStack.topLayer"},
+        {"re": "UiTooltip", "why": "UiTooltip"}
+      ],
+      "avoid": [
+        {"re": "\\bz[A-Z]\\w*\\(\\)\\s*(:\\s*Int32\\s*)?=\\s*[1-9]\\d{2,}|\\bzIndex\\s*[=:]\\s*[1-9]\\d{2,}", "why": "z の大きな数を直に書く"}
+      ]
+    },
+    {
+      "id": "shake-scale-scene",
+      "prompt": "被弾したとき、画面全体を一瞬少し縮めてから戻す演出を入れたい",
+      "expect": [
+        {"re": "ZStack\\.mapItems", "why": "ZStack.mapItems"},
+        {"re": "Render\\.scaledAllAround", "why": "Render.scaledAllAround"}
+      ]
+    },
+    {
+      "id": "pause-layer",
+      "prompt": "ポーズ画面を足したい。ゲームの絵と会話の窓のどちらよりも上に重ねたい",
+      "expect": [
+        {"re": "SortingLayer|Layer\\s*(\u306e\\s*)?enum|enum\\s+Layer", "why": "SortingLayer の表"},
+        {"re": "SortingLayer\\.compose|ZStack\\.topLayer", "why": "SortingLayer.compose / topLayer"}
+      ],
+      "avoid": [
+        {"re": "\\bz[A-Z]\\w*\\(\\)\\s*(:\\s*Int32\\s*)?=\\s*[1-9]\\d{2,}|\\bzIndex\\s*[=:]\\s*[1-9]\\d{2,}", "why": "z の大きな数を直に書く"}
+      ]
+    },
+    {
+      "id": "render-text-overlap",
+      "prompt": "描き出した場面で、字が別の字に重なったり枠からはみ出したりしていないかを lint でまとめて止めたい。わざと重ねている演出は理由を書いて許したい",
+      "expect": [
+        {"re": "render-lint|fge\\s+text-audit", "why": "make render-lint / bin/fge text-audit"},
+        {"re": "text-audit\\.local\\.json", "why": "許す物は text-audit.local.json の allow"}
+      ]
+    },
+    {
+      "id": "doc-fallback-log",
+      "prompt": "設定の JSON が壊れていたら既定値で続け、ログに 1 行だけ知らせたい",
+      "expect": [
+        {"re": "DocJson\\.(loadOr|decodeObject)", "why": "DocJson.loadOr"},
+        {"re": "Log\\.(fellBackThen|warnThen|warnAllThen)", "why": "Log.*Then"}
+      ],
+      "avoid": [
+        {"re": "let\\s+_\\s*=", "why": "let _ ="}
+      ]
+    },
+    {
+      "id": "check-render-after-doc",
+      "prompt": "Doc（JSON）の数値を少し直した。絵が崩れていないかを確かめたい",
+      "expect": [
+        {"re": "make render SHOT|render SHOT=", "why": "make render SHOT="},
+        {"re": "reference-check", "why": "make reference-check"}
+      ],
+      "avoid": [
+        {"re": "解像度を下げ|_FRAMES", "why": "速さのための回り道"}
+      ]
+    },
+    {
+      "id": "ticket-find-doc",
+      "prompt": "F8 で囲って書き出した注釈チケットが届いた。どの Doc のどこを直せばよいか探したい",
+      "expect": [
+        {"re": "README", "why": "チケットの README"},
+        {"re": "world\\.json", "why": "world.json"},
+        {"re": "annotation\\.json|withAnnotationContext", "why": "文脈（annotation.json の context）"}
+      ]
+    },
+    {
+      "id": "sfx-on-timeline",
+      "prompt": "演出の 0.4 秒目と 1.2 秒目に効果音を鳴らしたい。秒は Doc から調整できるようにしたい",
+      "expect": [
+        {"re": "Timeline\\.build", "why": "Timeline の時刻表"},
+        {"re": "Timeline\\.(withSound|soundsOn)", "why": "音をクリップに付ける（withSound / soundsOn）"},
+        {"re": "App\\.withAudio", "why": "App.withAudio"}
+      ]
+    },
+    {
+      "id": "beat-synced-cutin",
+      "prompt": "BGM のテンポに合わせて、警告の帯を 2 小節見せた後にカットインを入れ、その後のターン 1 の合図を、次の小節の頭のちょうど 1 拍前に出したい。帯やカットインの長さを変えても、曲の拍からずれないようにしたい",
+      "expect": [
+        {"re": "Duration\\.ToPickup", "why": "Duration.ToPickup（次の小節の頭の n 拍前）"},
+        {"re": "Duration\\.(Bars|ToNextBar)", "why": "Duration.Bars / ToNextBar"},
+        {"re": "Timeline\\.tempo", "why": "Timeline.tempo に譜面の bpm を渡す"}
+      ],
+      "avoid": [
+        {"re": "60(\\.0)?\\s*/\\s*\\w*bpm", "why": "60 / bpm を手で計算する"},
+        {"re": "withDelay\\(\\s*(Duration\\.)?Beats\\(\\s*(0\\.0\\s*)?-", "why": "足場の行と負の withDelay で拍を戻す"}
+      ]
+    },
+    {
+      "id": "bgm-intro-loop",
+      "prompt": "新しく足す曲にイントロを付けたい。イントロは鳴らし始めに 1 回だけ鳴らし、その後は本編だけを繰り返したい。継ぎ目に隙間が空かないようにしたい",
+      "expect": [
+        {"re": "SfxSynth\\.renderLooped|AudioMixdown\\.mixdownLooped", "why": "1 本の WAV のループ点（SfxSynth.renderLooped・smpl）"},
+        {"re": "App\\.withSustained", "why": "App.withSustained で同じ名前を宣言し続ける"}
+      ],
+      "avoid": [
+        {"re": "Intro\\.wav|イントロの長さを過ぎたら", "why": "頭と輪を 2 本の音に割って時刻で切り替える"}
+      ]
+    },
+    {
+      "id": "heavy-queue",
+      "prompt": "同じ Mac でほかのエージェントも描き出しやテストを回している。自分も render-all を流したいが、同時に走ってメモリを食い合わないようにしたい。今だれが走らせているかも知りたい",
+      "expect": [
+        {"re": "fge heavy|heavy make|heavy \\S*make", "why": "bin/fge heavy"},
+        {"re": "heavy --status", "why": "持ち主と待ち列"}
+      ],
+      "avoid": [
+        {"re": "until mkdir", "why": "鍵を手で書く"},
+        {"re": "-mmin \\+40", "why": "古さだけで鍵を外す"}
+      ]
+    },
+    {
+      "id": "heavy-short-beside-long",
+      "prompt": "別のエージェント 2 人が動画の描き出しで重い処理の鍵をそれぞれ 30 分握り、その後ろにも描き出しが並んでいる。自分は型検査を 1 回流したいだけで、その後ろで 30 分も待ちたくない",
+      "expect": [
+        {"re": "fge heavy[^\\n]*(make check|check)|heavy make check", "why": "短い物は bin/fge heavy で包めば空いた枠で流れる"}
+      ],
+      "avoid": [
+        {"re": "until mkdir", "why": "鍵を手で書く"},
+        {"re": "rmdir /tmp/fge-heavy|rm -r[f]? /tmp/fge-heavy", "why": "人の鍵を外す"},
+        {"re": "heavy --long[^\\n]*check", "why": "短い物に長い物の印を付ける"}
+      ]
+    },
+    {
+      "id": "use-engine-temp",
+      "prompt": "このゲームの作業場だけ、いま別の作業場で直している開発中のエンジンで動くか確かめたい。終わったら元のエンジンに戻したい",
+      "expect": [
+        {"re": "use-engine", "why": "bin/fge use-engine"},
+        {"re": "--restore", "why": "元へ戻す"}
+      ],
+      "avoid": [
+        {"re": "ln -s[^\\n]*lib", "why": "lib を他の作業場へ symlink"},
+        {"re": "local\\.mk[^\\n]{0,30}(書き換|編集|sed)|sed[^\\n]*local\\.mk", "why": "local.mk を手で書き換える", "unless": "use-engine"}
+      ]
+    },
+    {
+      "id": "compare-before-after",
+      "prompt": "描画の直しを入れた。master の時と比べて、どの場面の絵と効果音が変わったかを一覧と前後を並べた画像で見たい",
+      "expect": [
+        {"re": "make compare", "why": "make compare"},
+        {"re": "BASE=", "why": "基準の ref"}
+      ],
+      "avoid": [
+        {"re": "git worktree add", "why": "worktree を手で作る"},
+        {"re": "hstack", "why": "ffmpeg で手で並べる"}
+      ]
+    },
+    {
+      "id": "proposal-page",
+      "prompt": "演出の案を 3 つ動画で並べて、依頼主に 1 つ選んでもらうページを作りたい",
+      "expect": [
+        {"re": "proposal\\.json", "why": "manifest"},
+        {"re": "fge proposal", "why": "bin/fge proposal build"}
+      ],
+      "avoid": [
+        {"re": "proposal\\.py", "why": "移した後の古い道具"}
+      ]
+    },
+    {
+      "id": "heavy-game-long-target",
+      "prompt": "このゲームに 40 分かかるシミュレーションの make の口 sim-sweep を足した。ほかのエージェントが重い処理の鍵で流すとき、毎回印を付けてもらわなくても長い物として扱われるようにしたい。今日どの待ちが長かったかも見たい",
+      "expect": [
+        {"re": "HEAVY_LONG", "why": "ゲームの Makefile の HEAVY_LONG に口を足す"},
+        {"re": "heavy --history", "why": "待ちの合計は heavy の記録から"}
+      ],
+      "avoid": [
+        {"re": "until mkdir", "why": "鍵を手で書く"}
+      ]
+    },
+    {
+      "id": "pixel-walk",
+      "prompt": "村の女の子の歩きをドット絵（sprite.json・4 方向 × 3 コマ）で描いてほしい。描き始める前に何を読み、どう進める？",
+      "expect": [
+        {"re": "pixel-art", "why": "短いスキル pixel-art を読む"},
+        {"re": "walk\\.md|pixel-art/walk|pixel-art の walk", "why": "表からお題の種類（歩き）のファイルを読む"}
+      ],
+      "avoid": [
+        {"re": "retro-pixel|px-character|visual-dict", "why": "長い参考（docs/art-ref）を既定で読む"}
+      ]
+    },
+    {
+      "id": "confirm-window-pacing",
+      "prompt": "確認の窓が開くまでの長さと、閉じるまでの長さを決めたい。何を目安に、どのくらいにする？",
+      "expect": [
+        {"re": "pacing\\.md", "why": "演出の間の目安 docs/pacing.md を読む"}
+      ]
+    },
+    {
+      "id": "timeline-overlay-at",
+      "prompt": "勝ったときの演出の時刻表に、紙吹雪を表の頭から 1.5 秒の所へ、前の物の終わりを待たずに重ねて出したい。待つ所の無い演出なので音を鳴らす側は簡単に済ませたい。並びはコードに書くので、書き間違えたら遊ぶ前に止めたい",
+      "expect": [
+        {"re": "Timeline\\.insert", "why": "決まった時刻に重ねる Timeline.insert"},
+        {"re": "Timeline\\.soundsBetween", "why": "待ちの無い表の音 Timeline.soundsBetween"},
+        {"re": "Timeline\\.buildOrPanic", "why": "並びをコードが書く表 Timeline.buildOrPanic"}
+      ]
+    },
+    {
+      "id": "enemy-chase-grid",
+      "prompt": "マス目のダンジョンで、敵が壁を回り込みながらプレイヤーを追いかけてくるようにしたい",
+      "expect": [
+        {"re": "Steering\\.chase", "why": "距離場の 1 歩 Steering.chase（早見表に無い・module-index の盤面）"}
+      ],
+      "avoid": [
+        {"re": "A\\*|astar|aStar|ダイクストラを(自前|自分)で", "why": "経路探索を自前で書く"}
+      ]
+    },
+    {
+      "id": "battle-log-scroll",
+      "prompt": "戦いのログを窓の中に出したい。行が窓より多くなったらホイールでさかのぼって読めるようにし、上や下にまだ続きがあるかの印も出したい",
+      "expect": [
+        {"re": "UiScroll", "why": "スクロールの勘定 UiScroll（早見表に無い・module-index の UI）"},
+        {"re": "InputMap\\.wheelSteps|Render\\.clipped", "why": "ホイールの目盛り InputMap.wheelSteps か、窓で切り抜く Render.clipped"}
+      ]
+    },
+    {
+      "id": "dialog-line-count",
+      "prompt": "会話の窓に長い台詞を窓の幅で折り返して出したい。描く前に何行になるかを知って、窓の高さを合わせたい",
+      "expect": [
+        {"re": "RichText\\.wrapLinesBy", "why": "幅で行に折る RichText.wrapLinesBy（早見表に無い・module-index）"}
+      ]
+    },
+    {
+      "id": "window-close-confirm",
+      "prompt": "ウィンドウの閉じるボタンを押したとき、すぐ終わらずに『終了しますか？』と聞いて、はいなら終わるようにしたい",
+      "expect": [
+        {"re": "App\\.withCloseRequest", "why": "閉じる要求を World へ知らせる App.withCloseRequest"},
+        {"re": "App\\.quitWhen", "why": "終了を頼む App.quitWhen"}
+      ],
+      "avoid": [
+        {"re": "glfwSetWindowShouldClose|GLFW\\.", "why": "ゲームから GLFW を直に触る"}
+      ]
+    },
+    {"id": "art-round-keep", "prompt": "主人公のドット絵（assets/hero.sprite.json）を描き直している。描き直すたびの絵と台本を残して見比べ、前の版の方が良ければそこへ戻せるようにしたい", "expect": [{"re": "bin/fge rounds|fge rounds snap|rounds snap", "why": "絵の周回を残す bin/fge rounds snap / restore"}], "avoid": [{"re": "px\\.py snap", "why": "ゲームの古い snap"}]},
+    {"id": "click-front-layer", "prompt": "確認の窓が開いているときにクリックすると、窓の奥にあるボタンまで反応してしまう。見た目でいちばん手前にある物だけが押されるようにしたい", "expect": [{"re": "SortingLayer\\.pickFrom|pickFrom\\(", "why": "描く木から当たりを選ぶ SortingLayer.pickFrom"}, {"re": "ZStack\\.(modal|blocking)|\\bmodal\\(", "why": "窓の奥を塞ぐ ZStack.modal / blocking"}], "avoid": [{"re": "Render\\.zOf|sortBy\\([^)]*\\bz", "why": "描いた絵の z を並べ直して当たりを探す"}]},
+    {"id": "hit-from-tree", "prompt": "場面ごとに「押せる物と矩形」の一覧を描く処理とは別に書いていて、ボタンの描く順を変えたら押せる順とずれた。描く順と押せる順を 1 か所で決めたい", "expect": [{"re": "ZStack\\.hit|\\bhit\\(", "why": "ボタンの葉の隣に ZStack.hit を積む"}, {"re": "SortingLayer\\.(pickFrom|hitsOf)|pickFrom\\(|hitsOf\\(", "why": "同じ木から SortingLayer.pickFrom / hitsOf で引く"}], "avoid": [{"re": "SortingLayer\\.pick\\(", "why": "描く木と別の当たりの列を渡す古い SortingLayer.pick"}]},
+    {
+      "id": "px-icon-gate",
+      "prompt": "小さな盾のアイコン（24×24 のドット絵）を描いて、色の門を通してから atelier/ に置きたい。手で 1 画素ずつ並べるのではなく、あとで形や色を直しやすい書き方にしたい",
+      "expect": [
+        {"re": "fge px build|\\.pxsrc\\.json", "why": "指定（*.pxsrc.json）を fge px build で描いて、色の門を通す"}
+      ],
+      "avoid": [
+        {"re": "bin/pxkit|bin/px\\.py|gen-[a-z-]+\\.py", "why": "消した Python の部品集・台本で描く"}
+      ]
+    },
+    {"id": "px-star-variants", "prompt": "地面の石畳のタイルを 8 枚、割れ目と苔の位置を少しずつ変えてドット絵で描きたい。8 枚ぶんの指定を 1 枚ずつ書き写すと、形を直すたびに 8 か所を直すことになるので、繰り返す所と違う所を 1 か所にまとめて書きたい", "expect": [{"re": "\\.px\\.star|fge px gen", "why": "繰り返す絵は台本 *.px.star（bin/fge px build / gen）"}], "avoid": [{"re": "bin/pxkit|bin/px\\.py|gen-[a-z-]+\\.py", "why": "消した Python の部品集・台本で描く"}]},
+    {"id": "snd-star-sfx", "prompt": "カードを引く音と被弾の音を新しく作りたい。音色・長さ・音程を数値で直しやすい書き方で作り、音割れや鳴りっぱなしを機械で確かめてから試しの置き場に置きたい", "expect": [{"re": "fge snd build|\\.snd\\.star|\\.sndsrc\\.json", "why": "台本 *.snd.star か *.sndsrc.json を bin/fge snd build"}], "avoid": [{"re": "gen-[a-z-]+\\.py|\\bsox\\b", "why": "ゲームの外の台本・道具で音を作る"}]},
+    {"id": "typed-sound-names", "prompt": "効果音の名前を文字列で書いていて、綴りを間違えても気づけない。エンジン音のような鳴り続ける音を一発の音として鳴らしてしまう取り違えも、コンパイルで止めたい", "expect": [{"re": "Sfx\\.(play|collect)|Sfx\\[", "why": "一発の音の Sfx[s]"}, {"re": "Loop\\.(hold|collect)|Loop\\[", "why": "鳴り続ける音の Loop[s]"}], "avoid": [{"re": "with\\s+ToString\\[s\\]", "why": "trait の制約付きのハンドラ（0.78.0 でコンパイラが落ちる）"}]},
+    {"id": "px-kind-checks", "prompt": "床のタイル 16×16 とボタンの枠をドット絵で新しく描く。タイルには並べた時の継ぎ目、枠には枠らしい検査が、それぞれ自動で当たるようにしたい。検査を自分で選んだり外したりはしたくない", "expect": [{"re": "\"kind\"|px kinds|kind ?[:=]", "why": "絵の種類を kind で宣言すると当たる検査の束が決まる（bin/fge px kinds）"}], "avoid": [{"re": "--skip|対象外\\(", "why": "検査を切る・lint-sprite の対象外で外す"}]},
+    {"id": "ticket-regress-rate", "prompt": "F8 のチケットを直し終えた。閉じるついでに、このチケットが前のどの直しのせいで出てきたのかを残しておき、あとで「直したら別の不具合が出た」割合を週ごとに数で見たい", "expect": [{"re": "tickets close", "why": "閉じる口で直したコミットと regressedBy を ledger に残す（bin/fge tickets close）"}, {"re": "tickets (stats|suspects)", "why": "率は bin/fge tickets stats・前の直しの候補は tickets suspects"}], "avoid": [{"re": "(git )?mv [^\\n]*archive", "why": "手で archive/ へ動かす（記録が残らない）"}]},
+    {"id": "event-sounds-fixed-step", "prompt": "物理を固定刻みで回しているゲームで、規則の関数の奥（ブロックが壊れた・コインを取った）で起きた事に効果音を付けたい。今は World に「このフレームの出来事」の欄を置いて毎回置き換えているが、刻みが回らなかったフレームで前の音がもう一度鳴る。規則の関数の戻り値の型は変えたくない", "expect": [{"re": "Emit\\.(emit|collectInto|collect|since|Events)|Emit\\[", "why": "規則は Emit.emit・系は collectInto で World の Emit.Events に溜め・audio は Emit.since"}], "avoid": []},
+    {"id": "property-test-trace", "prompt": "落ち物パズルの規則を直すたびに「1 回押したのに音が 2 回鳴る」「消した後の升の数が合わない」が後から見つかる。決まった手順のテストでは思いつかない押し方を、画面を開かずにたくさん試し、決まりが崩れた最初のフレームを知りたい", "expect": [{"re": "PropertyTest\\.(forAll|generate|firstBroken|traceOf)|PropertyTest", "why": "種で決まるでたらめな入力を流す PropertyTest.forAll"}], "avoid": [{"re": "Flow\\.(play|playFile)|e2e/[A-Za-z_]+\\.flow", "why": "決まった手順の台本を流す Flow（思いつかない押し方を作らない）"}]},
+    {"id": "pause-hitstop-clock", "prompt": "アクションゲームにポーズメニューと、敵を踏んだ瞬間のヒットストップを入れた。ポーズを閉じると、開く前に鳴った効果音がもう一度鳴ることがある。ポーズ中は敵もパーティクルも止めたいが、メニューの字の点滅とヒットストップの白い光は止めずに動かしたい。今は World の t に毎フレーム dt を足し、ポーズ中は足さないようにしている", "expect": [{"re": "App\\.addClock|Clock\\.(Pace|paceOf|withSlow|Run)|Clock\\.Clock\\[", "why": "遊びの時計を Clock[c] で World に置き、App.addClock で宣言（止める理由と遅くする Plan は Pace で宣言）"}, {"re": "soundsOnClock|realNow", "why": "鳴らす区間は時計が持つ soundsOnClock・点滅と光は実時間 frame#realNow"}], "avoid": [{"re": "Timeline\\.(soundsBetween|soundsSince)", "why": "前の秒を手で渡す（止めて戻すと鳴り直す）"}]},
+    {"id": "e2e-flow", "prompt": "落ち物パズルで「縦の I を空いた列に落とすと 4 行消え、そのあと積み上げて GAME OVER になり、決定で仕切り直せる」を、規則を直すたびに確かめたい。今は動画を撮る Flix の関数に「何秒待ってから押す」を手で書いていて、直して流し直すたびに組み直しで 1 分かかる。待ちが足りないと、途中の場面のまま黙って終わっていて気づけなかった", "expect": [{"re": "\\.flow\\b|App\\.withFlow|bin/fge flow|make flow", "why": "1 行 1 手の e2e/<名前>.flow を App.withFlow の語彙で書き、make flow で組み直さずに流す（until は max 必須で打ち切りは行番号つきの失敗）"}], "avoid": [{"re": "PropertyTest\\.forAll", "why": "でたらめな入力の性質テスト（決まった手順の e2e ではない）"}]},
+    {"id": "start-scene", "prompt": "ノベルゲームの 3 つ目の選択肢の場面だけを直している。毎回タイトルから読み進めて確かめるのが手間で、テストも同じ場面を World の欄を手で書いて組んでいる（動画の入口にも同じ手組みがある）。好きな場面から起動したいし、テストもその場面から始めたい", "expect": [{"re": "App\\.withStarts|START=|startOrBug", "why": "始まりの登録簿 App.withStarts に場面を名前で置き、起動は START=、テストは App.startOrBug で引く"}], "avoid": []},
+    {"id": "yarn-dialogue", "prompt": "ノベルゲームの会話を JSON の rows（speaker・text・選択肢の goto）で書いているが、書き手から「直しにくい・分岐が追えない」と言われた。人が普通のテキストで書けるようにして、知らない話し手や行き先の無い分岐は書いた所の行番号つきで止めたい。どのノードから始めるかはコードで決めている", "expect": [{"re": "\\.yarn|bin/fge yarn", "why": "会話は .yarn（Yarn Spinner の部分集合）で書き、bin/fge yarn build が木の JSON にして検査する"}, {"re": "YarnRunner|Yarn\\.loadOr", "why": "ゲームは書き出した木を Yarn.loadOr で読み、YarnRunner の start・step で台詞と選択肢を出す"}, {"re": "vocab|talk-vocab", "why": "話し手・タグ・開くノードの名前はコードの enum を語彙（vocab.json）に書き出し、build の check が行番号つきで止める"}], "avoid": [{"re": "\\bysc\\b", "why": "公式のコンパイラは使わない（読み手は bin/fge yarn build の 1 つ）"}]},
+    {"id": "yarn-variables", "prompt": "ノベルの新しい雛形を作っている。夜行列車で各駅に止まるたび「誰と一緒に降りたか」を数え、前に一緒に降りた人と合流した場面では台詞を 1 行だけ変え、終点では残った切符の枚数で結末を選びたい。会話は assets/talk/*.yarn で書いている。駅ごと・組み合わせごとにノードを複製するのは避けたいし、切符の枚数はゲームの画面（World）にも出して、セーブにも残したい", "expect": [{"re": "<<declare|<<set|<<if", "why": "数えるのは .yarn の変数（<<declare $x = 0>>・<<set $x to $x + 1>>）、分けるのは <<if>> 〜 <<endif>> と選択肢の行末の <<if>>。宣言の無い変数・型の違いは bin/fge yarn build が行番号つきで止める"}, {"re": "YarnRunner\\.(valueOf|startWith|storageOf|withStorage)|YarnStorage", "why": "値は YarnRunner の YarnStorage にあり、ゲームは valueOf で読み・withStorage で書き・startWith で次の会話へ持ち越し、YarnStorage.toJson でセーブに乗せる"}], "avoid": [{"re": "#(count|ticket|add|inc)\\w*", "why": "数える事をタグでゲームへ渡し、World で数え直す（数える所が 2 つになり、シナリオから条件を書けない）"}]},
+    {"id": "talk-preview", "prompt": "ノベルゲームの会話を assets/talk/novel.yarn で書いている。台詞を 1 行直すたびに、実機でどう見えるか（話し手の名前・窓・選択肢の並び・後ろの場面）を確かめたいが、毎回ゲームを起動して表紙から読み進めている。エディタで今カーソルのある行の画面を出したいし、起動中のゲームをその行まで一気に進めたい", "expect": [{"re": "bin/fge talk (shot|goto)|talk (shot|goto)|App\\.onShotRequest|serveHeadless|App\\.Headless|view=shot", "why": "行からノードを引いて始まり talk node= line= で組む: 窓なしで撮るのは bin/fge talk shot（Studio の会話の画面）、起動中のゲームを飛ばすのは bin/fge talk goto"}], "avoid": [{"re": "SceneRender\\.(sceneOf|shotNames)", "why": "行ごとに描き出しの場面を手で足す（台本が伸びるたびに書き足すことになる）"}]},
+    {"id": "talk-preview-vars", "prompt": "ノベルの台本 assets/talk/novel.yarn で、終点の場面に <<if $tickets == 0>> の枝があり、その中の台詞だけ直している。エディタの行から画面を撮るといつも切符が残っている方の台詞が写ってしまい、直した行が本物の画面でどう見えるか確かめられない。切符が 0 枚の時の画面を、表紙から遊び直さずに撮りたい（起動中のゲームをそこへ飛ばすのでもよい）", "expect": [{"re": "talk (shot|goto)[^\\n]*\\$\\w+=|\\$tickets=0|startAtWith|YarnStorage\\.withArgs", "why": "bin/fge talk shot / goto <file.yarn>:<行> '$tickets=0' で、始まり talk の引数に変数の値を足す（ゲームの始まりが YarnStorage.withArgs → YarnRunner.startAtWith で流す）"}], "avoid": [{"re": "<<set \\$tickets to 0>>|一時的に.*書き換", "why": "確かめるために台本へ <<set>> を足したり書き換えたりする（戻し忘れる）"}]},
+    {"id": "fx-particle-hit", "prompt": "ノベルの雛形で、画面に舞う花びら（fx.json の burst を Fx.burst で出し Fx.drawAll で描いている）をカーソルで触ると 1 枚ずつ数えたい。描いた位置と当たる位置をずらしたくないし、同じ花びらを 2 度数えたくない", "expect": [{"re": "Fx\\.(particles|particlesAt|particlesOfAll|touches)", "why": "Fx.particlesOfAll（drawAll と同じ時刻の取り方）で粒の番号・中心・大きさを取り、Fx.touches で当てる。2 度数えないのは (emitter, index, cycle) を鍵にする"}], "avoid": [{"re": "Render\\.draw\\(|DrawCmd\\.toSpec", "why": "描き物から位置を逆算する（形ごとに置き方が違い、glow は 1 粒が複数枚になる）"}]},
+    {"id": "ui-hit-text", "prompt": "メニュー（ui.json）の見出しの字の下にボタンを縦に並べたら、クリックがボタンの少し上でしか当たらず、字そのものを押しても何も起きない。UiFocus.hitTestUi(ui, design, cursor) で当たりを引いている", "expect": [{"re": "hitTestUiWith|layoutRectsWith|targetsOfUiWith", "why": "hitTestUi は字を測らず 0 の大きさで並べるので、字の兄弟の後ろの枠が上にずれ、字だけの要素に枠が無い。描く時と同じ atlasOf を渡す hitTestUiWith で、描いた所で当てる"}], "avoid": [{"re": "\\+ *1[0-9]\\.0|y *- *1[0-9]", "why": "字の高さぶんを手で足し引きしてずれを埋める（字の大きさ・本が変わると外れる）"}]},
+    {"id": "render-full-scene", "prompt": "描き出し（src/render/SceneRender.flix）で、ShaderDoc の水面の面と、台詞用の別フォント（font_round）の字を同じ 1 枚に描きたい。今は面を描く口とフォントを渡す口が別々で、SoftRaster.renderFull を RasterReq ごと手で組んでいる。ドット絵用の本だけ字の縁をならさずに描きたい", "expect": [{"re": "renderPngFull|HeadlessRender\\.Scene", "why": "HeadlessRender.renderPngFull に Scene（passes・drawables・polygons・surfaces・fonts）を渡す（生成できない指定の知らせと絵の値段の記録も残る）"}, {"re": "fontAntialias|FontAntialias", "why": "字の縁は Scene#fontAntialias（テクスチャ名 → ならすか）で本ごとに決める（表に無い本は絵全体の設定）"}], "avoid": [{"re": "SoftRaster\\.renderFull\\(", "why": "RasterReq を手で組んで SoftRaster.renderFull を直に呼ぶ（知らせと記録が抜ける）"}]},
+    {"id": "video-status", "prompt": "検証用の動画を make の口で何本も撮っているが、今日 2 本が途中で止まったまま半端な mp4 を残していて、誰も開かず気づけなかった。撮った動画のうち最後まで撮れたか・途中で止まったかを一覧で知りたい（動画は debug/video/ にある）", "expect": [{"re": "bin/fge videos status|videos status|\\.video\\.json", "why": "動画の口が書く debug/video/<名前>.video.json を bin/fge videos status が読み、撮れていない（failed・running のまま make が居ない）を一覧にする（Studio のギャラリーの動画も同じ判定）"}], "avoid": [{"re": "ffprobe|mtime", "why": "mp4 の長さや更新時刻から推し量る（途中で止まっても mp4 はできる・古さでは決まらない）"}]},
+    {"id": "gpu-video", "prompt": "動画の口が 1 コマずつ SoftRaster で塗って連番 PNG を書いていて、900 コマの動画 1 本に 4 分かかる。人が見て判断するだけの動画なので、実機と同じように GPU で塗って速くしたい。ただし make compare の基準と今の比べは今まで通り効かせたい。Studio の会話のプレビューも 1 枚 2 秒かかっている", "expect": [{"re": "VideoOut\\.(writeFrames|settingsOf)|GpuShot\\.shotOf|FGE_GPU", "why": "動画は VideoOut.writeFrames（GPU で塗って ffmpeg へ生の画素・鍵は SoftRaster の命令から drawhash.txt）、1 枚撮りは GpuShot.shotOf を App.onShotRequest に渡す。設定は入口の頭で作る（AWT より先に GPU へ繋ぐ）"}], "avoid": [{"re": "glReadPixels|GLFW\\.glfwCreateWindow|LwjglLayer\\.withLwjgl", "why": "ゲームの側で GL の窓や読み戻しを自前で組む（塗りのコアは render_gl の GlOffscreen が持つ）"}]},
+    {"id": "gpu-shot", "prompt": "Studio の会話のプレビュー（窓なしのゲームへの POST /step?view=shot）が、温まった後でも 1 枚 2 秒かかる。人が見るだけの絵なので、実機と同じように GPU で塗って 0.1 秒にしたい。GPU の無い機械では今まで通り描けてほしい", "expect": [{"re": "GpuShot\\.shotOf|App\\.onShotRequest|FGE_GPU", "why": "GpuShot.shotOf(モード, app, 撮る前の整え, SoftRaster の撮り方) を App.onShotRequest に渡す（GL の文脈とフォントを待ち受けの間持つ・GPU が無ければ SoftRaster に戻って 1 行知らせる）。窓なしのゲームは初めの World を ContentCache で取り置く"}], "avoid": [{"re": "glReadPixels|GLFW\\.glfwCreateWindow|LwjglLayer\\.withLwjgl", "why": "ゲームの側で GL の窓や読み戻しを自前で組む（render_gl の GlOffscreen が持つ）"}]},
+    {"id": "render-cache", "prompt": "動画の口（src/render/VideoKit.flix）がコマごとに Filmstrip.renderFrame(SoftRaster.renderToImageCached(…)) で PNG を書いていて、1000 コマの動画を撮るたびに 4 分かかる。直したのは字幕 1 か所なのに、make compare で基準と今の両方を全部塗り直している。前に塗ったのと同じコマは塗らずに済ませたい", "expect": [{"re": "RenderCache\\.(writeFramePng|freshSession)|render-cache", "why": "RenderCache.writeFramePng（コマ列の前に RenderCache.freshSession）に置き換えると、描く命令と命令に出ない入力の鍵（DrawHash）が同じコマはキャッシュから写す。compare の基準と今でキャッシュを共有する"}], "avoid": [{"re": "Hash\\.hash|hashCode|framemd5", "why": "命令を 32 ビットに自前で畳む（テクスチャの中身・フォント・エンジンの版が抜けて偽の緑になる）・出来た動画のコマから比べる（塗った後では遅い）"}]},
+    {"id": "resident-render", "prompt": "make render SHOT=<場面> で絵を 1 枚ずつ直している。1 枚描き直すたびに JVM の立ち上げと温まりで数秒待たされ、そのほとんどが塗る前の準備だと分かった。続けて何枚も描き直す間だけ描き出しを温かいまま残して速くしたい（終わったらメモリを返したい・描いた絵が今までと 1 バイトも違わないことも確かめたい）", "expect": [{"re": "HEADLESS_RESIDENT=1|bin/fge resident|resident (status|verify|stop)|serveJobs|App\\.Headless\\.(job|Job)", "why": "HEADLESS_RESIDENT=1 で窓なしのゲームを常駐させ（入口は <名前>Job(req): Int32 と jobs() を E2e.serveHeadless が serveJobs で束ねる）、寿命が切れるか束の口の後に畳む。素の道と同じかは bin/fge resident verify"}], "avoid": [{"re": "flix repl|nailgun|while true.*make render", "why": "自前の常駐や繰り返しの仕掛けを作る（中身の指紋で古い jar を止める・env を要求ごとに渡す仕組みが無い）"}]},
+    {"id": "doc-refs", "prompt": "マージ前レビューで毎回「docs/ の地図や NOTES.md が、もう消えた関数や無いファイルを指している」と言われる。直した後に文書が古い名前を指したまま残っていないかを、人が読まずに確かめたい。昔の記録の文書（notes/ や古い計画）は今の名前に直さず残したい", "expect": [{"re": "doc-refs", "why": "bin/fge doc-refs（make lint-doc-refs・コミットでは触った .md だけを precommit が見る）が ` ` と表の Mod.name・パス・path:行 を今のソースで引き、近い名前の候補を出す。古い記録の文書は bin/lint-rules/doc-refs.local.json の skip・消した物は ~~消し線~~"}], "avoid": [{"re": "\\b(grep|rg)\\b[^\\n]*\\.md", "why": "文書を文字で 1 本ずつ探す（直すたびに人が読み直すことになる）"}]},
+    {"id": "retarget-field", "prompt": "描き出しの関数が十数個あり、どれも引数 w（ゲームの状態）から w#tutorialDoc を読んでいる。読み元を、同じ関数がもう持っている引数 res（読み込んだ素材）の res#tutorialDoc に替えたい。別の引数 prev や式から読む所は替えたくない。読み替えで w が要らなくなる関数は w も外したい", "expect": [{"re": "retarget-field|--retarget", "why": "bin/fge refactor retarget-field --label tutorialDoc --from w --to res（受け手が引数 w そのものの読みだけを索引で当てる・w が空く def は --drop-from）"}], "avoid": [{"re": "\\bsed\\b[^\\n]*#tutorialDoc|\\bperl\\b[^\\n]*#tutorialDoc", "why": "文字で置き換える（prev#tutorialDoc や局所の w まで替え、空いた w は check で落ちる）"}]},
+    {"id": "read-decl", "prompt": "状態を動かす関数 1 つ（名前は分かっている・どのファイルにあるかは知らない）の中身を読みたい。2000 行あるファイルを丸ごと読むと長いので、その関数の doc コメントと本文だけを、どのファイルの何行目かと一緒に見たい。名前を一部しか覚えていない関数も、使っている所ではなく宣言だけを探したい", "expect": [{"re": "refactor show", "why": "bin/fge refactor show <Mod.f>（コンパイラの索引で宣言の範囲を引き、doc コメントと本文だけ）"}, {"re": "refactor search", "why": "bin/fge refactor search <名前の一部>（宣言だけを当たりの良い順に。使う所は拾わない）"}], "avoid": [{"re": "\\b(grep|rg)\\b[^\\n]*\\bdef\\b", "why": "字で def の行を探す（使う所やコメントも拾い、本文の終わりは分からない）"}]},
+    {"id": "context-before-edit", "prompt": "状態を動かす関数 1 つの返す値の形を変えたい。書き換える前に、その関数の本文と、呼んでいる関数（直す先）、その関数が呼んでいる関数、使っている型を、何度も探し直さずにまとめて見たい", "expect": [{"re": "refactor context", "why": "bin/fge refactor context <Mod.f>（本文・呼び手・呼ぶ先・型を 1 回で）"}], "avoid": [{"re": "\\b(grep|rg)\\b[^\\n]*\\s-[a-zA-Z]*w", "why": "字で名前を探す（同じ名前の別物を拾い、use 越しの素の名前を落とす）"}]},
+    {"id": "find-usages", "prompt": "状態を動かす関数 1 つ（名前は分かっている）の引数を 1 つ増やしたい。直す前に、その関数を使っている所が全部でいくつ・どの関数の中にあるかを知り、呼んでいる側を順に直したい。同じ名前の別の mod の関数や、use で入れて短い名前で呼んでいる所も取り違えずに数えたい", "expect": [{"re": "refactor usages", "why": "bin/fge refactor usages <Mod.f>（コンパイラが解決した名前で使われ所を数える・--callers で使う関数ごと・全部は build/refactor/last-usages.txt）"}], "avoid": [{"re": "\\b(grep|rg)\\b[^\\n]*\\s-[a-zA-Z]*w", "why": "文字で名前を探す（短い名前は同じ名前の別物を拾い、長い名前は use 越しの素の名前を落とす）"}]},
+    {"id": "enum-match-sites", "prompt": "状態の enum に case を 1 つ足したい。足す前に、その enum を match している所が全部でいくつあって、そのうち `case _` で残りを受けている所がどこかを知りたい（足した case が黙って _ に落ちる所を先に見つけたい）", "expect": [{"re": "fge refactor match-sites|refactor match-sites", "why": "bin/fge refactor match-sites <Enum> --catch-all（コンパイラの索引で match の位置・腕の数・_ の腕）"}], "avoid": [{"re": "grep[^\n]*case _|rg[^\n]*case _", "why": "文字で case _ を探す（どの enum への match か決められない・use で入れた名前を落とす）"}]},
+    {"id": "expand-catch-all", "prompt": "状態の enum への match にある `case _ =>` を、残りの case を 1 つずつ書いた腕に置き換えたい（case を足した時に型検査が知らせるように）。数が多いので手で書かずに済ませ、書き換えた後に壊れていないかも確かめたい", "expect": [{"re": "refactor expand-wildcard", "why": "bin/fge refactor expand-wildcard --enum <Enum>（dry-run の diff → --apply で書いて make check・落ちたら戻す）"}], "avoid": [{"re": "sed[^\n]*case _|perl[^\n]*case _", "why": "文字で case _ を置き換える（どの enum への match か・束ねた変数を使う腕かを決められない）"}]},
+    {"id": "remove-test-only-defs", "prompt": "本体の pub な関数のうち、テストからしか呼ばれていない物や、どこからも呼ばれていない物を消したい。それを試すだけのテストも一緒に片付けて、消した後にテストが通ることも確かめたい", "expect": [{"re": "refactor remove-dead", "why": "bin/fge refactor remove-dead --with-tests（dry-run の diff → --apply で消して make test・落ちたら戻す）"}], "avoid": [{"re": "grep[^\n]*pub def|rg[^\n]*pub def", "why": "文字で pub def と呼び出しを探す（use で入れた名前・同じ名前の別の mod を取り違える）"}]},
+    {"id": "field-to-accessor", "prompt": "状態の record の欄を別の所へ移したいので、まず欄を直に読む所（w#欄）と書く所（{ 欄 = v | w }）を全部、読む関数と書く関数の呼び出しに置き換えたい。同じ名前の欄を持つ別の record は触らず、置き換えた後にコンパイルが通るかも確かめたい", "expect": [{"re": "refactor field-to-accessor", "why": "bin/fge refactor field-to-accessor --label <欄> --receiver <型> --reader <読みの口> --mapper <書きの口>（型つきの索引で受け手を当てる・dry-run の diff → --apply で make check・落ちたら戻す）"}], "avoid": [{"re": "sed[^\\n]*#|perl[^\\n]*#", "why": "文字で #欄 を置き換える（受け手がどの record か決められない）"}]},
+    {"id": "remove-unused-field", "prompt": "状態の record の型にもう誰も読み書きしない欄が 1 つある。型からその欄を消したいが、その record を組み立てている所（初期値・テストの作り手・描き出し）にも欄が書いてあって、全部直さないとコンパイルが通らない。本当に読み書きが 0 件かも確かめてから、まとめて消したい", "expect": [{"re": "refactor remove-field", "why": "bin/fge refactor remove-field --label <欄> --receiver <型>（読み書きが残れば場所を並べて止める・型と組み立ての式から消す・dry-run の diff → --apply で make check・落ちたら戻す）"}], "avoid": [{"re": "sed[^\\n]*= *\\{|perl[^\\n]*= *\\{", "why": "文字で欄の行を消す（同じ名前の欄を持つ別の record の組み立てまで消す）"}]},
+    {"id": "add-field-to-constructions", "prompt": "状態の record の型に欄を 1 つ足した。その record を組み立てている所がいくつもあって、そこに既定の値（0 や None）を書き足さないとコンパイルが通らない。型の別名を通して組み立てている所も漏らさず足したい", "expect": [{"re": "refactor fix-construction", "why": "bin/fge refactor fix-construction --label <欄> --receiver <型> --value <式>（組み立ての式を欄の組で当てる・別名を通した物も拾う・dry-run の diff → --apply で make check）"}], "avoid": [{"re": "sed[^\\n]*\\}|perl[^\\n]*\\}", "why": "文字で } の前に書き足す（どの record の組み立てか決められない）"}]},
+    {"id": "add-field", "prompt": "状態の record の型に欄を 1 つ足したい（型の宣言にはまだ無い）。その record を組み立てている所が初期値・テストの作り手・描き出しの十数か所にあり、どこにも同じ初めの値を、決まった欄の次の位置に書き足したい。組み立てる所の中には、その値と同じ物をすでに引数や let で持っている所もあるので、そこではその名前を使いたい。型と組み立てをまとめて直し、コンパイルが通るかも確かめたい", "expect": [{"re": "refactor add-field", "why": "bin/fge refactor add-field --receiver <型> --label <欄> --type <型> --value <式> --after <欄>（型と組み立ての式を 1 つの patch で・同じ値の局所の名前は自動・型だけ同じ候補は --prefer-local・dry-run の diff → --apply で make check・落ちたら戻す）"}], "avoid": [{"re": "sed[^\\n]*\\}|perl[^\\n]*\\}", "why": "文字で } の前に書き足す（どの record の組み立てか決められない・位置もそろわない）"}]},
+    {"id": "change-case-shape", "prompt": "場面の enum の case のうち、今は中身を持たない case に、その場面だけの UI の状態（1 つの型）を持たせたい。その case を作っている所には初めの値を入れ、match で当てている所は新しい中身を使わずに受けるだけにしたい。作る所も当てる所も複数のファイルに散らばっているので、漏らさず直してコンパイルが通るか確かめたい", "expect": [{"re": "refactor change-case-shape", "why": "bin/fge refactor change-case-shape --case <Enum.Case> --add <型> --value <初めの値>（宣言・作る所・当てる所を索引で全部・当てる所は _・case を関数として渡す所は fix・dry-run の diff → --apply で make check・落ちたら戻す）"}], "avoid": [{"re": "sed[^\\n]*case |perl[^\\n]*case ", "why": "文字で case の名前を置き換える（作る所と当てる所を見分けられない・関数として渡す所を壊す）"}]},
+    {"id": "change-signature", "prompt": "描く関数の引数を (ctx, w) から、描く元の Env と場面の入力 In の 2 つに替えたい。呼んでいる所は何十か所もあり、そこでは今の引数から Env と In を作る関数を呼んで渡す形にしたい。関数を値として渡している所があれば先に知りたいし、替えた後にコンパイルが通るかも確かめたい", "expect": [{"re": "refactor change-signature", "why": "bin/fge refactor change-signature --def <Mod.f> --params '<新しい並び>' --args '<元の引数の名前で書いた式>'（宣言・本体の let・呼ぶ所を全部・関数として渡す所は fix・dry-run の diff → --apply で make check・落ちたら戻す）"}], "avoid": [{"re": "sed[^\\n]*\\(ctx|perl[^\\n]*\\(ctx", "why": "文字で呼び出しの引数を置き換える（同じ名前の別の関数・関数として渡す所・式の引数を取り違える）"}]},
+    {"id": "move-def", "prompt": "描き方のファイルにある矩形と秒を返す関数 2 つを、規則の側も使うので新しい mod へ移したい。呼んでいる所は修飾名で呼ぶ所・use で入れて短い名前で呼ぶ所・同じファイルの中の素の名前と混ざっていて、10 ファイル以上にある。移す関数が元のファイルの非公開の関数を使っていれば先に知りたいし、移した後にコンパイルが通るかも確かめたい", "expect": [{"re": "refactor move", "why": "bin/fge refactor move --def <Mod.f,Mod.g> --to <Mod2>（宣言を doc ごと移し、修飾名・use・元の mod の中の素の名前を全部直す・非 pub の物を使えば fix と --with・dry-run の diff → --apply で make check・落ちたら戻す）"}], "avoid": [{"re": "\\b(sed|perl)\\b[^\\n]*s/[A-Z]\\w*\\.", "why": "文字で修飾名を置き換える（use で入れた短い名前・元の mod の中の素の名前・同じ名前の別物を取り違える）"}]},
+    {"id": "make-private", "prompt": "本体の pub な関数のうち、同じ mod の中からしか呼ばれていない物が何十本もある。消すのではなく、外から見えないようにしたい。外の mod から呼ぶ所・use で入れている所・テストから使っている物と、Makefile から名前で呼ばれる入口は外さずに残したいし、外した後にコンパイルが通るかも確かめたい", "expect": [{"re": "refactor make-private", "why": "bin/fge refactor make-private（--def を省くと同じ mod の中だけの pub を全部・外の呼び出し・use・テスト・参照 0・.flix の外に名前が出る物は fix・dry-run の diff → --apply で make check・落ちたら戻す）"}], "avoid": [{"re": "\\b(sed|perl)\\b[^\\n]*pub def", "why": "文字で pub を消す（外の mod の use・テスト・名前で呼ばれる入口を見ない）"}]},
+    {"id": "remove-use", "prompt": "lint の unused-use（使っていない use・import）が 40 件ほど上限に入っている。use A.{b, c, d} の波括弧の中の 1 つだけ使っていない物も多い。lint と同じ判定で消して、空になった use は行ごと消し、消した後にコンパイルが通るかも確かめたい", "expect": [{"re": "refactor remove-use", "why": "bin/fge refactor remove-use（flixlint の unused-use と同じ判定・<file>:<行> か <file> --all か --all・波括弧の中の 1 つを消し空になった use は行ごと・dry-run の diff → --apply で make check・落ちたら戻す）"}], "avoid": [{"re": "\\b(sed|perl)\\b[^\\n]*\\buse\\b", "why": "文字で use を消す（効果・trait・Java の型にだけ書いた名前を見ない）"}]},
+    {"id": "remove-param", "prompt": "作業の途中で別の所のコンパイルがまだ通らないが、ある関数の引数の 1 つを本体が使わなくなり、使わない引数としてもコンパイラに止められている。その引数を宣言と、何か所もある呼んでいる所の全部から消したい。ほかの誤りが残ったままでも、消したことで新しい誤りが出ていないかは確かめたい", "expect": [{"re": "refactor remove-param", "why": "bin/fge refactor remove-param --def <Mod.f> [--param x]（resolved の索引で足りる・--apply の確かめは書く前にも流し、前から落ちていれば新しい誤りが 0 の時に通す・本体が使う引数は fix）"}], "avoid": [{"re": "\\b(sed|perl)\\b[^\\n]*\\(", "why": "文字で呼び出しの引数を消す（同じ名前の別の関数・関数として渡す所・式の引数を取り違える）"}]},
+    {"id": "rewrite-expr", "prompt": "lint が「Option を None と == / != で比べない」で 11 か所、「中身を使わない Some(_) と None だけの match」で 5 か所を数えている。x != None は Option.nonEmpty(x) に、x == None は Option.isEmpty(x) に、その match は if (Option.nonEmpty(x)) a else b に、まとめて書き替えたい。x の所は f(a, b) のような式も、欄の読みもあり、None が左にある所もある。書き替えるとコメントが消える所は手で直したいので先に知りたいし、書き替えた後にコンパイルが通るかも確かめたい", "expect": [{"re": "refactor rewrite", "why": "bin/fge refactor rewrite --rule option-none-compare,match-some-wild か --from '$x != None' --to 'Option.nonEmpty($x)'（式の木で当てる・左右と腕の順は問わない・コメントが消える所は fix・dry-run の diff → --apply で make check・落ちたら戻す）"}], "avoid": [{"re": "\\b(sed|perl)\\b[^\\n]*None", "why": "文字で None との比べを置き換える（式の括弧・左右・別の enum の None を取り違える）"}]},
+    {"id": "extract-function", "prompt": "lint が「同じ形の式を書き写している」と数えている。ワールドを一定の秒ずつ進めたコマの列を作る式が、動画の道具の 4 か所にほぼ同じ形で書いてあり、違うのはコマの数・刻みの秒・始まりの状態の所と、中の変数の名前だけ。1 つの関数に出して、4 か所をその呼び出しにしたい。引数と戻りの型を手で書かずに済ませ、書いた後にコンパイルが通るかも確かめたい", "expect": [{"re": "refactor extract-function", "why": "bin/fge refactor extract-function <file>:<行>:<桁>-<行>:<桁> --name <Mod.f> --all（自由変数を引数に・型は索引から・汎用の AST で同じ形の所を全部呼び出しへ・dry-run の diff → --apply で make check・落ちたら戻す）"}], "avoid": [{"re": "\\b(sed|perl)\\b[^\\n]*foldLeft", "why": "文字で式を置き換える（変数の名前の違う写し・式の括弧を取り違える）"}]},
+    {"id": "extract-type-alias", "prompt": "lint が「同じ欄の組の record の型を 2 か所以上にそのまま書いている」で 40 件ほど数えている。{ right = Float64, middle = Float64 } のような型が引数や戻りの型に何か所も書いてあり、欄の並びが違う所もある。名前の付いた型を 1 つ置いて、全部その名前で書きたい。同じ組の名前がもうある所はそれを使いたいし、書き替えた後にコンパイルが通るかも確かめたい", "expect": [{"re": "refactor extract-type-alias", "why": "bin/fge refactor extract-type-alias --name <Mod.Name> --from '<型の字>' か <file>:<行>（欄の組で当てる・欄の順は問わない・もうある同じ組の alias は使う・dry-run の diff → --apply で make check・落ちたら戻す）"}], "avoid": [{"re": "\\b(sed|perl)\\b[^\\n]*\\{", "why": "文字で record の型を置き換える（欄の順の違う物・式の record・別の型の欄を取り違える）"}]},
+    {"id": "dist-linux", "prompt": "依頼主が Steam Deck（Linux）でこのゲームを遊びたいと言っている。Deck には Java も開発の道具も入っていない。Deck にコピーしてそのまま起動できる配布物を作りたい", "expect": [{"re": "dist-linux", "why": "make dist-linux（jar・固定版の Temurin の JRE・run.sh・assets を build/dist/<名前>-linux-x64.tar.gz へ。置き方は engine の docs/steam-deck.md）"}], "avoid": [{"re": "jpackage|\\bjlink\\b", "why": "JRE の組み立てを手で始める（版の固定・SHA-256 の照合・実行権限と symlink の運びを書き直すことになる）"}]},
+    {"id": "dist-macos-windows", "prompt": "友だちにこのゲームを遊んでもらいたい。1 人は Apple Silicon の Mac、もう 1 人は Windows で、どちらも Java は入っていない。ダブルクリックで起動できる物を、どの版か分かる名前で作って渡したい", "expect": [{"re": "dist-(macos|windows|all)", "why": "make dist-macos / dist-windows（または dist-all）。.app と run.bat に JRE を同梱し、ファイル名にゲームのコミットが入る。初回の開き方は engine の docs/dist.md"}], "avoid": [{"re": "jpackage|\\bjlink\\b|launch4j", "why": "JRE と起動の組み立てを手で始める（版の固定・SHA-256 の照合・書き込み先の振り分けを書き直すことになる）"}]},
+    {"id": "pad-start-menu", "prompt": "ゲームパッドの Start ボタンでポーズのメニューを開きたい。今は Enter を決定に使っていて、パッドの Start を押すと決定と同じに動いてしまう。キーボードでは P でも開けるようにしたい。Steam Deck で遊ぶ時だけ案内のボタンの絵を替えたい", "expect": [{"re": "Key\\.Menu|padKind", "why": "Start は Key.Menu（Enter ではない・0.59.0 から）。pause に P と Menu を並べる。機種は frame#padKind（GamepadMap.PadKind.Steam）。engine の docs/gamepad.md"}], "avoid": [{"re": "glfwGetGamepadState|GLFW_GAMEPAD_BUTTON_START|glfwGetJoystickGUID", "why": "ゲームの側で GLFW を直に読む（エンジンがキーへ読み替え、機種も Frame に置いている）"}]},
+    {"id": "fullscreen-toggle", "prompt": "設定の画面に「全画面」のオン / オフを足したい。選んだらその場でウィンドウと全画面が切り替わり、次の起動もその窓で開くようにしたい", "expect": [{"re": "App\\.withFullscreen", "why": "App.withFullscreen（World の設定から宣言し、App が実機のフレームの後に当てる。残すのは App.addOutput）"}], "avoid": [{"re": "Game\\.setFullscreen\\(", "why": "系や main から setFullscreen を直に呼ぶ（系は純粋で呼べない・/step や F8 の再開で World とずれる）"}]},
+    {"id": "timeline-after-all", "prompt": "戦いの演出で、通常攻撃はアイコンが全部着いてから、カードの発動はゲージが動き終えてから始めたい。手番にカードが何枚出るかで待つ物が変わるので、仮の時刻を置いて後で直すのはやめたい", "expect": [{"re": "Timeline\\.afterAll|Place\\.AfterAll", "why": "Timeline.afterAll（基準ごとに間を書き、全部が済んだ後に置く。1 回の build で解く）"}], "avoid": [{"re": "1\\.0e6|farSeconds", "why": "仮の遠い時刻を置いて後で置き直す"}]},
+    {"id": "novel-ruby-bookmark", "prompt": "ノベルで、難しい漢字にふりがなを振りたい。台本は .yarn のまま書きたい。それと、読んでいる所でセーブして、ロードしたら同じ行・同じ変数から読み直せるようにしたい", "expect": [{"re": "\\[ruby=|placeRuby|rubiesOf", "why": "ルビは yarn の [ruby=よみ]字[/ruby] → RichText.placeRuby（行数は rubyLineCountBy）"}, {"re": "bookmarkOf|YarnRunner\\.resume", "why": "セーブは YarnRunner.bookmarkOf、ロードは resume（手本 sound-novel-starter の World.saveSlot / loadSlot）"}], "avoid": [{"re": "startAt\\(", "why": "行の番号で探して始め直す（選んだ枝の <<set>> と変数が戻らない）"}]},
+    {"id": "screen-enum-world", "prompt": "タイトル画面とゲームオーバー画面を足したい。今は遊ぶ画面しかない", "expect": [{"re": "enum\\s+(Screen|Scene)\\b|World\\.(Screen|Scene)\\b|(Screen|Scene)\\.(Title|GameOver)|case\\s+(Title|GameOver)\\(", "why": "画面は World の screen の enum に case を足し、その画面だけの値は payload に持つ（docs/flix-conventions.md「World は遊びの状態だけを持つ」）"}], "avoid": [{"re": "isTitle\\s*=|phase\\s*=\\s*\"", "why": "Bool や String の欄で画面を分けない（網羅の検査が効かず、画面ごとの値が全部の画面に居残る）"}]},
+    {"id": "resources-outside-world", "prompt": "World に Doc やアトラスやシェーダーの Spec を全部平らに持っていて重い。読むだけの物を World の外に出したい。保存即反映も今どおり効かせたい", "expect": [{"re": "Resources\\.(With|of|system|view|read|reloadRow)", "why": "App の w を Resources.With[res, w] にし、系・絵は Resources.system / view、Doc の読み直しは Resources.reloadRow で描く元を替える"}], "avoid": [{"re": "resources = ", "why": "組を record で直に組まない（Resources.of・読み直しの行を使う。forbid の pair-construct が止める）"}]},
+    {"id": "hitch-shader-rebuild", "prompt": "遊んでいてキャラを動かした瞬間だけカクつく。原因を探して直したい。直ったかも確かめたい", "expect": [{"re": "hitch\\.md|debug/perf/hitches|HitchDetector", "why": "make debug で遊ぶと重いコマだけ debug/perf/hitches/…/hitch.md に推定原因つきで書き出される。まずそれを読む"}, {"re": "/perf|作ったシェーダー", "why": "直した後は同じ手を POST /perf で流し、作ったシェーダーの数で比べる（ms は機械とドライバのキャッシュで変わる）"}], "avoid": [{"re": "FLIX_GE_FRAME_STATS", "why": "600 コマの平均と p99 だけで、どの手の後のどのコマが何で重いかは出ない（ヒッチの記録を使う）"}]},
+    {"id": "shader-param-per-frame", "prompt": "宣言シェーダーの面のピントの位置を、主人公の画面の高さに合わせて毎フレーム動かしたい。実機で毎フレームシェーダーを作り直したくない", "expect": [{"re": "\"param\"|Field\\.Param", "why": "ShaderDoc の param"}, {"re": "withShaderParams", "why": "Render.withShaderParams で面ごとに値を渡す"}], "avoid": [{"re": "Field\\.Const\\([^)]*focus", "why": "毎フレーム変わる数を Const に入れる（実機が GLSL を作り直す）"}]},
+    {"id": "shader-normalize-light", "prompt": "宣言シェーダーで壁の面の明るさを、面の向きと灯りへの向きの掛け合わせで付けたい。灯りへの向きは長さ 1 にそろえたいが、平方根の書き方が分からない", "expect": [{"re": "\"sqrt\"|UnOp\\.Sqrt|normalized|lengthOf", "why": "ShaderDoc の math1 sqrt か ShaderDoc.normalized / lengthOf"}], "avoid": [{"re": "近似|approx", "why": "平方根を近い値で代わりにする"}]},
+    {"id": "room-3d-depth", "prompt": "Blender で作った家具（OBJ）を並べた部屋を一人称で見せたい。今は面を遠い順に並べて 2D の多角形で描いていて、前後が崩れるし毎フレーム重い", "expect": [{"re": "Render\\.scene3d|Item\\.Scene3d", "why": "3D の場面を描き物 1 つで置く Render.scene3d"}, {"re": "Mesh3d\\.fromObj", "why": "OBJ はエンジンの Mesh3d.fromObj で読む"}], "avoid": [{"re": "sortBy\\([^)]*(depth|dist)", "why": "面を距離で並べ替えて 2D の多角形で描く（深度を使わない）"}]},
+    {"id": "skinned-character-3d", "prompt": "Blender でボーンを入れた人のキャラを .glb で書き出した。3D の部屋に立たせて、近づいて決定ボタンを押したら敬礼の動きをさせたい", "expect": [{"re": "Gltf\\.(load|fromGlb)", "why": ".glb はエンジンの Gltf.load で形・骨・動きごと読む"}, {"re": "AnimationClip3d\\.sample|Pose3d\\.(compute|blend)|withPose", "why": "クリップを時刻で取り出し Pose3d.compute → Scene3d.withPose で骨を渡す"}], "avoid": [{"re": "Mesh3d\\.fromObj", "why": "骨の無い OBJ を姿勢ごとに書き出して差し替える（骨の動きを使わない）"}]},
+    {"id": "textured-furniture-3d", "prompt": "Blender で木目のテクスチャと法線マップを貼った机を .glb で書き出した。3D の部屋に置いて、絵と凹凸が見えるように描きたい", "expect": [{"re": "Gltf\\.(loadTextured|fromGlbTextured)", "why": "絵つきの .glb は Gltf.loadTextured で材質ごとの部品と絵ごと読む"}, {"re": "textures", "why": "読んだ絵は Scene3dCmd の textures に入れて場面から引かせる"}], "avoid": [{"re": "Mesh3d\\.fromObj", "why": "OBJ に書き出し直して絵を捨てる"}]},
+    {"id": "hdr-tonemap-fxaa", "prompt": "3D の部屋で松明のそばの床が真っ白に飛ぶ。明るい所の段差を残して、細い物の縁のギザギザも消したい", "expect": [{"re": "withHdr|Rgba16Float", "why": "場面の Pass を HDR にして 1 を超えた明るさを切らずに持つ"}, {"re": "PostProcess\\.tonemapped", "why": "最後に PostProcess.tonemapped / tonemappedWith でなめらかに 0..1 へ収める"}, {"re": "fxaaSpec", "why": "縁は PostProcess.fxaaSpec の面でならす"}], "avoid": [{"re": "Float64\\.min\\(1\\.0", "why": "1 で切って白飛びを隠す"}]},
+    {"id": "load-progress", "prompt": "起動すると起動画面の「preparing game...」のまま数秒止まって、macOS のカーソルが応答なしのくるくるになる。main で Doc と 3D の形を読んでいる所が重い", "expect": [{"re": "LoadProgress\\.(mapWithProgress|parMapWithProgress|report)", "why": "読み込みを LoadProgress で区切り、エンジンに起動画面を進めて poll させる"}, {"re": "LoadProgress\\.runNoop", "why": "描き出し・テスト・flow の入口は知らせを捨てる handler を張る"}], "avoid": [{"re": "glfwPollEvents|RenderSplash", "why": "ゲームが自分で poll したり起動画面を描いたりする"}, {"re": "new Thread\\(|Executors\\.", "why": "スレッドを自分で立てて待つ（parMapWithProgress を使う）"}]},
+    {"id": "load-and-launch", "prompt": "make debug で起動すると、make run より数秒遅い。起動中に Doc を 2 回読んでいるらしい。flow の記録と再生は今のまま使いたい", "expect": [{"re": "App\\.loadAndLaunch", "why": "main で Doc を読んで App を組む所ごと App.loadAndLaunch に渡す（記録する起動でも読み直さず、読んだ中身を start の行に載せる）"}], "avoid": [{"re": "FLOW_RECORD=0|withDebug\\(false\\)", "why": "記録を止めて速くする（記録と再生が使えなくなる）"}]},
+    {"id": "lightmap-baked", "prompt": "Blender で部屋の光と影を計算して絵に書き出した（2 本目の UV つきの glb と、光の PNG）。この部屋を 3D の場面で表示し、懐中電灯の光も足したい", "expect": [{"re": "withLightmap", "why": "ベイクした光は Scene3d.withLightmap で置いた物に付ける"}, {"re": "SpotLight|spotLights", "why": "懐中電灯は動く光（スポット）として足す"}], "avoid": [{"re": "Field\\.Tex\\(\\s*\\{\\s*name\\s*=[^}]*[Ll]ightmap", "why": "材質の木で lightmap を掛ける（環境光が二重に足される）"}]},
+    {"id": "spot-soft-edge", "prompt": "一人称の 3D の部屋で、懐中電灯の光の輪の縁を柔らかくしたい（今は輪の縁がくっきり床に映る）", "expect": [{"re": "innerFovY", "why": "スポットの内側の角（Scene3d.SpotLight.innerFovY）で縁を広くぼかす"}], "avoid": [{"re": "pointLights[^\\n]*lantern|lantern[^\\n]*PointLight", "why": "懐中電灯を点光源で代わりにする"}]},
+    {"id": "mouse-look-capture", "prompt": "一人称の 3D の部屋で、マウスを動かすと視点が回るようにしたい（FPS のように）", "expect": [{"re": "withMouseCapture", "why": "App.withMouseCapture でカーソルを窓にキャプチャする"}, {"re": "mouseDelta", "why": "視点は frame#mouseDelta（キャプチャしても出る動いた量）で回す"}], "avoid": [{"re": "mouseDown[^\\n]*cursor#x\\s*-", "why": "左ドラッグの座標の差で回す（窓の端で止まる）"}]},
+    {"id": "gltf-node-by-name", "prompt": "Blender で door_201 という名前を付けた扉を、glb の中から見つけて蝶番のまわりに回したい（蝶番は扉のオブジェクトの原点）", "expect": [{"re": "findNode|nodesWithPrefix|nodesByName", "why": "Model3d.findNode でノードを名前で引く"}, {"re": "#world|nodeOrigin|partLocalToNode", "why": "回す軸はノードの world の行列（原点）から取る"}], "avoid": [{"re": "Mesh3d\\.bounds\\([^)]*\\)[^\\n]*(door|hinge)", "why": "形の大きさや位置から扉を探す"}]},
+    {"id": "gltf-emissive", "prompt": "Blender で光る看板（emission の絵）を付けた glb を置いたら光らせたい", "expect": [{"re": "loadTextured", "why": "Gltf.loadTextured が glb の emissive を emission にする"}], "avoid": [{"re": "withEmission\\([^)]*decode", "why": "emissive の絵を別に読んで自前で付ける"}]},
+    {"id": "gpu-time-overlay", "prompt": "F3 で GPU の時間と CPU の時間を画面の隅に出したい", "expect": [{"re": "withDiagnostics", "why": "App.withDiagnostics で描く側の診断を集める"}, {"re": "summaryLines|gpuNs", "why": "ctx#diagnostics の GPU の時間（FrameDiagnostics.summaryLines）を出す"}], "avoid": [{"re": "System\\.nanoTime", "why": "自前で時計を測る（GPU の仕事は swap の待ちに混ざって見えない）"}]},
+    {"id": "walk-3d-collide", "prompt": "Blender で当たり判定の箱を置いた glb がある。この中を一人称で歩き、壁で止まり、階段を上れるようにしたい", "expect": [{"re": "moveAndSlide", "why": "歩く体は CharacterBody3d.moveAndSlide に任せる"}, {"re": "boxOfNode|boxesOfNodes|CollisionWorld3d", "why": "箱は glb のノードから CollisionShape3d.boxOfNode で作り、CollisionWorld3d にまとめる"}], "avoid": [{"re": "def\\s+(pushOut|resolve)\\b", "why": "押し出しを自前で書く"}]},
+    {"id": "inspect-ray", "prompt": "一人称の部屋で、画面の真ん中に見えている物の名前を出し、E を押したらその物の説明を出したい", "expect": [{"re": "forwardRay|screenPointToRay", "why": "クロスヘアの先は Camera3d.forwardRay のレイで引く"}, {"re": "pickNearest|hitBox", "why": "当たる物は Ray3d.pickNearest（壁も的に入れて遮る）"}], "avoid": [{"re": "Vec3\\.dot\\([^)]*forward", "why": "距離と向きの内積で見ている物を決める（壁の向こうを選ぶ）"}]},
+    {"id": "sky-gradient-3d", "prompt": "3D の屋外の場面で、空を上は濃い藍・地平は明るい色のグラデーションにしたい", "expect": [{"re": "gradientSky", "why": "空は Scene3d.gradientSky を場面の sky に渡す（見上げる角・向き・画角が全部合う）"}], "avoid": [{"re": "shaderFill[^\\n]*Ramp", "why": "2D の面を場面の下に敷いて地平の高さを手で計算する"}]},
+    {"id": "glass-3d", "prompt": "3D の部屋の窓に、向こうが少し透けて見える色つきのガラスを入れたい", "expect": [{"re": "withAlphaBlend|alphaMode", "why": "半透明は Scene3d.withAlphaBlend（glb の alphaMode: BLEND はそのまま読まれる）"}], "avoid": [{"re": "withCutout\\(true", "why": "cutout（抜くだけ）で透けて見せようとする"}]},
+    {"id": "msaa-thin-3d", "prompt": "3D の外階段の細い手すりが、歩くとちらちら欠けて見える", "expect": [{"re": "withMsaa", "why": "場面の Pass を RenderTarget.withMsaa(4, ..) にする（cutout の縁も alpha to coverage でなめらかになる）"}], "avoid": [{"re": "scale\\s*=\\s*2\\.0", "why": "Pass を大きく描いて縮める（scale は 1 以下で、塗りが 4 倍になる）"}]},
+    {"id": "fixed-dt-shots", "prompt": "実機の画面で、同じ場面から起動したら 2 コマ目以降まで毎回同じ絵になるかを、何コマか撮って比べて確かめたい", "expect": [{"re": "FLIX_GE_FIXED_DT", "why": "dt を固定する環境変数（実時間の dt だと 2 コマ目から撮るたびに変わる）。撮るのは FLIX_GE_FRAME_SHOT・隠しウィンドウは FLIX_GE_HIDDEN"}], "avoid": [{"re": "Thread\\.sleep|System\\.nanoTime", "why": "自前で時計を止める・測る（dt は実機の窓が配る。固定は環境変数で足りる）"}]},
+    {"id": "num-sqrt-angle", "prompt": "敵が主人公の方を向いて、距離が 80 より近ければ追いかけるようにしたい。向きの角度と距離を計算したい", "expect": [{"re": "Num\\.(sqrt|atan2)|Vec2\\.(length|distance|angle)", "why": "平方根と角は Num.sqrt・Num.atan2（2D の長さと角は Vec2.length / distance / angle）"}], "avoid": [{"re": "Math\\.(sqrt|atan2)|Vec2\\.(sqrt|atan2)\\(", "why": "java.lang.Math を直に呼ぶ・Vec2 の旧い名前（0.84.0 で消えた）を使う"}]},
+    {"id": "empty-frame-test", "prompt": "テストで、スペースキーを押した 1 コマを系に渡して、ジャンプが始まるかを確かめたい", "expect": [{"re": "App\\.emptyFrame|App\\.frameOf", "why": "1 コマは { down = …, justPressed = … | App.emptyFrame() } の更新か App.frameOf で組む"}], "avoid": [{"re": "padKind\\s*=\\s*(GamepadMap\\.)?PadKind\\.Unknown", "why": "App.Frame を字で全部の欄を書く（次の版で欄が増えるとテストが止まる）"}]},
+    {"id": "diagnostics-in-view", "prompt": "F3 を押すと画面の左上に CPU と GPU の時間の行が出て、もう一度押すと消えるようにしたい。診断の値は World に入れたほうがいい？", "expect": [{"re": "ctx#diagnostics", "why": "View か HUD で ViewCtx#diagnostics から描く"}, {"re": "summaryLines", "why": "行は FrameDiagnostics.summaryLines で作る"}], "avoid": [{"re": "(?:=|\\(|,|\\|>)\\s*frame#diagnostics", "why": "系で Frame#diagnostics を読んで World へ写す（再生と食い違う・lint-forbid の frame-diagnostics-in-system）"}]},
+    {"id": "dropped-lights-3d", "prompt": "3D の街で街灯を 20 本置いたら、遠くの街灯が光らない。いくつの光が描かれていないかを F3 の表示で見たい", "expect": [{"re": "droppedPointLights|summaryLines", "why": "ctx#diagnostics の scene3dCounts#droppedPointLights（FrameDiagnostics.summaryLines の 3D の行に出る）"}], "avoid": [{"re": "sortBy\\([^)]*dist[^\\n]*pointLights|List\\.take\\(8", "why": "ゲームの側で近い順に 8 本を選び直す（engine の pickLights が同じ選び方をする）"}]},
+    {"id": "scene3d-linear-color-retune", "prompt": "engine を 0.78 から今の版に上げたら 3D の部屋の色と明るさが変わった。前の見え方に戻したい。project.json に何か書けば戻る？", "expect": [{"re": "ambient", "why": "戻す旗は無い。ambient・光の intensity と range を線形の目盛りで合わせ直す（docs/migrations/0.79.0.md）"}, {"re": "intensity|range", "why": "光の intensity と range も線形の目盛りで合わせ直す"}], "avoid": [{"re": "\"scene3dLinearColor\"\\s*:\\s*false", "why": "0.84.0 で消えた旗を project.json に書く（lint-forbid が止める）"}, {"re": "linearToSrgb|srgbToLinear|pow\\(", "why": "色を自前で変換し直す"}]},
+    {"id": "app-internal-step", "prompt": "固定刻みで動かしているゲーム。テストで、実機と同じように刻みの回数と押した瞬間の持ち越しまで含めて 1 コマずつ進めたい。エンジンの中の刻みの関数を直接呼べばいい？", "expect": [{"re": "App\\.(traceFrame|trace|advanceFrame)\\b", "why": "実機と同じ 1 コマは App.traceFrame（列なら App.trace）。StepState は App.freshStepState() から持ち回す"}], "avoid": [{"re": "App\\.Internal\\.", "why": "App.Internal.* は App の中身でゲームから呼ばない（lint-forbid の app-internal が止める）"}]},
+    {"id": "render-internal-extract", "prompt": "テストで、Render.Item の並びがどんな Drawable（描く命令）になるかを確かめたい。エンジンの中で Item を Drawable に写している関数を直接呼べばいい？", "expect": [{"re": "Render\\.(toDrawables|draw|drawWith|softSceneOf)\\b", "why": "Item を描く命令にするのは親の Render.toDrawables / Render.draw（画面なしの場面は Render.softSceneOf）"}], "avoid": [{"re": "Render\\.Internal\\.", "why": "Render.Internal.* は Render の中身でゲームから呼ばない（lint-forbid の app-internal が止める）"}]},
+    {"id": "platform-effect-fake", "prompt": "テストで、マウスの位置とキーだけを偽物の値にして入力を読む関数を試したい。エンジンの窓や GPU の op を全部 handler に書かないといけない？", "expect": [{"re": "Platform\\.Input\\b", "why": "触る役の effect（入力なら Platform.Input）だけを handler で張る。ほかの effect は書かない"}], "avoid": [{"re": "handler GameEngine\\.Game\\b", "why": "GameEngine.Game は 0.80.0 で無くなった（28 個の op を全部書く形）"}]},
+    {"id": "pure-math-in-system", "prompt": "敵を円の上で回したい。系の中で Math.sin を呼んだら effect が合わないと言われたので、unchecked_cast で IO を消していい？", "expect": [{"re": "Num\\.(sin|cos)", "why": "Num.sin・Num.cos は純粋な包み（ゲームの src で effect を消すと lint-forbid の game-unchecked-pure が止める）"}], "avoid": [{"re": "unchecked_cast", "why": "ゲームの系で effect を消す（App.launch の純粋さの約束が崩れる）"}]},
+    {"id": "rename-alias-field", "prompt": "型 alias の名前が中身に合わなくなったので別の名前に替えたい（型を書いた所が 16 か所・use で入れている mod もある）。ついでに、その record の欄の 1 つも名前を替えたい（組み立てる所・読む所・{ x = v | e } で書く所がある）。コメントの中の名前までは替えなくてよい", "expect": [{"re": "refactor rename", "why": "bin/fge refactor rename Mod.T --to U（型の注記と use を索引で替える）・欄は rename --label x --receiver T --to y（typed の段で型・組み立て・読み書きを替える）"}], "avoid": [{"re": "\\b(sed|perl)\\b[^\\n]*-i", "why": "字で置き換える（同じ名前の別の型や別の record の欄まで替え、use の別名を壊す）"}]},
+    {"id": "change-effects", "prompt": "ある関数がもう窓（Window の effect）を使わなくなったので、宣言の effect の列から Window を外したい。列は `\\ IO + Window` の形。呼び手の列は今は触らなくてよい。外した後に型検査も通るか確かめたい", "expect": [{"re": "change-signature[^\\n]*--remove-effect", "why": "bin/fge refactor change-signature --def Mod.f --remove-effect Window --apply（列だけを替え、確かめが落ちたら戻す）"}], "avoid": [{"re": "\\b(sed|perl)\\b[^\\n]*Window", "why": "字で消す（`+` の残りや別の def の列まで替える）"}]},
+    {"id": "refactor-verify", "prompt": "索引の道具を使わずに 3 つのファイルを手で直した。道具が書き換えた後に流すのと同じ確かめ（型検査）を、同じ口で流して、落ちたら最初の誤りだけを見たい", "expect": [{"re": "refactor verify", "why": "bin/fge refactor verify（refactor.json の verify を流し、落ちれば最初の誤りを 1 行。--with-tests で verifyTests）"}], "avoid": [{"re": "java -jar[^\\n]*flix\\.jar check", "why": "確かめの口を自分で組む（設定の verify と違う物を流す）"}]},
+    {"id": "rename-library-pub", "prompt": "engine（fpkg で配るライブラリ）の pub の関数の名前を替えたい。道具に頼むと「使い手は索引の外にもいる」と断られた。外のゲームの使い手は後で自分で直すと決めたので、engine の中の使う所は全部替えたい", "expect": [{"re": "--allow-external", "why": "bin/fge refactor rename Mod.f --to g --allow-external --apply（索引の外の使い手は直らないと知らせて書く。外は make check-external で確かめる）"}], "avoid": [{"re": "\\b(sed|perl)\\b[^\\n]*-i", "why": "字で置き換える（同じ名前の別物まで替える）"}]},
+    {"id": "present-frame-own-loop", "prompt": "bench で自分でループを回して Platform.Draw2d.renderCommands を呼んでいるのに、窓に何も出ない。何が足りない？", "expect": [{"re": "presentFrame", "why": "renderCommands は塗るだけで、画面へ出すのは Platform.Window.presentFrame()"}], "avoid": [{"re": "glfwSwapBuffers", "why": "GLFW を直に呼ぶ（描き手の handler の仕事）"}]},
+    {"id": "right-click-buttons", "prompt": "マップのマスを右クリックしたら旗を立てたい。系で右クリックをどう読む？", "expect": [{"re": "mouseClickedButtons|mouseButtons", "why": "frame#mouseClickedButtons（押した瞬間）に GameEngine.MouseButton.Right が入っているかで読む"}], "avoid": [{"re": "isMouseButtonPressed", "why": "系から Platform.Input の op を呼ぶ（系は純粋。App が Frame に置いた値を読む）"}]},
+    {"id": "load-decode-parallel", "prompt": "起動の読み込みで、絵つきの glb を 30 個まとめて並列に読みたい。読み込み中の画面は進ませたまま、並列の仕事の中で glb の絵を解くにはどう書く？", "expect": [{"re": "imageDecoder", "why": "読み込みの頭（本体のスレッド）で LoadProgress.imageDecoder() を受け取り、並列の仕事へ引数で渡す（仕事の中から op は呼べない）"}, {"re": "fromGlbTexturedUsing|loadTexturedUsing|decodeUsing", "why": "受け取ったデコーダーで解く口（Gltf.fromGlbTexturedUsing・Texture3d.decodeUsing）"}], "avoid": [{"re": "Gltf\\.fromGlbTextured(With)?\\(|Texture3d\\.decode\\(", "why": "中で javax.imageio を呼ぶ古い口（0.84.0 で消えた）"}]},
+    {"id": "dev-tools-none", "prompt": "配る版では HTTP の命令口や flow の記録のコードを一切動かさずにゲームを走らせたい（ブラウザ版の入口も同じ形にしたい）。App をどう起動する？", "expect": [{"re": "launchWithDevTools", "why": "App.launchWithDevTools に開発の道具の組を渡す入口"}, {"re": "DevTools\\.none", "why": "道具なしの組 App.DevTools.none()"}], "avoid": [{"re": "withDebug\\(false\\)", "why": "withDebug(false) は道具を止めるだけで、道具のコードへの呼び出しは残る"}]},
+    {"id": "shot-start", "prompt": "ギャラリーに描き出した 1 枚（make render SHOT=quit で描く場面）と同じ World から、実機の窓でゲームを開いて触りたい。どうする？", "expect": [{"re": "SHOT=", "why": "SHOT=<場面> make run（START=shot:<場面> の DEBUG の起動。F8 で止めた状態で開く）"}, {"re": "withShots|Shots\\.flix|shot:", "why": "場面は App.withShots（src/Shots.flix）に繋いだ始まり"}], "avoid": [{"re": "withStarts\\([^\\n]*quit", "why": "ギャラリーの場面を始まりの一覧（withStarts）へ混ぜる"}]},
+    {"id": "log-capture-in-test", "prompt": "純粋な関数の中で Log.warnThen を通る場合のテストを書いたら、テストが FAIL（Std Err Output）になった。知らせが出ることも確かめたい。どう書く？", "expect": [{"re": "LogCapture\\.capture", "why": "知らせた行を stderr に出さずに集める LogCapture.capture(() -> 式) で (値, 行の列) を受ける"}], "avoid": [{"re": "System\\.setErr", "why": "テストで stderr を自分で差し替える（純粋な式の呼び出しの順がずれて、差し替えの外へ出うる）"}]},
+    {"id": "dropped-lights-headless", "prompt": "3D の場面に点光源を 12 本置いた。画面を開かずに、ゲームのテストで上限を超えて描かれない光の数を確かめたい。どうする？", "expect": [{"re": "droppedLightsOfScenes", "why": "Scene3d.droppedLightsOfScenes(Render.drawScenes3d(items)) で GL と同じ数を読む"}], "avoid": [{"re": "List\\.length\\([^\\n]*pointLights\\)\\s*-\\s*8", "why": "上限の 8 を手で引いて数える（上限が変わると食い違う）"}]},
+    {"id": "body-aabb-3d", "prompt": "一人称で歩く体（CharacterBody3d）の当たり判定の範囲を、調べる時の表示として箱の線で描きたい。体の範囲はどう取る？", "expect": [{"re": "aabbOf", "why": "CharacterBody3d.aabbOf(settings, body) が体の範囲の Mesh3d.Bounds を返す"}], "avoid": [{"re": "feet#x\\s*-\\s*[^\\n]*radius", "why": "足元と半径から手で箱を組む"}]},
+    {"id": "portrait-design", "prompt": "ブラウザ版をスマホで縦に持って開いた時、黒い帯の中に小さく横の画面を出すのでなく、縦長の画面で起動して縦の並べ方で遊ばせたい。どうする？", "expect": [{"re": "portraitDesign", "why": "project.json の web.portraitDesign（width・minHeight）を持つゲームだけ、縦に持って開くと縦の design で起動する"}, {"re": "orientation", "why": "起動の時に選んだ design の向きを ViewCtx#display#orientation（当たりは Display.orientationOf(frame#viewport)）で読んで並べ方を替える"}], "avoid": [{"re": "designWidth\"?\\s*:\\s*540", "why": "project.json の designWidth / designHeight を縦に書き換える（PC と横持ちの画面まで縦になる）"}, {"re": "orientationchange", "why": "回すたびに作り直す（向きは起動の時に固定し、回したら帯で合わせる）"}]},
+    {"id": "export-web", "prompt": "作ったゲームを PC のブラウザで遊べるように書き出して、静的なサーバーで配りたい。どうする？", "expect": [{"re": "export-web", "why": "bin/fge export-web <ゲーム> が build/web に頁・wasm・素材の束を書き出す"}, {"re": "WebMain", "why": "ゲームの web/WebMain.flix（App.launchWithDevTools(App.DevTools.none(), app) を WebLayer・WebFs の上で）が入口"}], "avoid": [{"re": "LwjglLayer\\.withProject[^\\n]*(web|ブラウザ)", "why": "デスクトップの handler をブラウザ版の入口に使う"}]},
+    {"id": "gl-call-log", "prompt": "エンジンの描き手（render_gl）の GL の呼び出しを書き換えた。実機で、書き換える前と後で GL の関数を呼ぶ並び（引数も）が変わっていないかを比べたい。どうする？", "expect": [{"re": "FLIX_GE_GL_LOG", "why": "FLIX_GE_GL_LOG=<ファイル> で起動と頭のコマの GL の呼び出しを 1 行ずつ控え、前後のファイルを diff する"}], "avoid": [{"re": "println\\([^\\n]*gl", "why": "描き手に println を差し込んで呼び出しを数える"}]},
+    {"id": "font-bake-web", "prompt": "ゲームをブラウザ版にする。ブラウザでは字をその場で作れないので、台詞や Doc に書いた字が全部フォントにあるかを書き出しの前に確かめ、字の絵を前もって用意したい。どうする？", "expect": [{"re": "font-bake", "why": "bin/fge font-bake <ゲーム> <出力> が字を集めてデスクトップと同じアトラスを焼き、どのフォントにも無い字を出所つきで止める"}], "avoid": [{"re": "glyphs\"?\\s*:\\s*\"all\"", "why": "project.json の glyphs を all に書き換えて済ませる（フォントに無い字は all でも出ない・デスクトップの起動が遅くなる）"}]},
+    {"id": "small-screen-layout", "prompt": "ノベルをスマホのブラウザで開くと、メニューの字とボタンが小さくて押しにくい。PC の見た目は変えずに、スマホの時だけ字とボタンを大きくしたい。押せる所もずれないようにしたい。どうする？", "expect": [{"re": "sizeClass", "why": "View は ViewCtx#display#sizeClass・当たりは Frame#sizeClass で Small の時だけ並べ方を替える"}, {"re": "SizeClass\\.Small", "why": "区分 Small（スマホ）だけを替え、Large（PC・デスクトップ）は今のまま"}], "avoid": [{"re": "designWidth\"?\\s*:\\s*[0-9]", "why": "project.json の designWidth / designHeight を変えて全部の画面を作り直す（デスクトップの絵も変わる）"}, {"re": "window\\.innerWidth", "why": "ゲームの外（頁の JS）で窓の大きさを測って並べ替える"}]},
+    {"id": "web-virtual-pad", "prompt": "キーで遊ぶ RPG をブラウザ版に書き出した。スマホで開くとキーが無いので動かせない。指で動かせるようにしたい。どうする？", "expect": [{"re": "virtualPad", "why": "project.json の web.virtualPad（dpad と buttons の action）を bin/fge export-web が解いて、指の端末だけ十字キーとボタンを出す"}], "avoid": [{"re": "touchstart|addEventListener\\(\"touch", "why": "頁の JS に自前のタッチの処理を書き足す"}]},
+    {"id": "web-compress", "prompt": "ブラウザ版の書き出しが 150MB あってスマホで読み込みが重い。背景の写真の絵だけは少し荒れてもいいので小さくしたい。BGM は少し軽くしたい。どうする？", "expect": [{"re": "web\\.compress|\"compress\"", "why": "project.json の web.compress（lossyImages の glob と quality・audioBitrateKbps）を bin/fge export-web が読み、書き出しの時だけ WebP と Opus に替える"}], "avoid": [{"re": "ffmpeg -i|cwebp ", "why": "assets/ の素材を手で変換して差し替える（デスクトップ版の素材まで替わる）"}]}
+  ]
+}

@@ -1,0 +1,12 @@
+{
+  "targets": [
+    { "src": "engine/src", "doc": "docs/modules/engine.md" },
+    { "src": "engine_world/src", "doc": "docs/module-index.md", "parts": "docs/modules/*.md" }
+  ],
+  "extraDefSources": ["engine_tools/src"],
+  "exempt": {
+    "BootFontData": "生成物（make boot-font）。索引は BootFont の行が案内する"
+  },
+  "skipDirs": ["legacy"],
+  "fileExts": ["flix", "json", "md", "png", "py", "sh"]
+}

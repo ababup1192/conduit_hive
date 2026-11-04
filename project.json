@@ -1,0 +1,71 @@
+{
+  "version": 1,
+  "title": "Conduit Hive",
+  "designWidth": 480,
+  "designHeight": 270,
+  "windowWidth": 960,
+  "windowHeight": 540,
+  "windowScale": 2,
+  "clearColor": {"r": 0.066667, "g": 0.066667, "b": 0.101961},
+  "maxDeltaTime": 0.05,
+  "textures": [],
+  "// glyphs": "起動時に焼く字。auto=出た字から順に焼く / used=ソースとアセットにある字を先に焼く / all=フォントの全字",
+  "glyphs": "auto",
+  "fonts": [
+    {"name": "default", "path": "assets/Xolonium-Regular.ttf", "fontSize": 60.0}
+  ],
+  "sounds": [],
+  "editor": {
+    "resources": [
+      {
+        "id": "theme",
+        "pattern": "assets/conduit_hive.theme.json",
+        "title": "色（背景・差し色）",
+        "schema": "assets/theme.schema.json",
+        "role": "material"
+      },
+      {
+        "id": "shader",
+        "pattern": "assets/*.shader.json",
+        "title": "空の塗り",
+        "schema": "assets/shader.schema.json",
+        "role": "material"
+      },
+      {
+        "id": "sprite",
+        "pattern": "assets/*.sprite.json",
+        "title": "ドット絵",
+        "schema": "assets/sprite.schema.json",
+        "role": "material"
+      },
+      {
+        "id": "sample",
+        "pattern": "assets/sample.kind.json",
+        "title": "手触り（速さ）",
+        "schema": "assets/sample.schema.json",
+        "role": "tuning"
+      },
+      {
+        "id": "keys",
+        "pattern": "assets/player.keys.json",
+        "title": "キー割り当て（どのキーで動かすか）",
+        "schema": "assets/keys.schema.json",
+        "role": "tuning"
+      },
+      {
+        "id": "scenes",
+        "pattern": "assets/*.scenes.json",
+        "title": "場面の説明（ギャラリーに出る題と一言）",
+        "schema": "assets/scenes.schema.json",
+        "role": "tuning"
+      },
+      {
+        "id": "project",
+        "pattern": "project.json",
+        "schema": "project.schema.json",
+        "title": "ゲームの題・画面",
+        "role": "tuning"
+      }
+    ]
+  }
+}

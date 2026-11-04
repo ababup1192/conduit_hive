@@ -1,0 +1,19 @@
+{
+  "note": "lint-sprite（ドット絵 *.sprite.json の画素の並び）の規約データ。この JSON が source of truth で、bin/fge sprite はこれを読んで動く。メッセージの文面は規約データではないので Go 側（go/internal/sprite/sprite.go）にある。",
+  "rules": ["structure", "orphan", "connect", "palette", "jaggy", "banding", "corner", "silhouette"],
+  "transparentChars": [".", " "],
+  "excludedDirs": ["build", "lib", ".git", "gallery", ".devbox", "node_modules", "testdata"],
+  "maxColors": 12,
+  "maxColorsBig": 16,
+  "bigSide": 32,
+  "textureFill": 0.90,
+  "minOrphanCells": 4,
+  "minConnectCells": 4,
+  "connectShown": 4,
+  "jaggyMinCount": 3,
+  "bandingMinRun": 8,
+  "silhouetteMinOcc": 0.20,
+  "deltaEMin": 5.0,
+  "exemptPattern": "対象外\\s*(?:\\(([^)]*)\\))?",
+  "exemptParenPattern": "^\\s*\\([^)]*\\)"
+}

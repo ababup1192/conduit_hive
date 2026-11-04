@@ -1,0 +1,374 @@
+{
+  "note": "lint-forbid（古い書き方を 1 行の正規表現で止め、代わりに使う物を出す）の規約データ。この JSON が source of truth で、bin/fge forbid はこれとゲームの bin/lint-rules/forbid.local.json（ゲーム固有の規則と除外。配り直しでも残る）を足して読む。1 件 = {id, suffixes / basenames / prefixes（見るファイル）, skip, skipDirs（パスのどの段にあっても見ないフォルダ名）, whenProject（そのファイルのプロジェクトの .flix に当たるときだけ効く）, notice（true なら当たりを知らせるだけで止めない。旧い名前を消すまでの数版に使う）, pattern, unlessLine（この行なら見逃す）, rawLine（true なら .flix でも文字列の中身を消さずに見る。コメントは落とす）, hint（代わりに何を使うか。必須）}。.flix は文字列とコメントを除いてから当てる。文脈の要る物（z の表 = z-table・let _ = = value-discard）は専用の lint が持つ。除外は exempt に \"パス::id\" と理由 1 行。コミット時に見るのは .flix と .java と Makefile と project.json だけ（precommit.json の forbid の when）。ほかの種類のファイルに規則を足すなら、そちらも足す。",
+  "rules": [
+    {
+      "id": "teavm-jso-outside-fge-web",
+      "suffixes": [".java", ".flix"],
+      "skip": ["engine_web/java/fge/web/", "lib/", "build/"],
+      "pattern": "^\\s*import\\s+org\\.teavm\\.(jso|interop)\\b",
+      "rawLine": true,
+      "hint": "TeaVM の JSO（JS の物）は fge.web（engine_web/java/fge/web）の外へ出さない。Flix の総称のデータや Object へ JS の物が入ると wasm が落ちる。fge.web に int・字・数・java.nio だけを受け渡す static の関数を足して、それを呼ぶ"
+    },
+    {
+      "id": "render-gl-body-desktop-import",
+      "prefixes": ["render_gl/src/"],
+      "basenames": ["Sprite.flix", "Paint.flix", "Frame.flix", "Target.flix", "Static.flix", "Shader.flix", "Buf.flix", "RenderTexture.flix", "PaintHandlers.flix", "Scene3dRenderer.flix"],
+      "pattern": "^\\s*import\\s+(org\\.lwjgl|java\\.awt|fge\\.gl\\.(LwjglGl|RecordingGl))",
+      "rawLine": true,
+      "hint": "render_gl の描き手の本体（ブラウザでも同じ物を使う）は LWJGL と AWT を直に呼ばない。GL は引数の gl: GlContext（fge.gl。LWJGL 版を作るのは LwjglLayer・GlOffscreen だけ）、定数は GlConst、直接バッファは gl.allocFloats など。画像のデコードや字の生成は RenderPaint.AssetLoader（デスクトップは LwjglAssets）へ"
+    },
+    {
+      "id": "render-gl-body-desktop-module",
+      "prefixes": ["render_gl/src/"],
+      "basenames": ["Sprite.flix", "Paint.flix", "Frame.flix", "Target.flix", "Static.flix", "Shader.flix", "Buf.flix", "RenderTexture.flix", "PaintHandlers.flix", "Scene3dRenderer.flix"],
+      "pattern": "\\b(GpuTimer|Render3d|RenderFont|RenderFontCache|RenderGlyphGrow|RenderSplash|GlReadback|GlOffscreen|GlCallLog|LwjglLayer|LwjglAssets|LwjglEnv|LwjglInput|LwjglLoad|SdlPad|RenderAudio)\\.",
+      "hint": "render_gl の描き手の本体からデスクトップ専用の mod（LWJGL を直に呼ぶ物）を名前で呼ばない（ブラウザの組み立てが静的にたどって LWJGL に届く）。作る側が渡す値（Scene3dRenderer.Renderer・RenderPaint.FrameTimer・RenderPaint.AssetLoader）を通す"
+    },
+    {
+      "id": "pass-spec-of-map",
+      "suffixes": [".flix"],
+      "skip": ["engine/", "engine_world/", "engine_tools/", "engine_full/", "lib/", "build/"],
+      "pattern": "List\\.map\\(\\s*(p\\s*->\\s*)?Render\\.passSpecOf\\b",
+      "hint": "Pass の列は Render.passSpecsOf(texInfo, Render.passPlan(passes)) で下ろす（実機と同じく、まだ描いていない Pass の読みと history の書き換え・倍率を通す。passSpecOf は 1 枚用）"
+    },
+    {
+      "id": "zindex-big-literal",
+      "suffixes": [".flix"],
+      "skip": ["engine/", "engine_world/", "engine_tools/", "engine_full/", "lib/", "build/", "test/"],
+      "pattern": "\\bzIndex\\s*=\\s*[1-9][0-9]{2,}|\\bzIndex\\(\\s*[1-9][0-9]{2,}",
+      "hint": "z の大きな数で手前に出さない。部品は ZStack.of に積み、必ず手前の物は ZStack.topLayer(層, …)、隠れてはいけない表示は App.withHudView。葉の中の z は 0..31（docs/z-bands.md）"
+    },
+    {
+      "id": "stderr-println",
+      "suffixes": [".flix"],
+      "skip": ["engine/", "engine_world/", "engine_tools/", "engine_full/", "src/engine/", "src/engine_world/", "src/engine_tools/", "render_gl/", "src/render_gl/", "lib/", "build/"],
+      "pattern": "\\bSystem\\.(?:err|out)\\.print",
+      "hint": "知らせは Log を通す。既定値で続けたら Log.fellBack(領域, 対象, 既定値の名前, 理由)（純粋な関数の中は Log.fellBackThen / Log.warnThen）、定型に収まらない 1 行は Log.warn。出し先（stderr / stdout）と文面の型は Log が決める（engine の docs/error-handling.md の決まり 3）"
+    },
+    {
+      "id": "view-text-literal",
+      "suffixes": ["View.flix"],
+      "rawLine": true,
+      "skip": ["engine/", "engine_world/", "engine_tools/", "engine_full/", "src/engine/", "src/engine_world/", "src/engine_tools/", "render_gl/", "src/render_gl/", "lib/", "build/", "test/"],
+      "pattern": "\\btext\\s*=\\s*\"(?:\\$\\{[^}]*\\}|[^\"$])*?[A-Za-z\\p{Hiragana}\\p{Katakana}\\p{Han}]{2,}",
+      "hint": "プレイヤーの目に入る文言は Doc に置く（コードに書くのは Doc の既定値だけ。View に直に書くと Studio から変えられない）。Doc の欄を足して text = doc#欄 で引く"
+    },
+    {
+      "id": "deprecated-name",
+      "suffixes": [".flix"],
+      "skip": ["engine/", "engine_world/", "engine_tools/", "engine_full/", "src/engine/", "src/engine_world/", "src/engine_tools/", "render_gl/", "src/render_gl/", "lib/", "build/"],
+      "pattern": "\\bTimeline\\.buildOrBug\\b",
+      "hint": "旧名。Timeline.buildOrBug は Timeline.buildOrPanic へ改名した（引数は同じ・組めなければ名前と書き間違いの一覧を出して止める）。旧名は次のリリースで消える（engine の docs/migrations/0.35.38.md）"
+    },
+    {
+      "id": "clock-advance",
+      "suffixes": [".flix"],
+      "skip": ["engine/", "engine_world/", "engine_tools/", "engine_full/", "src/engine/", "src/engine_world/", "src/engine_tools/", "render_gl/", "src/render_gl/", "lib/", "build/"],
+      "skipDirs": ["test"],
+      "pattern": "\\bClock\\.advance\\b|\\bApp\\.tickClocks\\b|\\buse\\s+(?:fge::)?Clock\\.\\{[^}]*\\badvance\\b",
+      "hint": "時計を進めるのは App（毎フレーム 1 回。同じフレームに 2 回進めると 1 回目の区間の音が消える）。World の欄の時計は App.addClock で宣言し、止める理由と遅くする Plan は paceOf（Clock.paceOf・Clock.withSlow）で World から導く。テストで系を直に呼ぶときだけ test/ で App.tickClocks（engine の docs/clock.md）"
+    },
+    {
+      "id": "clock-real-clock",
+      "suffixes": [".flix"],
+      "skip": ["engine/", "engine_world/", "engine_tools/", "engine_full/", "src/engine/", "src/engine_world/", "src/engine_tools/", "render_gl/", "src/render_gl/", "lib/", "build/"],
+      "pattern": "\\bClock\\[\\s*(?:Clock\\.)?Real\\s*\\]",
+      "hint": "実時間の時計はゲームが持たない（止められると、ポーズメニューの点滅まで止まる）。実時間の今は frame#realNow（Clock.Time[Clock.Real]）を World の欄へ写して読む。寿命は Lifetime.fireOn(frame#realNow, 秒)（engine の docs/clock.md）"
+    },
+    {
+      "id": "clock-seconds-leak",
+      "suffixes": [".flix"],
+      "skip": ["engine/", "engine_world/", "engine_tools/", "engine_full/", "src/engine/", "src/engine_world/", "src/engine_tools/", "render_gl/", "src/render_gl/", "lib/", "build/"],
+      "pattern": "secondsOf\\(.*[-+]\\s*(?:Clock\\.)?secondsOf\\(|secondsOf\\((?:[^()]|\\((?:[^()]|\\([^()]*\\))*\\))*\\)\\s*(?:<|>|==|!=)|(?:[^-|=]>|<|==|!=)=?\\s*(?:Clock\\.)?secondsOf\\(|\\|>\\s*(?:Clock\\.)?secondsOf\\s*\\)\\s*(?:[-+<>]|==|!=)|\\bClock\\.after\\(\\s*(?:Clock\\.)?secondsOf\\(",
+      "hint": "secondsOf は周期の関数（Anim.frameAt・Sway.wave・Fx.derive）に渡す所だけ。時刻の差は Clock.since(起点, 今)・前後は Time のまま比べる（<・>・==）・ずらすのは Clock.after(秒, 時刻)。秒へ戻して引く・比べる・包み直すと、違う時計の時刻が混ざってもコンパイルが止まらない（engine の docs/clock.md）"
+    },
+    {
+      "id": "clock-old-sounds",
+      "suffixes": [".flix"],
+      "skip": ["engine/", "engine_world/", "engine_tools/", "engine_full/", "src/engine/", "src/engine_world/", "src/engine_tools/", "render_gl/", "src/render_gl/", "lib/", "build/"],
+      "whenProject": "\\bApp\\.addClock\\b",
+      "pattern": "\\bTimeline\\.(?:soundsBetween|soundsSince|progressSince)\\b",
+      "hint": "時計を使うゲーム（App.addClock がある）は Timeline.soundsOnClock(時計, 起点, 表) と Timeline.progressOn(時計, 起点, タグ, 表)。実時間（frame#realNow）で鳴らす表は Timeline.soundsBetweenTimes(起点, { before, after }, 表)。前と今の秒は時計が持つので、古い prev を渡せず、止めて戻しても・スロー中でも音は 1 回だけ鳴る（engine の docs/clock.md）"
+    },
+    {
+      "id": "pair-construct",
+      "suffixes": [".flix"],
+      "skip": ["engine/", "engine_world/", "engine_tools/", "engine_full/", "src/engine/", "src/engine_world/", "src/engine_tools/", "render_gl/", "src/render_gl/", "lib/", "build/"],
+      "whenProject": "\\bResources\\.(?:of|With|read)\\b",
+      "pattern": "\\bresources = |\\{ *world = [^}|]*\\|",
+      "hint": "描く元と World の組（Resources.With）を record で直に組まない・欄を直に書き替えない。組むのは Resources.of、描く元を替えるのは読み直しの行（Resources.reloadRow / reloadUnnamedRow）、World だけを替えるのは Resources.mapWorld / system、読むだけは Resources.read（h#resources・h#world を読むのはよい）"
+    },
+    {
+      "id": "clock-made-time",
+      "suffixes": [".flix"],
+      "skip": ["engine/", "engine_world/", "engine_tools/", "engine_full/", "src/engine/", "src/engine_world/", "src/engine_tools/", "render_gl/", "src/render_gl/", "lib/", "build/",
+                 "src/Shots.flix", "templates/rpg-starter/src/Shots.flix", "templates/sound-novel-starter/src/Shots.flix",
+                 "templates/tidepool-starter/src/Shots.flix", "templates/game-starter/src/Shots.flix"],
+      "skipDirs": ["test", "render"],
+      "pattern": "\\bClock\\.after\\([^;]*\\bClock\\.zero\\(\\)|\\bClock\\.since\\(\\s*Clock\\.zero\\(\\)|\\bClock\\.startAt\\(",
+      "hint": "遊びの中で時刻や時計を数から作らない（Clock.after(秒, Clock.zero())・Clock.since(Clock.zero(), 時刻)・Clock.startAt は、別の時計の時刻へ付け替える・時計を手で進める抜け道になる）。今は Clock.nowOf(時計) か frame#realNow から読み、ずらすのは Clock.after(秒, 今)。決まった瞬間を撮る描き出し（render/）・ギャラリーの場面（src/Shots.flix・App.withShots）とテスト（test/）だけで使う（engine の docs/clock.md）"
+    },
+    {
+      "id": "process-env-entry",
+      "suffixes": [".flix"],
+      "prefixes": ["engine/src/", "engine_world/src/", "engine_tools/src/", "templates/"],
+      "skip": ["engine_world/src/ProcessEnv.flix", "engine_tools/src/SoftRaster.flix", "engine_tools/src/SoftRaster3d.flix", "engine_tools/src/ToolsProcessEnv.flix"],
+      "skipDirs": ["test", "build", "lib"],
+      "pattern": "\\bSystem\\.getenv\\b|\\bSys\\.Env\\.|\\bFlow\\.Cli\\.envOr\\b",
+      "hint": "環境変数は入口の頭で 1 回だけ読み、要る値を引数で奥へ渡す。入口の頭で App.Headless.envOf(req)（常駐の /run からも呼ぶ <名前>Job(req)）か ProcessEnv.snapshot() を読み、奥は Map[String, String] を引数で受ける（Flow.Cli.getEnvOr(env, 名前, 既定値)・Flow.Cli.mainOf(app, env) の形）。常駐では奥で読むと、要求の env ではなく常駐を起こした時の env が見える。例外は skip に並べたファイルだけ（ProcessEnv が読む 1 か所・engine_world が見えない engine_tools の写し ToolsProcessEnv と、出力に効かない調子の旗 FGE_SOFT_SERIAL。理由はその行の WhyNot）（engine の docs/design/render-speed.md 2.5 節）"
+    },
+    {
+      "id": "process-exit-entry",
+      "suffixes": [".flix"],
+      "prefixes": ["engine/src/", "engine_world/src/", "engine_tools/src/", "templates/"],
+      "skip": ["engine_world/src/ProcessEnv.flix"],
+      "skipDirs": ["test", "build", "lib"],
+      "pattern": "\\bSystem\\.exit\\b",
+      "hint": "奥でプロセスを終えない（常駐の /run から呼ばれると常駐ごと落ちる）。奥は終了コード（Int32）を返し、入口の頭の 1 行で App.Headless.exitWith(xJob(App.Headless.requestFromProcess())) か ProcessEnv.exitWith(コード) に渡す。例外は skip に並べたファイルだけ（ProcessEnv が終える 1 か所。理由はその行の WhyNot）（engine の docs/design/render-speed.md 2.5 節）"
+    },
+    {
+      "id": "engine-contract-import",
+      "suffixes": [".flix"],
+      "prefixes": ["engine/src/"],
+      "skip": [],
+      "skipDirs": ["test", "build", "lib"],
+      "pattern": "\\bimport\\s+\\S",
+      "hint": "engine（契約層）は型と純粋な関数だけを持つ。import してよいのは java.lang.{Math, Float, Double, Object, Throwable, System（stderr だけ）}・java.math.*・java.security.MessageDigest・java.nio.ByteBuffer・java.lang.ref.WeakReference。スレッド（java.util.concurrent）・絵のデコード（java.awt・javax.imageio）・プロセス・ファイル（java.io.File）・開発の道具（java.lang.management・com.sun）は handler の側（render_gl・engine_tools・engine_world）へ置き、effect の op（LoadProgress.runTasks・imageDecoder など）で受け取る（engine の docs/migrations/0.81.0.md）",
+      "unlessLine": "^\\s*import\\s+(?:java\\.lang\\.\\{\\s*(?:Math|Float|Double|Object|Throwable|System)(?:\\s*=>\\s*\\w+)?(?:\\s*,\\s*(?:Math|Float|Double|Object|Throwable|System)(?:\\s*=>\\s*\\w+)?)*\\s*\\}|java\\.lang\\.(?:Math|Float|Double|Object|Throwable|System)|java\\.math\\.[\\w.{}=> ,]+|java\\.security\\.MessageDigest|java\\.nio\\.ByteBuffer|java\\.lang\\.ref\\.WeakReference)\\s*(?://.*)?$"
+    },
+    {
+      "id": "engine-contract-jvm-call",
+      "suffixes": [".flix"],
+      "prefixes": ["engine/src/"],
+      "skip": [],
+      "skipDirs": ["test", "build", "lib"],
+      "pattern": "\\bSys\\.Env\\.|\\bProcessBuilder\\b|\\bProcessHandle\\b|\\bspawn\\s+\\S|\\bChannel\\.|\\.runWithIO\\b",
+      "hint": "engine（契約層）で JVM の物を直に呼ばない: 環境変数（Sys.Env）は engine_world の ProcessEnv.snapshot() を入口の頭で読んで引数で渡す・スレッド（spawn・Channel）は LoadProgress.runTasks のように handler へ任せる・ファイルや時計の runWithIO は handler の側で張る・プロセスの起動し直しは LwjglLayer.ensureMainThread()（engine の docs/migrations/0.81.0.md）"
+    },
+    {
+      "id": "engine-contract-system",
+      "suffixes": [".flix"],
+      "prefixes": ["engine/src/"],
+      "skip": [],
+      "skipDirs": ["test", "build", "lib"],
+      "pattern": "\\bSystem\\.(?:[a-df-z]\\w*|e[a-qs-z]\\w*|er[a-qs-z]\\w*|err\\w+)",
+      "hint": "engine（契約層）で使ってよい System は stderr（System.err・Log が持つ）だけ。設定の値（System.getProperty）・時刻・プロセスの終わりは handler の側（render_gl・engine_tools・engine_world）で読み、値か effect の op で受け取る（engine の docs/migrations/0.81.0.md）"
+    },
+    {
+      "id": "engine-jvm-old-calls",
+      "suffixes": [".flix"],
+      "skip": ["engine/", "engine_world/", "engine_tools/", "engine_full/", "render_gl/", "src/engine/", "src/engine_world/", "src/engine_tools/", "src/render_gl/", "lib/", "build/"],
+      "pattern": "\\bGltf\\.(?:fromGlbTextured|loadTextured)(?:With)?\\(|\\bTexture3d\\.decode\\(|\\bGameEngine\\.ensureMainThread\\b",
+      "hint": "中で javax.imageio・ProcessBuilder を呼ぶ古い口は 0.84.0 で消えた: 読み込みの頭で let dec = LoadProgress.imageDecoder() を受け取り Gltf.fromGlbTexturedUsing(dec, limits, bytes)・Gltf.loadTexturedUsing(dec, limits, path)・Texture3d.decodeUsing(dec, bytes)（上限なしは Gltf.noTextureLimits()）。main の頭は LwjglLayer.ensureMainThread()。画面なしとテストの入口は HeadlessLoad.handle（engine の docs/migrations/0.81.0.md）"
+    },
+    {
+      "id": "hand-tonemap",
+      "suffixes": [
+        ".flix"
+      ],
+      "prefixes": [
+        "engine_world/src/",
+        "engine_tools/src/",
+        "templates/"
+      ],
+      "skip": [],
+      "skipDirs": [
+        "test",
+        "build",
+        "lib"
+      ],
+      "pattern": "\\b2\\.51\\b|\\b2\\.43\\b",
+      "hint": "トーンマップの曲線（ACES の近似の 2.51 / 2.43）を手で書かない。PostProcess.tonemapped / tonemappedWith を使う（x の式を 1 回だけ評価し、白の点で正規化し、GPU と CPU で同じ木を通る）。場面の Pass は RenderTarget.withHdr にして 1 を超えた明るさを持つ（engine の docs/shader-doc.md「後処理（PostProcess）」）"
+    },
+    {
+      "id": "launch-for-bench",
+      "suffixes": [
+        ".flix"
+      ],
+      "skip": [
+        "engine/",
+        "engine_world/",
+        "engine_tools/",
+        "engine_full/",
+        "render_gl/",
+        "bench/",
+        "src/engine/",
+        "src/engine_world/",
+        "src/engine_tools/",
+        "src/render_gl/",
+        "lib/",
+        "build/"
+      ],
+      "skipDirs": [
+        "build",
+        "lib"
+      ],
+      "pattern": "\\bApp\\.launchForBench\\b",
+      "hint": "App.launchForBench は bench が系の中で IO を測るための入口で、ゲームからは呼ばない。ゲームは App.launch（系と View は純粋な App[w, {}]）で走らせる。系で IO が要るなら、読み込みは App を組む前（Main）・書き出しは App.addOutput・F8 の道具は App.onShotRequest へ（engine の docs/migrations/0.80.0.md）"
+    },
+    {
+      "id": "game-unsafe",
+      "suffixes": [
+        ".flix"
+      ],
+      "skip": [
+        "engine/",
+        "engine_world/",
+        "engine_tools/",
+        "engine_full/",
+        "render_gl/",
+        "bench/",
+        "src/engine/",
+        "src/engine_world/",
+        "src/engine_tools/",
+        "src/render_gl/",
+        "lib/",
+        "build/"
+      ],
+      "skipDirs": [
+        "build",
+        "lib",
+        "test",
+        "render"
+      ],
+      "pattern": "\\bunsafe\\b",
+      "hint": "ゲームの系と View では unsafe を書かない（App.launch は純粋な App[w, {}] だけを受け、系が外の世界に触れないことを型で守っている）。状態は World に・乱数は Rng の種を World に・知らせは ViewCtx#warnOnce へ。描き出し（src/render/）とテストは見ない（engine の docs/migrations/0.80.0.md）"
+    },
+    {
+      "id": "frame-diagnostics-in-system",
+      "suffixes": [
+        ".flix"
+      ],
+      "skip": [
+        "engine/",
+        "engine_world/",
+        "engine_tools/",
+        "engine_full/",
+        "render_gl/",
+        "bench/",
+        "src/engine/",
+        "src/engine_world/",
+        "src/engine_tools/",
+        "src/render_gl/",
+        "lib/",
+        "build/"
+      ],
+      "skipDirs": [
+        "build",
+        "lib",
+        "test",
+        "render"
+      ],
+      "pattern": "(?:^|[^x]|(?:^|[^t])x|(?:^|[^c])tx|\\wctx)#diagnostics\\b",
+      "hint": "Frame#diagnostics（前のフレームを描いた時間）を系で読んで World へ写さない。遊んだ記録に残らないので、再生（make flow・make determinism）と食い違う。F3 の行は View か HUD で ctx#diagnostics から描く（FrameDiagnostics.summaryLines）。表示するかどうかの切り替えだけを World に置く。ViewCtx の引数の名前は ctx にし、Frame を ctx と名付けない（ほかの名前の #diagnostics は止まる）（engine の docs/migrations/0.84.1.md）"
+    },
+    {
+      "id": "game-unchecked-pure",
+      "suffixes": [
+        ".flix"
+      ],
+      "skip": [
+        "engine/",
+        "engine_world/",
+        "engine_tools/",
+        "engine_full/",
+        "render_gl/",
+        "bench/",
+        "src/engine/",
+        "src/engine_world/",
+        "src/engine_tools/",
+        "src/render_gl/",
+        "lib/",
+        "build/"
+      ],
+      "skipDirs": [
+        "build",
+        "lib",
+        "test",
+        "render"
+      ],
+      "pattern": "\\bunchecked_cast\\s*\\(.*\\\\\\s*\\{\\s*\\}\\s*\\)",
+      "hint": "ゲームの系と View では unchecked_cast(… as _ \\ {}) で effect を消さない（App.launch の純粋さの型の約束が崩れる）。Math を包むなら Num（Num.sin・Num.cos・Num.asin・Num.log・Num.sqrt）か標準の Float64.pow・Float64.exp を使う。描き出し（src/render/）とテストは見ない（engine の docs/migrations/0.80.0.md）"
+    },
+    {
+      "id": "shader-render-cmd-alias",
+      "suffixes": [
+        ".flix"
+      ],
+      "skip": [
+        "engine_full/",
+        "lib/",
+        "build/"
+      ],
+      "pattern": "\\bShaderEffect\\.ShaderRenderCmd\\b",
+      "hint": "型は DrawCmd.SurfaceRenderCmd へ移した（中身は同じ）。ShaderEffect.ShaderRenderCmd は 0.84.0 で消えた（engine の docs/migrations/0.80.0.md）"
+    },
+    {
+      "id": "num-from-vec2",
+      "suffixes": [
+        ".flix"
+      ],
+      "skip": [
+        "engine/test/engine/TestNum.flix",
+        "engine_full/",
+        "lib/",
+        "build/"
+      ],
+      "pattern": "\\bVec2\\.(?:sqrt|sin|cos|atan2|pi|tau)\\(|\\buse\\s+(?:fge::)?Vec2\\.\\{[^}]*\\b(?:sqrt|sin|cos|atan2|pi|tau)\\b",
+      "hint": "数の関数は Num へ移した: Num.sqrt・Num.sin・Num.cos・Num.atan2・Num.pi・Num.tau（引数と値は同じ。mount = \"fge\" のゲームは use fge::{…} に Num も足す）。Vec2 の旧い名前は 0.84.0 で消えた（engine の docs/migrations/0.77.0.md）"
+    },
+    {
+      "id": "frame-literal",
+      "suffixes": [
+        ".flix"
+      ],
+      "skip": [
+        "engine_world/src/App.flix",
+        "src/engine_world/App.flix",
+        "engine_full/",
+        "lib/",
+        "build/"
+      ],
+      "notice": true,
+      "pattern": "\\bpadKind\\s*=\\s*(?:GamepadMap\\.)?PadKind\\.Unknown\\b",
+      "unlessLine": "\\|",
+      "hint": "App.Frame を字で全部の欄を書かず、{ down = …, dt = … | App.emptyFrame() } の形で替える（次の版で Frame に欄が増えても止まらない。前のフレームとの差から作るなら App.frameOf）。engine の docs/migrations/0.77.0.md"
+    },
+    {
+      "id": "app-internal",
+      "suffixes": [".flix"],
+      "skip": ["engine/", "engine_world/", "engine_tools/", "engine_full/", "render_gl/", "bench/", "src/engine/", "src/engine_world/", "src/engine_tools/", "src/render_gl/", "lib/", "build/"],
+      "skipDirs": ["build", "lib"],
+      "pattern": "\\b(?:App|Render|SoftRaster)\\.Internal\\b",
+      "hint": "App.Internal・Render.Internal・SoftRaster.Internal は engine のそのモジュールの中身でゲームからは呼ばない（版を上げると名前も形も黙って変わる）。ゲームが使う関数は親のモジュールにある（App.launch・App.trace・App.traceFrame・App.frameOf・App.composeScene など。make api Q=App.）。足りない関数があれば engine に足すよう相談する"
+    },
+    {
+      "id": "dev-request-outside-main",
+      "suffixes": [".flix"],
+      "skip": ["src/Main.flix", "src/E2e.flix", "templates/game-starter/src/Main.flix", "templates/game-starter/src/E2e.flix", "templates/rpg-starter/src/Main.flix", "templates/rpg-starter/src/E2e.flix", "templates/sound-novel-starter/src/Main.flix", "templates/sound-novel-starter/src/E2e.flix", "templates/tidepool-starter/src/Main.flix", "templates/tidepool-starter/src/E2e.flix", "engine/", "engine_world/", "engine_tools/", "engine_full/", "render_gl/", "bench/", "src/engine/", "src/engine_world/", "src/engine_tools/", "src/render_gl/", "lib/", "build/"],
+      "skipDirs": ["build", "lib", "test", "render"],
+      "pattern": "\\bApp\\.on(?:Render|Shot)Request\\b",
+      "hint": "App.onRenderRequest・App.onShotRequest は開発の道具（リモートデバッグの /render と view=shot）の API なので、Game.app（テスト・flow・ブラウザ版と共有）では繋がず、Main（デスクトップの入口）と E2e（画面なしの入口）で繋ぐ（engine の docs/migrations/0.81.0.md）"
+    },
+    {
+      "id": "light-uniform-in-glsl",
+      "suffixes": [".flix"],
+      "rawLine": true,
+      "skip": ["render_gl/src/Render3dGlsl.flix", "src/render_gl/Render3dGlsl.flix", "engine/src/scene3d/LightModel3d/Codegen.flix", "src/engine/scene3d/LightModel3d/Codegen.flix", "engine_full/", "lib/", "build/"],
+      "pattern": "\"[^\"]*\\bu(?:Point|Spot)(?:Pos|Color|Range|Dir|Cone)\\[[A-Za-z_]\\w*\\]",
+      "hint": "光の式を GLSL の字で手で書かない（CPU の描き手と式が分かれる）。式は engine の LightModel3d の木に書き、GLSL は LightModel3d.Codegen.toGlsl で作る（3D の描き手の字は Render3dGlsl。uniform の位置を引く loc(program, \"uPointPos\") は止めない）"
+    },
+    {
+      "id": "scene3d-linear-color-flag",
+      "suffixes": ["project.json"],
+      "skip": ["lib/", "build/"],
+      "pattern": "\"scene3dLinearColor\"\\s*:",
+      "hint": "scene3dLinearColor は 0.84.0 で消えた（3D の色は線形の計算だけ・書いても効かない）。キーを消し、0.78 の見え方に合わせるなら ambient・光の intensity と range を線形の目盛りで合わせ直す（engine の docs/migrations/0.79.0.md）"
+    }
+  ],
+  "exempt": {
+    "src/AssistShow.flix::game-unchecked-pure": "internet_dungeon の Math.sin・cos の包み。Num.sin・Num.cos へ寄せるまで",
+    "src/CardPile.flix::game-unchecked-pure": "internet_dungeon の Math.sin の包み。Num.sin へ寄せるまで",
+    "src/EndScreen.flix::game-unchecked-pure": "internet_dungeon の Math.sin・cos の包み。Num.sin・Num.cos へ寄せるまで"
+  }
+}

@@ -1,0 +1,22 @@
+{
+  "note": "lint-ui-overflow（ui.json の text の折り返し宣言漏れ）の規約データ。この JSON が source of truth で、bin/fge ui-overflow はこれを読んで動く。",
+  "gameRoots": [
+    "templates"
+  ],
+  "excludedDirs": [
+    ".devbox",
+    ".git",
+    "build",
+    "gallery",
+    "lib",
+    "reference",
+    "target",
+    "testdata"
+  ],
+  "suffix": ".ui.json",
+  "exemptKey": "lint-ui",
+  "exemptMarker": "対象外",
+  "textWidget": "text",
+  "wrapAuto": "auto",
+  "growWidth": "grow"
+}
