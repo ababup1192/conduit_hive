@@ -129,7 +129,7 @@ mod TestCombat {
     def testFiringSoundsTheShot(): Unit \ Assert =
         let r = resWith(twoRoomMaze());
         let shot = World.step(r, { trigger = { pressed = true, held = true } | idle() }, at(0.05, 0.05, World.initial(r)));
-        Assert.assertEq(expected = "shot" :: Nil, Sounds.events(shot))
+        Assert.assertEq(expected = "shot_pistol" :: Nil, Sounds.events(shot))
 
     // ── 連射の間隔 ──
 
@@ -144,4 +144,36 @@ mod TestCombat {
         let traced = App.trace(Game.app(docs), List.repeat(60, held), Resources.of(res, World.setLooking(true, World.initial(res))));
         Assert.assertEq(expected = Some(Some(10)),
             List.last(traced) |> Option.map(s -> Resources.read((_, wd) -> TestSupport.arsenalIn(wd) |> Option.map(a -> a#shots), s#after)))
+
+    // ── やり直すと部屋に入った時へ戻る ──
+
+    /// 部屋 A に入ったコマに、前（x 7 m）の melee を拳銃の 1 発で倒し（倒した数 1・撃った数 1）、後ろ（x 5 m）の melee の振り下ろしで倒れる。
+    /// やり直すと、倒した数と撃った数は部屋に入った時の 0 へ戻る（湧き直す群れを二重に数えない）。並びは（倒れたコマ, やり直したコマ）の（倒した数, 撃った数）。
+    @Test
+    def testRespawnRestoresKillsAndAmmoOfTheRoomEntry(): Unit \ Assert =
+        let pistol = WeaponsDoc.statsOf(WeaponsDoc.Weapon.Pistol, WeaponsDoc.defaults());
+        let base = fragileRes();
+        let r = { enemies = EnemiesDoc.Doc.Doc({ melee = { health = pistol#damage | enemies()#melee } | enemies() }) | base };
+        let hit = enemies()#melee#hitTime;
+        let w0 = withMelee(r, 5.0, 10.0, Num.pi() * 0.5, 'A', withMelee(r, 7.0, 10.0, Num.pi() * 1.5, 'A', World.initial(r)));
+        let shot = World.step(r, { trigger = { pressed = true, held = true } | idle() }, at(0.05, 0.05, w0));
+        let down = World.step(r, idle(), at(0.05 + hit, 0.05, shot));
+        let back = World.step(r, idle(), at(0.1 + hit + player()#respawnSeconds, 0.05, down));
+        let tally = (w: World.World) -> World.sessionOf(w) |> Option.map(s -> (World.killsOf(s), World.arsenalOf(s)#shots));
+        Assert.assertEq(expected = (Some((1, 1)), Some((0, 0))), (tally(down), tally(back)))
+
+    // ── 弾が尽きるまで押し続ける ──
+
+    /// 連射銃（弾 2 発）と拳銃を持ち、連射銃を構えて 60 Hz で 1 秒押し続けると、2 発撃った後に空撃ちして拳銃へ替わり、
+    /// 押したままの拳銃では撃たない（拳銃は押すたびに 1 回）。並びは（撃った数の合計, 構えている武器）。
+    @Test
+    def testHeldRifleRunsDryThenSwitchesWithoutFiringThePistol(): Unit \ Assert =
+        let w = WeaponsDoc.rec(WeaponsDoc.defaults());
+        let docs = { weapons = WeaponsDoc.Doc.Doc({ rifle = { owned = true, ammo = 2 | w#rifle } | w }) | docsWith(twoRoomMaze()) };
+        let res = Res.build(docs);
+        let held = { dt = 1.0 / 60.0, windowFocused = true, mouseButtons = Set#{GameEngine.MouseButton.Left} | App.emptyFrame() };
+        let start = World.step(res, { choice = Arsenal.Choice.Slot(WeaponsDoc.Weapon.Rifle) | idle() }, World.setLooking(true, World.initial(res)));
+        let traced = App.trace(Game.app(docs), List.repeat(60, held), Resources.of(res, start));
+        Assert.assertEq(expected = Some(Some((2, WeaponsDoc.Weapon.Pistol))),
+            List.last(traced) |> Option.map(s -> Resources.read((_, wd) -> TestSupport.arsenalIn(wd) |> Option.map(a -> (a#shots, a#current)), s#after)))
 }

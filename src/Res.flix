@@ -3,7 +3,7 @@
 // 遊びの状態は World が持ち、App の w は Resources.With[Res, World] の組（Game）。
 // Res は World を使わない（使う向きは World → Res だけ。lint/rules.flix の module-cycle）。
 mod Res {
-    use fge::{CollisionShape3d, CollisionWorld3d, PxSpriteAtlas, Rect2, Texture3d}
+    use fge::{CollisionShape3d, CollisionWorld3d, PxSpriteAtlas, Rect2, Scene3d, Texture3d}
 
     /// 起動時と描き出しが同じ形で読む Doc の束と、ステージ・腕と銃・敵・拾う武器の glb（Controls.loadDocs）。
     pub type alias Docs = {
@@ -59,8 +59,10 @@ mod Res {
         // 撃つ的の柱の箱（当たり判定・弾の的・絵が同じ箱を使う）と、弾の的の列。
         props = List[CollisionShape3d.Box3d],
         hitTargets = Hitscan.Targets,
-        // 区画ごとの絵と灯り（ベイクしたステージか灰色の箱。的の柱は最後の部屋の絵に入る）と、場面に渡すステージの絵（trim sheet と lightmap）。
+        // 区画ごとの絵と灯り（ベイクしたステージか灰色の箱）・的の柱の絵（最後の部屋が見える時に一人称の場面だけに描く）と、
+        // 場面に渡すステージの絵（trim sheet と lightmap）。
         art = Map[Char, MazeMesh.ZoneArt],
+        propArt = List[Scene3d.Instance3d],
         stageTextures = List[Texture3d.Texture3d],
         // 3D の粒のビルボードの絵（コードで塗った 1 枚。読み込みで 1 回だけ作る）。
         particleTexture = PxSpriteAtlas.Baked
@@ -74,7 +76,7 @@ mod Res {
           spawns = docs#spawns, pickups = docs#pickups, stage = docs#stage, viewmodels = docs#viewmodels, creatures = docs#creatures, timing = Creatures.timingOf(docs#creatures),
           spawnPoints = stage#spawnPoints, pickupPoints = Pickups.pointsOf(stage#maze, docs#pickups),
           pickupArt = PickupModels.build(LookDoc.rec(docs#look), docs#pickups, docs#pickupModels), maze = stage#maze, collision = stage#collision, props = stage#props, hitTargets = stage#hitTargets,
-          art = stage#art, stageTextures = stage#textures, particleTexture = Particles3d.textureOf() }
+          art = stage#art, propArt = stage#propArt, stageTextures = stage#textures, particleTexture = Particles3d.textureOf() }
 
     /// 迷路と見た目と spawn の群れから作る物。
     type alias Stage = {
@@ -83,6 +85,7 @@ mod Res {
         props = List[CollisionShape3d.Box3d],
         hitTargets = Hitscan.Targets,
         art = Map[Char, MazeMesh.ZoneArt],
+        propArt = List[Scene3d.Instance3d],
         textures = List[Texture3d.Texture3d],
         spawnPoints = List[Spawner.Point]
     }
@@ -94,9 +97,8 @@ mod Res {
         let maze = Maze.build(lk#fogFar, mazeDoc);
         let props = Props.pillarsOf(maze);
         let current = if (lk#bakedStage) baked |> Option.flatMap(StageModel.currentFor(mazeDoc)) else None;
-        let art = artOf(lk, maze, current)
-            |> Map.adjust(z -> { instances = List.append(z#instances, Props.artOf(lk, props)) | z }, maze#finalZone);
-        { maze = maze, collision = Collider.worldOf(maze, props), props = props, hitTargets = Hitscan.targetsOf(maze, props), art = art,
+        { maze = maze, collision = Collider.worldOf(maze, props), props = props, hitTargets = Hitscan.targetsOf(maze, props),
+          art = artOf(lk, maze, current), propArt = Props.artOf(lk, props),
           textures = current |> Option.map(s -> s#textures) |> Option.getWithDefault(Nil), spawnPoints = Spawner.pointsOf(maze, spawns) }
 
     /// 区画ごとの絵: ベイクしたステージがあればその区画の形（灯りは場面に入れず、灯具の写しだけを持つ）・無ければ灰色の箱。
@@ -109,7 +111,7 @@ mod Res {
     def withStage(mazeDoc: MazeDoc.Doc, look: LookDoc.Doc, res: Res): Res =
         let stage = stageOf(mazeDoc, look, res#spawns, res#stage);
         { mazeDoc = mazeDoc, look = look, maze = stage#maze, collision = stage#collision, props = stage#props, hitTargets = stage#hitTargets,
-          art = stage#art, stageTextures = stage#textures, spawnPoints = stage#spawnPoints, pickupPoints = Pickups.pointsOf(stage#maze, res#pickups),
+          art = stage#art, propArt = stage#propArt, stageTextures = stage#textures, spawnPoints = stage#spawnPoints, pickupPoints = Pickups.pointsOf(stage#maze, res#pickups),
           pickupArt = PickupModels.build(LookDoc.rec(look), res#pickups, res#pickupArt#models) | res }
 
     /// 粒の種類の絵のコマ。

@@ -9,8 +9,8 @@ mod Starts {
         { name = "play", doc = "迷路の start の印に立って遊び始めた所", args = Map.empty(), build = (res, w, _) -> Ok(playing(res, w)) } ::
         { name = "at", doc = "遊び始めて、体を x・z（m）に置き、yaw（度。0 が北・90 が東）を向いた所", args = Map#{"x" => "0", "z" => "0", "yaw" => "0"}, build = at } :: Nil
 
-    /// 遊び始めた所（時計は w のまま）。
-    def playing(res: Res.Res, w: World.World): World.World = { play = w#play | World.initial(res) }
+    /// 遊び始めた所（時計は w のまま・始めた時刻は今）。
+    def playing(res: Res.Res, w: World.World): World.World = World.restart(res, w)
 
     def at(res: Res.Res, w: World.World, args: Map[String, String]): Result[String, World.World] =
         forM (

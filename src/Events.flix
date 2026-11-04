@@ -1,4 +1,5 @@
-// Events — 1 コマの中で起きた事（純粋な値）。World.step がこのコマの分だけを持ち、音（Sounds）と、後の段の画面の演出が写す。
+// Events — 1 コマの中で起きた事（純粋な値）。遊んでいる場面の事は Session が、画面をまたぐ事（遊び始めた・ポーズ・タイトルへ…）は World が
+// このコマの分だけを持ち、音（Sounds）と、後の段の画面の演出が写す。
 // 前後の World の差から出来事を推し量らない（同じ欄が 1 コマに 2 回変わると取りこぼす）。
 mod Events {
     use Creatures.Kind
@@ -32,5 +33,16 @@ mod Events {
         case DryFire(WeaponsDoc.Weapon)
         // 最後の部屋を空にした。
         case Cleared
+        // ── 画面をまたぐ事（World.screenEventsOf。遊んでいる場面の外でも起きる） ──
+        // タイトルから遊び始めた・ポーズした・ポーズを解いた。
+        case Started
+        case Paused
+        case Resumed
+        // ポーズの項目を動かした・決めた。
+        case MenuMoved
+        case MenuChosen
+        // タイトルへ戻った・クリアの画面へ移った。
+        case ToTitle
+        case ClearShown
     }
 }

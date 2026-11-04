@@ -47,6 +47,8 @@ PIPE_STRIP = {"XL": "pipe_steel", "L": "pipe_steel", "M": "pipe_paint", "S": "pi
 def load_doc():
     raw = open(DOC_PATH, "rb").read()
     d = json.loads(raw.decode("utf-8"))
+    # WhyNot: 形の崩れた Doc で組み始めない — ゲームは既定へ落として別の迷路を読むので、ベイクの後でハッシュが食い違う。
+    stagehash.check_shape(d)
     rows = d["rows"]
     cols = max(len(r) for r in rows)
     grid = [r.ljust(cols, "#") for r in rows]

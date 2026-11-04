@@ -1,7 +1,7 @@
 // 拾う規則（Pickups・Arsenal・Health と World.step）: 印から置く・満タンなら拾わない・武器が加わり持ち替わる・
 // 弾倉で弾が増えて上限で止まる・弾が 0 の時の空撃ちと自動の持ち替え・拾った物は消える。
 mod TestPickups {
-    use fge::LogCapture
+    use fge::{LogCapture, Num}
     use Events.Event
     use Pickups.Kind
     use TestSupport.{arsenalIn, clockAt, eventsIn, mazeOf, resWith}
@@ -156,4 +156,19 @@ mod TestPickups {
         let pull = { trigger = { pressed = true, held = true } | World.walking(Walker.idle()) };
         let drawn = World.step(r, { choice = Arsenal.Choice.Slot(Weapon.Shotgun) | World.walking(Walker.idle()) }, { play = clockAt(0.05, 0.05) | World.initial(r) });
         Assert.assertEq(expected = "dryfire" :: "switch" :: Nil, Sounds.events(World.step(r, pull, { play = clockAt(0.1 + vm()#drawSeconds, 0.05) | drawn })))
+
+    // ── やり直す ──
+
+    /// 体力 5 で散弾銃（x 14 m）を拾い、すぐ東（x 15 m）の melee の振り下ろしで倒れてやり直すと、拾った物と武器は始めの時へ戻る
+    /// （散弾銃は床に戻り、構えているのは拳銃）。並びは（拾った物の番号, 構えている武器）。
+    @Test
+    def testRespawnPutsPickupsBack(): Unit \ Assert =
+        let base = res();
+        let r = { player = PlayerDoc.Doc.Doc({ health = 5.0 | player() }) | base };
+        let hit = EnemiesDoc.rec(EnemiesDoc.defaults())#melee#hitTime;
+        let armed = standAt(r, 14.0, 0.05, World.mapHorde(Horde.spawnNow(r, { kind = Creatures.Kind.Melee, x = 15.0, z = 6.0, yaw = Num.pi() * 1.5, home = 'A' } :: Nil), World.initial(r)));
+        let down = World.step(r, World.walking(Walker.idle()), { play = clockAt(0.05 + hit, 0.05) | armed });
+        let back = World.step(r, World.walking(Walker.idle()), { play = clockAt(0.1 + hit + player()#respawnSeconds, 0.05) | down });
+        Assert.assertEq(expected = Some((Set.empty(), Weapon.Pistol)),
+            World.sessionOf(back) |> Option.map(s -> (World.takenOf(s), World.arsenalOf(s)#current)))
 }

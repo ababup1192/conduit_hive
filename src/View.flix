@@ -104,6 +104,7 @@ mod View {
             Maze.zoneAt(res#maze, x, z) |> Option.exists(id -> Set.memberOf(id, drawn)) and Frustum.intersectsSphere(frustum, Vec3.v3(x, y, z), radius);
         let shots = horde#projectiles |> List.filter(p -> seen(p#at#x, p#at#y, p#at#z, 1.0));
         let items = pickupsIn(res, t, camera, drawn, World.takenOf(s));
+        let props = if (Set.memberOf(res#maze#finalZone, drawn)) res#propArt else Nil;
         { t = t, camera = camera, look = LookDoc.rec(res#look),
           zones = drawn |> Set.toList |> List.filterMap(id -> Map.get(id, res#art)),
           billboards = List.append(
@@ -111,12 +112,12 @@ mod View {
               Particles3d.billboards(res#particles, Particles3d.textureName(), Res.particleRegion(res), Particles3d.Space.World, Mat4.identity(), t, particles)),
           flash = viewmodel |> Option.toList |> List.flatMap(h -> flashLights(res, a, t, StageView.fromEye(camera, fst(h)))),
           creatures = creaturesIn(res, t, horde#enemies |> List.filter(e -> seen(e#x, 1.0, e#z, creatureReach()))),
-          pickups = items#instances,
+          pickups = List.append(items#instances, props),
           textures = List.flatten(res#stageTextures :: (res#creatures |> Map.valuesOf |> List.flatMap(b -> b#model#textures)) :: res#pickupArt#textures :: Nil),
           glows = List.append(shots |> List.map(p -> Particles3d.spitLight(res#particles, p#at)), items#lights),
           viewmodel = viewmodel |> Option.map(snd) }
 
-    /// タイトルとクリアの背景: カメラから見える区画の迷路と拾う物だけ（敵・粒・腕と銃は無し）。
+    /// タイトルとクリアの背景: カメラから見える区画の迷路と拾う物だけ（敵・粒・腕と銃・的の柱は無し）。
     def showcaseIn(res: Res.Res, t: Float64, camera: Camera3d.Camera3d): StageView.In =
         let drawn = Maze.visibleFrom(res#maze, camera#eye#x, camera#eye#z);
         let items = pickupsIn(res, t, camera, drawn, Set.empty());
@@ -139,7 +140,7 @@ mod View {
         { eye = Vec3.v3(x, walk#eyeHeight + 0.5, z), yaw = yaw, pitch = rad(showcasePitch()),
           fovY = rad(walk#fovY), near = 0.05, far = LookDoc.rec(res#look)#fogFar }
 
-    /// タイトルの背景: 最後の部屋の真ん中から 4 マス東（的の柱を遠くに見る）から、時刻 t に合わせてゆっくり見回す（部屋が無ければ start の印）。
+    /// タイトルの背景: 最後の部屋の真ん中から 4 マス東から、時刻 t に合わせてゆっくり見回す（部屋が無ければ start の印）。
     def titleCamera(res: Res.Res, t: Float64): Camera3d.Camera3d =
         let (x, z) = Maze.middleCellOf(res#maze, res#maze#finalZone) |> Option.map(c -> Maze.centerOf(res#maze, { col = c#col + 4 | c }))
             |> Option.getWithDefault((res#maze#start#x, res#maze#start#z));

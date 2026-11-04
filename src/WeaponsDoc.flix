@@ -68,7 +68,7 @@ mod WeaponsDoc {
                               automatic = false, infinite = true, ammo = 0, maxAmmo = 0, owned = true },
                   shotgun = { damage = 20.0, interval = 0.9, spread = 10.0, pellets = 9, recoil = 6.0, range = 30.0,
                               automatic = false, infinite = false, ammo = 0, maxAmmo = 40, owned = false },
-                  rifle   = { damage = 14.0, interval = 0.1, spread = 1.8, pellets = 1, recoil = 1.0, range = 70.0,
+                  rifle   = { damage = 20.0, interval = 0.1, spread = 1.8, pellets = 1, recoil = 1.0, range = 70.0,
                               automatic = true, infinite = false, ammo = 0, maxAmmo = 240, owned = false } })
 
     pub def fromJson(text: String): Option[Doc] = DocJson.decodeObject(fromRoot, text)

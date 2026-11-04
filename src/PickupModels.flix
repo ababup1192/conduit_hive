@@ -2,7 +2,8 @@
 // 回復と弾倉は鋼の箱の組み合わせに発光の筋（施設の光る筋と同じ冷たい色）。どの物の下にも、光る縁の台座を床に敷く。
 // 形は読み込みで 1 回だけ組み、置くたびに world の行列だけを替える（instancesAt）。浮き方と回り方は Pickups。
 mod PickupModels {
-    use fge::{Color, Gltf, LoadProgress, Log, Mat4, Mesh3d, Model3d, Num, Scene3d, Texture3d, Vec3}
+    use fge::{Color, Gltf, LoadProgress, Log, Mat4, Mesh3d, Model3d, Num, Scene3d, ShaderDoc, Texture3d, Vec3}
+    use fge::ShaderDoc.{Field, Shade, Out}
     use WeaponsDoc.Weapon
     use Pickups.Kind
 
@@ -76,21 +77,45 @@ mod PickupModels {
             :: glowing(look, glow, "pickup:magazine-band", box(-0.09, 0.3, 0.081, 0.06, 0.12, 0.012) :: box(0.09, 0.3, 0.081, 0.06, 0.12, 0.012) :: box(0.0, 0.1, -0.146, 0.38, 0.03, 0.012) :: Nil)
             :: Nil
 
-    /// 床に敷く台座: 低い黒鉛の板と、その縁の光る四角の枠。
+    /// 半透明で自分で光る材質（頂点の色に光る色を足し、alpha の濃さで重ねる）。
+    def beamMaterial(name: String, c: Color, intensity: Float64, alpha: Float64): Scene3d.Material3d =
+        let vc = chan -> Field.VertexColor({ chan = chan });
+        let spec = { name = name, cycleRate = 0.0, bindings = Nil,
+                     out = Out.Fill({ shade = Shade.Rgb({ r = vc(ShaderDoc.TexChan.R), g = vc(ShaderDoc.TexChan.G), b = vc(ShaderDoc.TexChan.B) }), alpha = Field.Const(alpha) }) };
+        Scene3d.material(spec) |> Scene3d.withEmission(Shade.Solid(c)) |> Scene3d.withEmissionIntensity(intensity) |> Scene3d.withAlphaBlend(true)
+
+    /// 台座から上へ立つ淡い光の柱: 下ほど濃く上へ消える 4 段の半透明の箱（暗がりで拾う物の後ろに明るい地を作り、形を背景から分ける）。
+    def beamOf(look: LookDoc.Rec, glow: Float64): List[Shape] =
+        let (side, step) = (0.62, 0.45);
+        (0.22 :: 0.13 :: 0.07 :: 0.03 :: Nil) |> List.zipWithIndex |> List.map(e -> {
+            let (i, alpha) = e;
+            let y = 0.04 + step * (Int32.toFloat64(i) + 0.5);
+            { mesh = BoxMesh.of(look#stripColor, box(0.0, y, 0.0, side, step, side) :: Nil),
+              material = Some(beamMaterial("conduit_pickup_beam${i}", look#stripColor, glow * 0.35, alpha)), name = "pickup:beam" }
+        })
+
+    /// 床に敷く台座: 低い黒鉛の板と、その縁の光る四角の枠と、上へ立つ光の柱。
     def padOf(look: LookDoc.Rec, glow: Float64): List[Shape] =
         let (half, rim, y) = (0.55, 0.035, 0.036);
         solid("pickup:pad", Color.darken(look#floorColor, 0.2), box(0.0, 0.015, 0.0, half * 2.0, 0.03, half * 2.0) :: Nil)
             :: glowing(look, glow * 0.6, "pickup:pad-rim",
                    box(0.0, y, half - 0.06, half * 2.0 - 0.12, 0.012, rim) :: box(0.0, y, 0.06 - half, half * 2.0 - 0.12, 0.012, rim)
                        :: box(half - 0.06, y, 0.0, rim, 0.012, half * 2.0 - 0.12) :: box(0.06 - half, y, 0.0, rim, 0.012, half * 2.0 - 0.12) :: Nil)
-            :: Nil
+            :: beamOf(look, glow)
 
     /// 形の束を組む（読み込みと見た目の Doc を読み直した時だけ）。
     pub def build(look: LookDoc.Rec, doc: PickupsDoc.Doc, models: Models): Art =
         let glow = PickupsDoc.rec(doc)#glow;
         { bodies = Map#{ Kind.HealthSmall => medkit(look, glow, 1.0), Kind.HealthLarge => medkit(look, glow, 1.35),
                          Kind.AmmoShotgun => shells(look, glow), Kind.AmmoRifle => magazines(look, glow) },
-          pad = padOf(look, glow), models = models, textures = models |> Map.valuesOf |> List.flatMap(m -> m#textures) }
+          pad = padOf(look, glow), models = models |> Map.map(glowingModel(look, glow)), textures = models |> Map.valuesOf |> List.flatMap(m -> m#textures) }
+
+    /// 武器の glb の、自分で光らない材質に施設の光る筋の色をうっすら足す（暗がりで黒い影にならない）。光る筋の材質はそのまま。
+    def glowingModel(look: LookDoc.Rec, glow: Float64, m: Model3d.Model3d): Model3d.Model3d =
+        let tint = (mat: Scene3d.Material3d) ->
+            if (Option.nonEmpty(Scene3d.materialFieldsOf(mat)#emission)) mat
+            else mat |> Scene3d.withEmission(Shade.Solid(Color.mix(look#wallColor, look#stripColor, 0.5))) |> Scene3d.withEmissionIntensity(glow * 0.12);
+        { parts = m#parts |> List.map(p -> { material = p#material |> Option.map(tint) | p }) | m }
 
     // ── 置く ──
 

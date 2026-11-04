@@ -29,7 +29,7 @@
     "owned": false
   },
   "rifle": {
-    "damage": 14.0,
+    "damage": 20.0,
     "interval": 0.1,
     "spread": 1.8,
     "pellets": 1,

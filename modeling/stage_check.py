@@ -39,6 +39,7 @@ def png_size(b):
 
 raw = open(DOC, "rb").read()
 d = json.loads(raw)
+stagehash.check_shape(d)
 rows = d["rows"]; cols = max(map(len, rows)); nrows = len(rows); cs = d["cellSize"]
 grid = [r.ljust(cols, "#") for r in rows]
 heights = {z["id"]: z["height"] for z in d["zones"]}

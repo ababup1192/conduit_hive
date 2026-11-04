@@ -38,4 +38,8 @@ def main():
     # クリア: ゆっくり上がる 3 音と、部屋に残る暗い響き。
     sound("clear", [blip(392, 260, amp = 0.25, decay = 220), blip(523, 260, at = 180, amp = 0.25, decay = 220),
                     blip(784, 520, at = 360, amp = 0.25, decay = 420), burst(700, at = 360, amp = 0.08, hz = 700, decay = 600, attack = 40)])
+    # メニューの項目を動かす: ごく短い高い 1 音。
+    sound("ui_move", [blip(1320, 30, amp = 0.2, decay = 25)])
+    # メニューで決める・始める・ポーズ: 下がる 2 音の短い合図。
+    sound("ui_choose", [blip(880, 50, amp = 0.25, decay = 40), blip(660, 80, at = 45, amp = 0.22, decay = 60)])
 main()

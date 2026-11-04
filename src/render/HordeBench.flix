@@ -211,8 +211,18 @@ mod HordeBench {
             "gpu_ms        ${spread(gpu)}" ::
             "gpu_passes    ${passAverages(xs)}" ::
             "scene3d       instances=${medianInt(counts |> List.map(c -> c#instances))} drawn=${medianInt(counts |> List.map(c -> c#drawn))} drawCalls=${medianInt(counts |> List.map(c -> c#drawCalls))}" ::
-            kit#micro;
+            List.append(worstFrames(xs), kit#micro);
         List.join("\n", lines) + "\n"
+
+    /// 間隔の長い 3 コマの内訳（測りの何コマ目か・間隔・GL へ送る・swap・GPU・作ったシェーダー・上げた絵）。
+    /// GC は JAVA_TOOL_OPTIONS="-Xlog:gc*:file=…" で別に取って時刻で照らす。
+    def worstFrames(xs: List[Sample]): List[String] =
+        let n = List.length(xs);
+        xs |> List.zipWithIndex |> List.map(e -> (0i64 - snd(e)#intervalNs, e)) |> List.sortBy(fst) |> List.take(3) |> List.map(e -> {
+            let (i, sample) = snd(e);
+            let d = sample#diag;
+            "worst         frame ${n - i} interval=${fmt(ms(sample#intervalNs))} submit=${fmt(ms(d#submitNs))} swap=${fmt(ms(d#swapNs))} gpu=${fmt(d#gpuNs |> Option.map(ms) |> Option.getWithDefault(0.0))} shaders=${List.length(d#shaderBuilds)} uploads=${List.length(d#textureUploads)}"
+        })
 
     def writeReport(kit: Kit, s: State): Unit \ Fs.FileWrite =
         match Fs.FileWrite.write({ str = report(kit, s) }, kit#out) {

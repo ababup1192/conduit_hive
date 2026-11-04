@@ -189,7 +189,7 @@
           "type": "float",
           "label": "威力（1 粒）",
           "order": 1,
-          "default": 14.0,
+          "default": 20.0,
           "min": 0,
           "max": 500
         },

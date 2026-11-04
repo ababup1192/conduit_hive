@@ -1,6 +1,7 @@
 // Spawner — 迷路の spawn の印と spawns.json の群れの種類から、部屋ごとの湧く予定を作る（純粋）。
 // 印は群れの種類の名前だけを持ち、数・間隔・型は SpawnsDoc が正。名前が引けない印は 1 行知らせて置かない。
-// 部屋に入った時刻から、印ごとに melee を先・ranged を後に、interval 秒ずつ空けて 1 体ずつ出す。プレイヤーに近すぎる印（SpawnsDoc の minDistance）は使わない。立つ所は印のマスの真ん中から scatter の幅で散らす。
+// 部屋に入った時刻から、印ごとに melee を先・ranged を後に、interval 秒ずつ空けて 1 体ずつ出す。プレイヤーに近すぎる印（SpawnsDoc の minDistance）の群れは、
+// その部屋で一番遠い印から出す（数は保つ）。立つ所は印のマスの真ん中から scatter の幅で散らす。
 mod Spawner {
     use fge::{Hash01, Log}
     use Creatures.Kind
@@ -26,15 +27,21 @@ mod Spawner {
             }
         })
 
-    /// 区画 zone の点から、時刻 t に始まる湧く予定（湧く順）。プレイヤー（away の x・z）から minDistance より近い点からは湧かせない
-    /// （部屋の入口のすぐ先の点から、入った瞬間に目の前に湧かせない）。
+    /// 区画 zone の点から、時刻 t に始まる湧く予定（湧く順）。プレイヤー（away の x・z）から minDistance より近い点の群れは、
+    /// その区画で一番遠い点から湧かせる（入った瞬間に目の前に湧かせず、湧く数は保つ。全部の点が近くても一番遠い点から湧く）。
     pub def scheduleOf(points: List[Point], zone: Char, t: Float64, away: { x = Float64, z = Float64, minDistance = Float64 }): List[Pending] =
-        let farEnough = (p: Point) -> {
-            let (dx, dz) = (p#x - away#x, p#z - away#z);
-            dx * dx + dz * dz >= away#minDistance * away#minDistance
-        };
-        points |> List.filter(p -> p#zone == zone) |> List.zipWithIndex |> List.filter(e -> farEnough(snd(e))) |> List.flatMap(e -> {
-            let (pointIndex, p) = e;
+        let distance2 = (p: Point) -> { let (dx, dz) = (p#x - away#x, p#z - away#z); dx * dx + dz * dz };
+        let here = points |> List.filter(p -> p#zone == zone) |> List.zipWithIndex;
+        let farthest = here |> List.foldLeft((best, e) -> {
+            let p = snd(e);
+            if (best |> Option.forAll(b -> distance2(p) > distance2(b))) Some(p) else best
+        }, None);
+        let placed = (p: Point) ->
+            if (distance2(p) >= away#minDistance * away#minDistance) p
+            else farthest |> Option.map(f -> { x = f#x, z = f#z | p }) |> Option.getWithDefault(p);
+        here |> List.flatMap(e -> {
+            let (pointIndex, mark) = e;
+            let p = placed(mark);
             let g = p#group;
             let kinds = List.append(List.repeat(Int32.max(0, g#melee), Kind.Melee), List.repeat(Int32.max(0, g#ranged), Kind.Ranged));
             kinds |> List.zipWithIndex |> List.map(k -> {

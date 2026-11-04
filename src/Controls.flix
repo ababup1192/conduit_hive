@@ -43,7 +43,8 @@ mod Controls {
     /// 毎フレームのシステム。終了の確認の窓が出ている間は Enter で終わる・Esc で戻る（マウスは tapAt）。
     /// ほかは画面ごとのキーとマウス（screenStep）。Esc・Enter・F3（診断の表示）は OS とゲームの慣習に合わせた固定のキー（割り当ての Doc には載せない）。
     pub def step(frame: App.Frame, res: Res.Res, w: World.World): World.World =
-        let w1 = if (World.isAskingQuit(w)) answerStep(frame, res, w) else screenStep(frame, res, w);
+        let w0 = World.beginFrame(w);
+        let w1 = if (World.isAskingQuit(w0)) answerStep(frame, res, w0) else screenStep(frame, res, w0);
         let w2 = if (App.justPressed(GameEngine.Key.F3, frame)) World.toggleDiagnostics(w1) else w1;
         let aiming = World.isLooking(w) and World.isLooking(w2) and frame#windowFocused;
         World.step(res, inputOf(frame, res, aiming, w2), w2)
@@ -75,13 +76,13 @@ mod Controls {
         else if (frame#mouseClicked) tapAt(res, frame#cursor, w)
         else w
 
-    /// ポーズ: Esc で続ける・前と後ろへ歩くキーで項目を選ぶ・Enter で決める・項目を押す。
+    /// ポーズ: Esc で続ける・矢印の上下か前と後ろへ歩くキーで項目を選ぶ・Enter で決める・項目を押す。
     def pauseStep(frame: App.Frame, res: Res.Res, w: World.World): World.World =
         let k = KeysDoc.rec(res#keys);
         let pressedAny = ks -> List.exists(key -> App.justPressed(key, frame), ks);
         if (App.justPressed(GameEngine.Key.Escape, frame)) World.resume(w)
         else if (App.justPressed(GameEngine.Key.Enter, frame)) World.choosePause(w)
-        else if (pressedAny(k#forward) or pressedAny(k#back)) World.movePauseSelection(w)
+        else if (pressedAny(GameEngine.Key.Up :: GameEngine.Key.Down :: List.append(k#forward, k#back))) World.movePauseSelection(w)
         else if (frame#mouseClicked) tapAt(res, frame#cursor, w)
         else w
 
@@ -117,7 +118,7 @@ mod Controls {
           viewmodels = FpViewmodel.load(), creatures = Creatures.load(), pickupModels = PickupModels.load() }
 
     def restartPlay(res: Res.Res, w: World.World): World.World =
-        if (Option.isEmpty(World.sessionOf(w))) w else { play = w#play | World.initial(res) }
+        if (Option.isEmpty(World.sessionOf(w))) w else World.restart(res, w)
 
     def reloadUiText(res: Res.Res): Res.Res \ Fs.FileRead = Res.withUiText(UiTextDoc.load(UiTextDoc.path()), res)
 

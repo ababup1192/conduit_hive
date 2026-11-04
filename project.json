@@ -24,7 +24,17 @@
   ],
   "sounds": [
     {
-      "name": "shot",
+      "name": "shot_pistol",
+      "path": "assets/sfx/shot.wav",
+      "looping": false
+    },
+    {
+      "name": "shot_shotgun",
+      "path": "assets/sfx/shot.wav",
+      "looping": false
+    },
+    {
+      "name": "shot_rifle",
       "path": "assets/sfx/shot.wav",
       "looping": false
     },
@@ -46,6 +56,16 @@
     {
       "name": "clear",
       "path": "assets/sfx/clear.wav",
+      "looping": false
+    },
+    {
+      "name": "ui_move",
+      "path": "assets/sfx/ui_move.wav",
+      "looping": false
+    },
+    {
+      "name": "ui_choose",
+      "path": "assets/sfx/ui_choose.wav",
       "looping": false
     }
   ],

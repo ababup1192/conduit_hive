@@ -82,8 +82,9 @@ mod World {
     /// クリアの記録: かかった時間（秒）・倒した数・最後に立っていた所と向き（ラジアン。結果の画面の背景がそこから見回す）・クリアした時刻。
     pub type alias Tally = { seconds = Float64, kills = Int32, x = Float64, z = Float64, yaw = Float64, endedAt = Float64 }
 
-    /// やり直す所: 部屋に入った時の足元と向き（度）と、その部屋。
-    pub type alias Checkpoint = { x = Float64, z = Float64, yawDeg = Float64, zone = Option[Char] }
+    /// やり直す所: 部屋に入った時の足元と向き（度）と、その部屋と、その時の武器と弾・倒した数・拾った物の番号の写し
+    /// （倒れてやり直すと、部屋の群れと一緒にこれらもその時へ戻る）。
+    pub type alias Checkpoint = { x = Float64, z = Float64, yawDeg = Float64, zone = Option[Char], arsenal = Arsenal.Arsenal, kills = Int32, taken = Set[Int32] }
 
     /// 歩いている間の中身: 体・マウスの視点・F3 の診断を出すか・武器・見回しの遅れ（度。ビューモデルの揺れ）・3D の粒・
     /// 敵の群れ・体力・やり直す所・最後にいた区画（壁の中の None は数えない）・このコマに起きた事・
@@ -121,10 +122,12 @@ mod World {
     }
 
     /// 遊びの状態。play = 遊びの時計（歩く・頭の上下・タイトルの見回しがこれを見る。終了の確認とポーズの間は止まる）。
+    /// events = このコマに起きた画面をまたぐ事（遊び始めた・ポーズ・項目・タイトルへ・クリアの画面へ）。Controls.step の頭で空にする。
     pub type alias World = {
         play = Clock.Clock[PlayClock.Play],
         screen = Screen,
-        quit = Quit
+        quit = Quit,
+        events = List[Event]
     }
 
     // ── 盤の寸法（design 480×270。project.json と同じ値） ──
@@ -145,15 +148,28 @@ mod World {
         { walker = startWalker(res), look = Look.Released, diagnosticsView = DiagnosticsView.Hidden,
           arsenal = Arsenal.initial(res#weapons), sway = { x = 0.0, y = 0.0 }, particles = Nil,
           horde = Horde.empty(), health = Health.full(PlayerDoc.rec(res#player)),
-          checkpoint = { x = s#x, z = s#z, yawDeg = s#yaw, zone = None }, lastZone = None, events = Nil,
+          checkpoint = { x = s#x, z = s#z, yawDeg = s#yaw, zone = None, arsenal = Arsenal.initial(res#weapons), kills = 0, taken = Set.empty() },
+          lastZone = None, events = Nil,
           pause = Pause.Running, taken = Set.empty(), notice = None, kills = 0, startedAt = t, clearedAt = None }
 
     /// 遊びから始める状態（迷路の start の印に立ち、始めた時刻は 0 秒）。
     pub def initial(res: Res.Res): World =
-        { play = Clock.start(), quit = Quit.Playing, screen = Screen.Play(SessionOf.SessionOf(freshSession(res, 0.0))) }
+        { play = Clock.start(), quit = Quit.Playing, screen = Screen.Play(SessionOf.SessionOf(freshSession(res, 0.0))), events = Nil }
 
     /// タイトルの画面から始める状態（起動の既定）。
-    pub def title(): World = { play = Clock.start(), quit = Quit.Playing, screen = Screen.Title }
+    pub def title(): World = { play = Clock.start(), quit = Quit.Playing, screen = Screen.Title, events = Nil }
+
+    /// 今の時計のまま、迷路の start の印から遊び直す（始めた時刻は今。タイトルにいた時間をかかった時間に足さない）。
+    pub def restart(res: Res.Res, w: World): World =
+        { screen = Screen.Play(SessionOf.SessionOf(freshSession(res, seconds(w)))), quit = Quit.Playing | w }
+
+    /// このコマに起きた画面をまたぐ事。
+    pub def screenEventsOf(w: World): List[Event] = w#events
+
+    /// コマの頭: 前のコマの画面をまたぐ事を消す（Controls.step が最初に呼ぶ）。
+    pub def beginFrame(w: World): World = { events = Nil | w }
+
+    def withEvent(e: Event, w: World): World = { events = List.append(w#events, e :: Nil) | w }
 
     def rec(s: Session): SessionRec = match s { case SessionOf.SessionOf(r) => r }
 
@@ -172,12 +188,12 @@ mod World {
 
     /// タイトルから遊び始める（マウスをキャプチャして視点を回す）。タイトルでなければ何もしない。
     pub def startPlay(res: Res.Res, w: World): World = match w#screen {
-        case Screen.Title => { screen = Screen.Play(SessionOf.SessionOf({ look = Look.Captured | freshSession(res, seconds(w)) })) | w }
+        case Screen.Title => withEvent(Event.Started, { screen = Screen.Play(SessionOf.SessionOf({ look = Look.Captured | freshSession(res, seconds(w)) })) | w })
         case _            => w
     }
 
     /// タイトルへ戻る（ポーズの「タイトルへ」・クリアの画面）。
-    pub def toTitle(w: World): World = { screen = Screen.Title | w }
+    pub def toTitle(w: World): World = withEvent(Event.ToTitle, { screen = Screen.Title | w })
 
     /// タイトルの画面か。
     pub def isOnTitle(w: World): Bool = match w#screen {
@@ -200,13 +216,19 @@ mod World {
     pub def pauseOf(s: Session): Pause = rec(s)#pause
 
     /// Esc: ポーズする（キャプチャは放し、「続ける」を選んだ所から）。
-    pub def pause(w: World): World = mapSession(s -> { pause = Pause.Paused(PauseItem.Resume), look = Look.Released | s }, w)
+    /// 遊んでいて、ポーズしていなければ何もしない。
+    pub def pause(w: World): World =
+        if (Option.isEmpty(sessionOf(w)) or isPaused(w)) w
+        else withEvent(Event.Paused, mapSession(s -> { pause = Pause.Paused(PauseItem.Resume), look = Look.Released | s }, w))
 
-    /// ポーズを解いて遊びへ戻る（マウスをキャプチャし直す）。
-    pub def resume(w: World): World = mapSession(s -> { pause = Pause.Running, look = Look.Captured | s }, w)
+    /// ポーズを解いて遊びへ戻る（マウスをキャプチャし直す）。ポーズしていなければ何もしない。
+    pub def resume(w: World): World =
+        if (not isPaused(w)) w
+        else withEvent(Event.Resumed, mapSession(s -> { pause = Pause.Running, look = Look.Captured | s }, w))
 
     /// ポーズの項目を上下に動かす（項目は 2 つなので、どちらへ動かしても入れ替わる）。
-    pub def movePauseSelection(w: World): World = mapSession(s -> { pause = otherItem(s#pause) | s }, w)
+    pub def movePauseSelection(w: World): World =
+        if (not isPaused(w)) w else withEvent(Event.MenuMoved, mapSession(s -> { pause = otherItem(s#pause) | s }, w))
 
     def otherItem(p: Pause): Pause = match p {
         case Pause.Paused(PauseItem.Resume)  => Pause.Paused(PauseItem.ToTitle)
@@ -217,8 +239,8 @@ mod World {
     /// ポーズで選んでいる項目を決める（続ける・タイトルへ）。ポーズしていなければ何もしない。
     pub def choosePause(w: World): World =
         let chosen = sessionOf(w) |> Option.map(s -> rec(s)#pause);
-        if (chosen == Some(Pause.Paused(PauseItem.Resume))) resume(w)
-        else if (chosen == Some(Pause.Paused(PauseItem.ToTitle))) toTitle(w)
+        if (chosen == Some(Pause.Paused(PauseItem.Resume))) resume(withEvent(Event.MenuChosen, w))
+        else if (chosen == Some(Pause.Paused(PauseItem.ToTitle))) toTitle(withEvent(Event.MenuChosen, w))
         else w
 
     // ── 遊んでいる場面を読む（Session を受ける） ──
@@ -287,7 +309,8 @@ mod World {
         case Screen.Play(s) if w#quit != Quit.Playing or rec(s)#pause != Pause.Running => mapSession(r -> { events = Nil | r }, w)
         case Screen.Play(s) =>
             let next = stepSession(res, input, w#play, rec(s));
-            { screen = if (isClearDue(res, w#play, next)) Screen.Clear(tallyAt(w#play, next)) else Screen.Play(SessionOf.SessionOf(next)) | w }
+            if (isClearDue(res, w#play, next)) withEvent(Event.ClearShown, { screen = Screen.Clear(tallyAt(w#play, next)) | w })
+            else { screen = Screen.Play(SessionOf.SessionOf(next)) | w }
         case _ => w
     }
 
@@ -375,7 +398,7 @@ mod World {
             case Some(id) =>
                 let fresh = not Horde.isTriggered(id, s#horde);
                 let checkpoint = if (s#checkpoint#zone == Some(id)) s#checkpoint
-                                 else { x = b#x, z = b#z, yawDeg = b#yaw * 180.0 / Num.pi(), zone = Some(id) };
+                                 else { x = b#x, z = b#z, yawDeg = b#yaw * 180.0 / Num.pi(), zone = Some(id), arsenal = s#arsenal, kills = s#kills, taken = s#taken };
                 { lastZone = Some(id), checkpoint = checkpoint, horde = Horde.enter(res, id, t, { x = b#x, z = b#z }, s#horde),
                   events = if (fresh) List.append(s#events, Event.RoomTriggered(id) :: Nil) else s#events | s }
         }
@@ -401,11 +424,13 @@ mod World {
           events = List.flatten(s#events :: outcome#events :: hurtEvents :: downEvents :: Nil) | s }
 
     /// やり直す: やり直す所に立ち、体力を満たし、敵を消して部屋をもう一度湧かせられるようにする（次のコマに部屋へ入り直して湧く）。
+    /// 武器と弾・倒した数・拾った物は部屋に入った時の写しへ戻す（湧き直す群れの分を二重に数えない・使った弾を取り戻せる）。
     def respawn(res: Res.Res, s: SessionRec): SessionRec =
         let c = s#checkpoint;
         let walker = Walker.settle(res#collision, WalkDoc.rec(res#walk), Walker.standing(c#x, 0.0, c#z, c#yawDeg));
         let zones = Set.union(Horde.zonesInPlay(s#horde), c#zone |> Option.toList |> List.toSet);
         { walker = walker, health = Health.full(PlayerDoc.rec(res#player)), horde = Horde.resetRooms(zones, s#horde),
+          arsenal = c#arsenal, kills = c#kills, taken = c#taken, notice = None,
           particles = Nil, lastZone = None, events = Event.Respawned :: Nil | s }
 
     /// 見回しの遅れ: このコマに回した角を足し、上限で切り、swayFollow 秒ほどで 0 へ戻す。

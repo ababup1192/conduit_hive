@@ -154,13 +154,24 @@ mod TestHorde {
     def testEnteringARoomSchedulesTheMarkedGroups(): Unit \ Assert =
         Assert.assertEq(expected = packSize() |> Option.map(n -> 2 * n), Some(List.length(Horde.enter(packRes(), 'A', 0.0, entrance(), Horde.empty())#pending)))
 
-    /// minDistance を 10 m にした群れの Doc で x 10 m・z 10 m から入ると、8 m 先の印（x 18 m・z 10 m）からは湧かず、
-    /// 約 12.6 m 先の印（x 22 m・z 6 m）の pack 1 つ分だけが湧く予定になる。
-    @Test
-    def testMarksTooCloseToThePlayerDoNotSpawn(): Unit \ Assert =
+    /// minDistance を 10 m にした群れの描く元。
+    def nearRes(): Res.Res =
         let r = packRes();
-        let near = { spawns = SpawnsDoc.Doc.Doc({ minDistance = 10.0 | SpawnsDoc.rec(r#spawns) }) | r };
-        Assert.assertEq(expected = packSize(), Some(List.length(Horde.enter(near, 'A', 0.0, { x = 10.0, z = 10.0 }, Horde.empty())#pending)))
+        { spawns = SpawnsDoc.Doc.Doc({ minDistance = 10.0 | SpawnsDoc.rec(r#spawns) }) | r }
+
+    /// x 10 m・z 10 m から入ると、8 m 先の印（x 18 m・z 10 m）の群れも、約 12.6 m 先の一番遠い印（x 22 m・z 6 m）から湧く:
+    /// 湧く数は pack 2 つ分のまま・どの予定も一番遠い印のマスの中（散らす幅の半分 1.2 m の内）。
+    @Test
+    def testTooCloseMarkSpawnsFromTheFarthestMark(): Unit \ Assert =
+        let pending = Horde.enter(nearRes(), 'A', 0.0, { x = 10.0, z = 10.0 }, Horde.empty())#pending;
+        Assert.assertEq(expected = (packSize() |> Option.map(n -> 2 * n), true),
+            (Some(List.length(pending)), pending |> List.forAll(p -> Float64.abs(p#x - 22.0) <= 1.2 and Float64.abs(p#z - 6.0) <= 1.2)))
+
+    /// 全部の印が近い所（x 20 m・z 8 m。どちらの印も約 2.8 m）から入っても、湧く数は pack 2 つ分のまま（部屋が空のままクリアにならない）。
+    @Test
+    def testAllMarksTooCloseStillSpawnEveryone(): Unit \ Assert =
+        Assert.assertEq(expected = packSize() |> Option.map(n -> 2 * n),
+            Some(List.length(Horde.enter(nearRes(), 'A', 0.0, { x = 20.0, z = 8.0 }, Horde.empty())#pending)))
 
     /// もう一度入っても予定を足さない（1 部屋 1 回だけ）。
     @Test

@@ -1,6 +1,6 @@
 // 画面の流れ（World と Controls）: タイトル → 遊ぶ → クリア → タイトル・Esc のポーズ・クリアの判定・倒した数。
 mod TestFlow {
-    use fge::{App, Num}
+    use fge::{App, Clock, Num}
     use fge::GameEngine.Key
     use Creatures.Kind
     use Events.Event
@@ -114,4 +114,55 @@ mod TestFlow {
         let aimed = World.mapHorde(Horde.spawnNow(r, { kind = Kind.Melee, x = 12.0, z = 10.0, yaw = Num.pi() * 1.5, home = 'A' } :: Nil), World.initial(r));
         let shot = World.step(r, { trigger = { pressed = true, held = true } | idle() }, at(0.05, aimed));
         Assert.assertEq(expected = Some(1), World.sessionOf(shot) |> Option.map(World.killsOf))
+
+    // ── 時計 ──
+
+    /// ポーズの間は遊びの時計が進まない（1 秒進めても 0 秒のまま）。
+    @Test
+    def testPauseStopsThePlayClock(): Unit \ Assert =
+        let paused = World.pause(World.initial(res()));
+        Assert.assertEq(expected = 0.0, Clock.secondsOf(Clock.nowOf(Clock.advance(World.paceOf(paused), 1.0, paused#play))))
+
+    /// 今の時計が 5 秒の所から遊び直すと、かかった時間はそこから数える（クリアの時間にタイトルにいた 5 秒を足さない）。
+    @Test
+    def testRestartCountsTimeFromNow(): Unit \ Assert =
+        let restarted = World.restart(res(), at(5.0, World.title()));
+        let cleared = World.step(res(), idle(), at(5.05, inFinalRoom(restarted)));
+        let shown = World.step(res(), idle(), at(5.05 + player()#clearSeconds, cleared));
+        Assert.assertEq(expected = Some(true), World.tallyOf(shown) |> Option.map(t -> Float64.abs(t#seconds - 0.05) < 0.001))
+
+    // ── 画面をまたぐ事と音 ──
+
+    /// タイトルで Enter を押したコマに起きた事は「遊び始めた」で、決める音が鳴る。
+    @Test
+    def testStartingReportsStartedAndSounds(): Unit \ Assert =
+        let started = Controls.step(pressing(Key.Enter), res(), World.title());
+        Assert.assertEq(expected = (Event.Started :: Nil, "ui_choose" :: Nil), (World.screenEventsOf(started), Sounds.events(started)))
+
+    /// ポーズで矢印の下を押すと項目が動き（動かす音）、Enter で「タイトルへ」を決める: 決めた・タイトルへ の順。
+    @Test
+    def testPauseMenuEventsByArrowKeys(): Unit \ Assert =
+        let paused = Controls.step(pressing(Key.Escape), res(), World.setLooking(true, World.initial(res())));
+        let moved = Controls.step(pressing(Key.Down), res(), paused);
+        let chosen = Controls.step(pressing(Key.Enter), res(), moved);
+        Assert.assertEq(expected = (Event.Paused :: Nil, "ui_move" :: Nil, Event.MenuChosen :: Event.ToTitle :: Nil, true),
+            (World.screenEventsOf(paused), Sounds.events(moved), World.screenEventsOf(chosen), World.isOnTitle(chosen)))
+
+    /// 前のコマの画面をまたぐ事は、次のコマには残らない。
+    @Test
+    def testScreenEventsLastOneFrame(): Unit \ Assert =
+        let started = Controls.step(pressing(Key.Enter), res(), World.title());
+        Assert.assertEq(expected = Nil, World.screenEventsOf(Controls.step(App.emptyFrame(), res(), started)))
+
+    /// クリアの画面へ移ったコマに「クリアの画面へ」が起きる。
+    @Test
+    def testClearScreenReportsClearShown(): Unit \ Assert =
+        let cleared = World.step(res(), idle(), at(0.05, inFinalRoom(World.initial(res()))));
+        Assert.assertEq(expected = Event.ClearShown :: Nil, World.screenEventsOf(World.step(res(), idle(), at(0.05 + player()#clearSeconds, cleared))))
+
+    /// 鳴り続ける音の倍率: 遊んでいる間は 1・ポーズの間とタイトルでは 0。
+    @Test
+    def testSustainedSoundIsSilentWhilePaused(): Unit \ Assert =
+        Assert.assertEq(expected = (1.0, 0.0, 0.0),
+            (Sounds.sustainedScale(World.initial(res())), Sounds.sustainedScale(World.pause(World.initial(res()))), Sounds.sustainedScale(World.title())))
 }
