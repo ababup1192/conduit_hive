@@ -21,8 +21,10 @@ mod TestCombat {
 
     def player(): PlayerDoc.Rec = PlayerDoc.rec(PlayerDoc.defaults())
 
-    /// 体力 5 の描く元（melee の 1 撃で倒れる）。
-    def fragileRes(): Res.Res = { player = PlayerDoc.Doc.Doc({ health = 5.0 | player() }) | resWith(twoRoomMaze()) }
+    /// 体力 5 の描く元（melee の 1 撃で倒れる）。部屋が 12 m 四方と狭いので、近い印からも湧かせる（minDistance 0）。
+    def fragileRes(): Res.Res =
+        let base = resWith(twoRoomMaze());
+        { player = PlayerDoc.Doc.Doc({ health = 5.0 | player() }), spawns = SpawnsDoc.Doc.Doc({ minDistance = 0.0 | SpawnsDoc.rec(base#spawns) }) | base }
 
     def idle(): World.Input = World.walking(Walker.idle())
 
@@ -136,7 +138,7 @@ mod TestCombat {
     @Test
     def testRifleFiresAtTheDocRateAt60Hz(): Unit \ Assert =
         let w = WeaponsDoc.rec(WeaponsDoc.defaults());
-        let docs = { weapons = WeaponsDoc.Doc.Doc({ pistol = { owned = false | w#pistol }, rifle = { owned = true | w#rifle } | w }) | docsWith(twoRoomMaze()) };
+        let docs = { weapons = WeaponsDoc.Doc.Doc({ pistol = { owned = false | w#pistol }, rifle = { owned = true, ammo = w#rifle#maxAmmo | w#rifle } | w }) | docsWith(twoRoomMaze()) };
         let res = Res.build(docs);
         let held = { dt = 1.0 / 60.0, windowFocused = true, mouseButtons = Set#{GameEngine.MouseButton.Left} | App.emptyFrame() };
         let traced = App.trace(Game.app(docs), List.repeat(60, held), Resources.of(res, World.setLooking(true, World.initial(res))));

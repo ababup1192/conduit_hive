@@ -75,10 +75,18 @@
           "min": 0,
           "max": 999
         },
+        "maxAmmo": {
+          "type": "int",
+          "label": "持てる弾の上限",
+          "order": 10,
+          "default": 0,
+          "min": 0,
+          "max": 999
+        },
         "owned": {
           "type": "bool",
           "label": "始めから持っている",
-          "order": 10,
+          "order": 11,
           "default": true
         }
       }
@@ -152,14 +160,22 @@
           "type": "int",
           "label": "始めの弾の数",
           "order": 9,
-          "default": 16,
+          "default": 0,
+          "min": 0,
+          "max": 999
+        },
+        "maxAmmo": {
+          "type": "int",
+          "label": "持てる弾の上限",
+          "order": 10,
+          "default": 40,
           "min": 0,
           "max": 999
         },
         "owned": {
           "type": "bool",
           "label": "始めから持っている",
-          "order": 10,
+          "order": 11,
           "default": false
         }
       }
@@ -233,14 +249,22 @@
           "type": "int",
           "label": "始めの弾の数",
           "order": 9,
-          "default": 120,
+          "default": 0,
+          "min": 0,
+          "max": 999
+        },
+        "maxAmmo": {
+          "type": "int",
+          "label": "持てる弾の上限",
+          "order": 10,
+          "default": 240,
           "min": 0,
           "max": 999
         },
         "owned": {
           "type": "bool",
           "label": "始めから持っている",
-          "order": 10,
+          "order": 11,
           "default": false
         }
       }

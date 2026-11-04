@@ -20,7 +20,7 @@ PALETTE_DEPS := assets/conduit_hive.theme.json assets/conduit_hive.sprite.json \
                 src/Palette.flix src/ThemeDoc.flix
 # 描き出せる場面の名前（source of truth は Shots.names。ここは使い方に出す写し）。
 # 場面を足したら Shots.names と一緒にここも足す。
-SHOTS := corridor hall fire wall horde fight
+SHOTS := corridor hall fire wall horde fight title pickups clear
 
 # ENGINE の場所が違うと include ごと落ち、make は「そんなファイルは無い」としか言わない。
 # 先に自前で見て、直し方の 1 行を出してから止める（この検査が無いと make status も塞がる）。

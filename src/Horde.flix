@@ -89,10 +89,14 @@ mod Horde {
 
     // ── 湧かせる ──
 
-    /// 部屋 zone に入った: まだ湧かせていない部屋なら、その部屋の spawn の点から時刻 t に始まる予定を足す（1 部屋 1 回だけ）。
-    pub def enter(res: Res.Res, zone: Char, t: Float64, h: Horde): Horde =
+    /// 部屋 zone に足元 at で入った: まだ湧かせていない部屋なら、その部屋の spawn の点から時刻 t に始まる予定を足す（1 部屋 1 回だけ。
+    /// at から SpawnsDoc の minDistance より近い点は使わない）。
+    pub def enter(res: Res.Res, zone: Char, t: Float64, at: { x = Float64, z = Float64 }, h: Horde): Horde =
         if (Set.memberOf(zone, h#triggered)) h
-        else { triggered = Set.insert(zone, h#triggered), pending = List.append(h#pending, Spawner.scheduleOf(res#spawnPoints, zone, t)) | h }
+        else {
+            let away = { x = at#x, z = at#z, minDistance = SpawnsDoc.rec(res#spawns)#minDistance };
+            { triggered = Set.insert(zone, h#triggered), pending = List.append(h#pending, Spawner.scheduleOf(res#spawnPoints, zone, t, away)) | h }
+        }
 
     /// 部屋 zone をもう湧かせ終えたか。
     pub def isTriggered(zone: Char, h: Horde): Bool = Set.memberOf(zone, h#triggered)

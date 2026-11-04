@@ -31,6 +31,16 @@
       "min": 0.2,
       "max": 10,
       "group": "体力"
+    },
+    "clearSeconds": {
+      "kind": "field",
+      "type": "float",
+      "label": "最後の部屋を空にしてから結果の画面まで（秒）",
+      "order": 4,
+      "default": 2.5,
+      "min": 0,
+      "max": 10,
+      "group": "流れ"
     }
   }
 }

@@ -1,13 +1,153 @@
 {
-  "//": "conduit_hive.uitext.json の形の宣言（Studio の sections 方言）。画面に出す文言。",
+  "//": "conduit_hive.uitext.json の形の宣言（Studio の sections 方言）。画面に出す文言。既定は src/UiTextDoc.flix の defaults() が正。",
   "version": 1,
   "sections": {
     "quitPrompt": {
       "kind": "field",
       "type": "string",
-      "label": "終了の確認の文言（Esc・閉じるボタンで出る窓）",
+      "label": "終了の確認の文言（閉じるボタン・タイトルの Esc で出る窓）",
       "order": 1,
-      "default": "Quit?  Enter: yes  /  Esc: no"
+      "default": "Quit?  Enter: yes  /  Esc: no",
+      "group": "確認"
+    },
+    "gameTitle": {
+      "kind": "field",
+      "type": "string",
+      "label": "ゲームの名前",
+      "order": 2,
+      "default": "CONDUIT HIVE",
+      "group": "タイトル"
+    },
+    "tagline": {
+      "kind": "field",
+      "type": "string",
+      "label": "名前の下の一言",
+      "order": 3,
+      "default": "PURGE THE HIVE AT THE END OF THE CONDUITS",
+      "group": "タイトル"
+    },
+    "startHint": {
+      "kind": "field",
+      "type": "string",
+      "label": "始め方",
+      "order": 4,
+      "default": "CLICK  OR  ENTER  TO  START",
+      "group": "タイトル"
+    },
+    "controls": {
+      "kind": "list",
+      "label": "操作の一覧（タイトルに出す行）",
+      "order": 5,
+      "group": "タイトル",
+      "fields": {
+        "key": {
+          "type": "string",
+          "order": 1,
+          "required": true,
+          "label": "キー"
+        },
+        "action": {
+          "type": "string",
+          "order": 2,
+          "label": "何をするか"
+        }
+      }
+    },
+    "pauseTitle": {
+      "kind": "field",
+      "type": "string",
+      "label": "見出し",
+      "order": 6,
+      "default": "PAUSED",
+      "group": "ポーズ"
+    },
+    "resume": {
+      "kind": "field",
+      "type": "string",
+      "label": "続ける",
+      "order": 7,
+      "default": "RESUME",
+      "group": "ポーズ"
+    },
+    "toTitle": {
+      "kind": "field",
+      "type": "string",
+      "label": "タイトルへ",
+      "order": 8,
+      "default": "TITLE",
+      "group": "ポーズ"
+    },
+    "clearTitle": {
+      "kind": "field",
+      "type": "string",
+      "label": "見出し",
+      "order": 9,
+      "default": "HIVE PURGED",
+      "group": "クリア"
+    },
+    "clearTime": {
+      "kind": "field",
+      "type": "string",
+      "label": "かかった時間のラベル",
+      "order": 10,
+      "default": "TIME",
+      "group": "クリア"
+    },
+    "clearKills": {
+      "kind": "field",
+      "type": "string",
+      "label": "倒した数のラベル",
+      "order": 11,
+      "default": "KILLS",
+      "group": "クリア"
+    },
+    "clearBack": {
+      "kind": "field",
+      "type": "string",
+      "label": "戻り方",
+      "order": 12,
+      "default": "CLICK  OR  ENTER  FOR  TITLE",
+      "group": "クリア"
+    },
+    "noticeHealth": {
+      "kind": "field",
+      "type": "string",
+      "label": "回復（{n} は量）",
+      "order": 13,
+      "default": "+{n}  HEALTH",
+      "group": "拾った知らせ"
+    },
+    "noticeShells": {
+      "kind": "field",
+      "type": "string",
+      "label": "散弾銃の弾（{n} は量）",
+      "order": 14,
+      "default": "+{n}  SHELLS",
+      "group": "拾った知らせ"
+    },
+    "noticeRounds": {
+      "kind": "field",
+      "type": "string",
+      "label": "連射銃の弾（{n} は量）",
+      "order": 15,
+      "default": "+{n}  ROUNDS",
+      "group": "拾った知らせ"
+    },
+    "noticeShotgun": {
+      "kind": "field",
+      "type": "string",
+      "label": "散弾銃を拾った",
+      "order": 16,
+      "default": "SHOTGUN",
+      "group": "拾った知らせ"
+    },
+    "noticeRifle": {
+      "kind": "field",
+      "type": "string",
+      "label": "連射銃を拾った",
+      "order": 17,
+      "default": "RIFLE",
+      "group": "拾った知らせ"
     }
   }
 }

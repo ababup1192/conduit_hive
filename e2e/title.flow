@@ -1,0 +1,13 @@
+# タイトルから Enter で遊び始め、Esc でポーズし、「続ける」を Enter で選んで戻る。ポーズの「タイトルへ」は back（後ろへ歩くキー）で選んで Enter。
+start title
+expect screen=Title
+tap confirm
+expect screen=Play&weapon=Pistol
+tap cancel
+expect screen=Paused
+tap confirm
+expect screen=Play
+tap cancel
+tap back
+tap confirm
+expect screen=Title

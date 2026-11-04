@@ -32,6 +32,8 @@ mod WeaponsDoc {
         infinite = Bool,
         // 始めに持っている弾の数。
         ammo = Int32,
+        // 持てる弾の上限（拾っても超えない。無限の武器は見ない）。
+        maxAmmo = Int32,
         // 始めから持っているか（偽の武器は拾うまで持ち替えられない）。
         owned = Bool
     }
@@ -63,11 +65,11 @@ mod WeaponsDoc {
     pub def defaults(): Doc =
         Doc.Doc({ version = 1,
                   pistol  = { damage = 25.0, interval = 0.25, spread = 0.6, pellets = 1, recoil = 2.0, range = 60.0,
-                              automatic = false, infinite = true, ammo = 0, owned = true },
+                              automatic = false, infinite = true, ammo = 0, maxAmmo = 0, owned = true },
                   shotgun = { damage = 20.0, interval = 0.9, spread = 10.0, pellets = 9, recoil = 6.0, range = 30.0,
-                              automatic = false, infinite = false, ammo = 16, owned = false },
+                              automatic = false, infinite = false, ammo = 0, maxAmmo = 40, owned = false },
                   rifle   = { damage = 14.0, interval = 0.1, spread = 1.8, pellets = 1, recoil = 1.0, range = 70.0,
-                              automatic = true, infinite = false, ammo = 120, owned = false } })
+                              automatic = true, infinite = false, ammo = 0, maxAmmo = 240, owned = false } })
 
     pub def fromJson(text: String): Option[Doc] = DocJson.decodeObject(fromRoot, text)
 
@@ -84,7 +86,7 @@ mod WeaponsDoc {
                 { damage = f("damage", fallback#damage), interval = f("interval", fallback#interval), spread = f("spread", fallback#spread),
                   pellets = i("pellets", fallback#pellets), recoil = f("recoil", fallback#recoil), range = f("range", fallback#range),
                   automatic = b("automatic", fallback#automatic), infinite = b("infinite", fallback#infinite),
-                  ammo = i("ammo", fallback#ammo), owned = b("owned", fallback#owned) }
+                  ammo = i("ammo", fallback#ammo), maxAmmo = i("maxAmmo", fallback#maxAmmo), owned = b("owned", fallback#owned) }
         }
 
     def fromRoot(root: Map[String, Json]): Doc =

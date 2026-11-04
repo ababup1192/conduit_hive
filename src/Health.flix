@@ -17,6 +17,11 @@ mod Health {
             { points = points, hurtAt = Some(t), downAt = if (points <= 0.0) Some(t) else None }
         }
 
+    /// amount を足す（体力の最大で止める）。満タン・倒れている・足す量が 0 以下の時は None（拾わない）。
+    pub def heal(d: PlayerDoc.Rec, amount: Float64, h: Health): Option[Health] =
+        if (isDown(h) or amount <= 0.0 or h#points >= d#health) None
+        else Some({ points = Float64.min(d#health, h#points + amount) | h })
+
     /// 倒れているか。
     pub def isDown(h: Health): Bool = Option.nonEmpty(h#downAt)
 

@@ -22,4 +22,9 @@ mod TestStarts {
         let a = app();
         Assert.assertEq(expected = Nil,
             Shots.names() |> List.filter(name -> Result.isErr(App.buildStart(a, Vec2.zero(), App.shotStartName(name), Map.empty()))))
+
+    /// 起動の既定（先頭の title）はタイトルの画面。
+    @Test
+    def testTitleStartsOnTheTitleScreen(): Unit \ Assert + Fs.FileRead + IO =
+        Assert.assertEq(expected = true, Resources.read((_, w) -> World.isOnTitle(w), App.startOrBug(app(), "title", Map.empty())))
 }

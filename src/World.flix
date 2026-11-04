@@ -1,9 +1,20 @@
 // World — 遊びの状態そのものと、次の状態を作る規則（すべて純粋）。
 // Doc と迷路（形・当たり判定・絵）は Res が持ち、World は持たない（読む口は res を受ける）。
 //
-// ── 場面 ──
-// Play = 一人称で迷路を歩き、撃つ。その場面だけの値は Session に持ち、読む口は Session を受ける（sessionOf で場面を選んでから読む）。
-// 表紙・クリアなどを足す時は Screen に case を足し、step と View の入口を match で分ける。
+// ── 画面 ──
+// Title（迷路をゆっくり見回す背景にゲームの名前と操作）→ Play（一人称で迷路を歩き、撃つ）→ Clear（かかった時間と倒した数）→ Title。
+// Play の値は Session に持ち、読む口は Session を受ける（sessionOf で場面を選んでから読む）。Esc のポーズは Session の pause。
+// 画面を足す時は Screen に case を足し、step と View の入口を match で分ける。
+//
+// ── 拾う ──
+// 迷路の pickup の印に置いた物（Res の pickupPoints）に足元が近づくと拾う（Pickups.collect。満タン・上限なら拾わない）。
+// 拾った物の番号は taken に残り、やり直しても戻らない。拾った時の知らせは notice（文言は View が UiTextDoc から作る）。
+//
+// ── 弾が尽きた時 ──
+// 弾の尽きた武器で引き金を引くと空撃ち（撃てない・間隔だけ空く）になり、弾のある武器へ自動で持ち替える（Arsenal.dryFire）。
+//
+// ── クリア ──
+// 最後の部屋が湧き終わり、その部屋で湧いた敵が全部倒れたらクリア（Event.Cleared）。clearSeconds の後に Clear の画面へ移る。
 //
 // ── 起きた事 ──
 // 1 コマに起きた事（撃った・当たった・倒れた・被弾…）は Session の events にそのコマの分だけ持つ。音（Sounds）はそれを写すだけ。
@@ -48,13 +59,35 @@ mod World {
     pub enum Press with Eq, ToString {
         case QuitYes   // 終了の確認の窓の中（Enter と同じ）
         case QuitNo    // 窓の外（Esc と同じ）
+        case Start     // タイトルの画面（Enter と同じ）
+        case Resume    // ポーズの「続ける」
+        case ToTitle   // ポーズの「タイトルへ」・クリアの画面
     }
+
+    /// ポーズの項目（上から）。
+    pub enum PauseItem with Eq, ToString {
+        case Resume
+        case ToTitle
+    }
+
+    /// Esc のポーズ。Paused は選んでいる項目を持つ（遊びの時計は止まる）。
+    pub enum Pause with Eq, ToString {
+        case Running
+        case Paused(PauseItem)
+    }
+
+    /// 拾った時の知らせ: 種類・量・拾った時刻。
+    pub type alias Notice = { kind = Pickups.Kind, amount = Int32, at = Float64 }
+
+    /// クリアの記録: かかった時間（秒）・倒した数・最後に立っていた所と向き（ラジアン。結果の画面の背景がそこから見回す）・クリアした時刻。
+    pub type alias Tally = { seconds = Float64, kills = Int32, x = Float64, z = Float64, yaw = Float64, endedAt = Float64 }
 
     /// やり直す所: 部屋に入った時の足元と向き（度）と、その部屋。
     pub type alias Checkpoint = { x = Float64, z = Float64, yawDeg = Float64, zone = Option[Char] }
 
     /// 歩いている間の中身: 体・マウスの視点・F3 の診断を出すか・武器・見回しの遅れ（度。ビューモデルの揺れ）・3D の粒・
-    /// 敵の群れ・体力・やり直す所・最後にいた区画（壁の中の None は数えない）・このコマに起きた事。
+    /// 敵の群れ・体力・やり直す所・最後にいた区画（壁の中の None は数えない）・このコマに起きた事・
+    /// ポーズ・拾った物の番号・拾った時の知らせ・倒した数・始めた時刻・クリアした時刻。
     pub type alias SessionRec = {
         walker = Walker.Walker,
         look = Look,
@@ -66,7 +99,13 @@ mod World {
         health = Health.Health,
         checkpoint = Checkpoint,
         lastZone = Option[Char],
-        events = List[Event]
+        events = List[Event],
+        pause = Pause,
+        taken = Set[Int32],
+        notice = Option[Notice],
+        kills = Int32,
+        startedAt = Float64,
+        clearedAt = Option[Float64]
     }
 
     /// 歩いている間の中身。作るのは World の中だけ。読む口は Session を受ける関数・書く口は mapSession。
@@ -76,10 +115,12 @@ mod World {
 
     /// どの画面か。その画面だけが持つ値を payload に持つ。
     pub enum Screen {
+        case Title
         case Play(Session)
+        case Clear(Tally)
     }
 
-    /// 遊びの状態。play = 遊びの時計（歩く・頭の上下がこれを見る。終了の確認の間は止まる）。
+    /// 遊びの状態。play = 遊びの時計（歩く・頭の上下・タイトルの見回しがこれを見る。終了の確認とポーズの間は止まる）。
     pub type alias World = {
         play = Clock.Clock[PlayClock.Play],
         screen = Screen,
@@ -98,25 +139,87 @@ mod World {
         let s = res#maze#start;
         Walker.settle(res#collision, WalkDoc.rec(res#walk), Walker.standing(s#x, 0.0, s#z, s#yaw))
 
-    /// 遊びから始める状態（やり直す所は迷路の start の印）。
-    pub def initial(res: Res.Res): World =
+    /// 時刻 t に遊び始める中身（やり直す所は迷路の start の印）。
+    def freshSession(res: Res.Res, t: Float64): SessionRec =
         let s = res#maze#start;
-        { play = Clock.start(), quit = Quit.Playing,
-          screen = Screen.Play(SessionOf.SessionOf({ walker = startWalker(res), look = Look.Released, diagnosticsView = DiagnosticsView.Hidden,
-                                                     arsenal = Arsenal.initial(res#weapons), sway = { x = 0.0, y = 0.0 }, particles = Nil,
-                                                     horde = Horde.empty(), health = Health.full(PlayerDoc.rec(res#player)),
-                                                     checkpoint = { x = s#x, z = s#z, yawDeg = s#yaw, zone = None }, lastZone = None, events = Nil })) }
+        { walker = startWalker(res), look = Look.Released, diagnosticsView = DiagnosticsView.Hidden,
+          arsenal = Arsenal.initial(res#weapons), sway = { x = 0.0, y = 0.0 }, particles = Nil,
+          horde = Horde.empty(), health = Health.full(PlayerDoc.rec(res#player)),
+          checkpoint = { x = s#x, z = s#z, yawDeg = s#yaw, zone = None }, lastZone = None, events = Nil,
+          pause = Pause.Running, taken = Set.empty(), notice = None, kills = 0, startedAt = t, clearedAt = None }
+
+    /// 遊びから始める状態（迷路の start の印に立ち、始めた時刻は 0 秒）。
+    pub def initial(res: Res.Res): World =
+        { play = Clock.start(), quit = Quit.Playing, screen = Screen.Play(SessionOf.SessionOf(freshSession(res, 0.0))) }
+
+    /// タイトルの画面から始める状態（起動の既定）。
+    pub def title(): World = { play = Clock.start(), quit = Quit.Playing, screen = Screen.Title }
 
     def rec(s: Session): SessionRec = match s { case SessionOf.SessionOf(r) => r }
 
     /// 遊んでいる場面の中身（ほかの画面なら None）。
     pub def sessionOf(w: World): Option[Session] = match w#screen {
         case Screen.Play(s) => Some(s)
+        case _              => None
     }
 
     def mapSession(f: SessionRec -> SessionRec, w: World): World = match w#screen {
         case Screen.Play(s) => { screen = Screen.Play(SessionOf.SessionOf(f(rec(s)))) | w }
+        case _              => w
     }
+
+    // ── 画面を移る ──
+
+    /// タイトルから遊び始める（マウスをキャプチャして視点を回す）。タイトルでなければ何もしない。
+    pub def startPlay(res: Res.Res, w: World): World = match w#screen {
+        case Screen.Title => { screen = Screen.Play(SessionOf.SessionOf({ look = Look.Captured | freshSession(res, seconds(w)) })) | w }
+        case _            => w
+    }
+
+    /// タイトルへ戻る（ポーズの「タイトルへ」・クリアの画面）。
+    pub def toTitle(w: World): World = { screen = Screen.Title | w }
+
+    /// タイトルの画面か。
+    pub def isOnTitle(w: World): Bool = match w#screen {
+        case Screen.Title => true
+        case _            => false
+    }
+
+    /// クリアの記録（クリアの画面でなければ None）。
+    pub def tallyOf(w: World): Option[Tally] = match w#screen {
+        case Screen.Clear(t) => Some(t)
+        case _               => None
+    }
+
+    // ── ポーズ ──
+
+    /// ポーズしているか（遊んでいる場面の時だけ）。
+    pub def isPaused(w: World): Bool = sessionOf(w) |> Option.exists(s -> rec(s)#pause != Pause.Running)
+
+    /// 遊んでいる場面のポーズ。
+    pub def pauseOf(s: Session): Pause = rec(s)#pause
+
+    /// Esc: ポーズする（キャプチャは放し、「続ける」を選んだ所から）。
+    pub def pause(w: World): World = mapSession(s -> { pause = Pause.Paused(PauseItem.Resume), look = Look.Released | s }, w)
+
+    /// ポーズを解いて遊びへ戻る（マウスをキャプチャし直す）。
+    pub def resume(w: World): World = mapSession(s -> { pause = Pause.Running, look = Look.Captured | s }, w)
+
+    /// ポーズの項目を上下に動かす（項目は 2 つなので、どちらへ動かしても入れ替わる）。
+    pub def movePauseSelection(w: World): World = mapSession(s -> { pause = otherItem(s#pause) | s }, w)
+
+    def otherItem(p: Pause): Pause = match p {
+        case Pause.Paused(PauseItem.Resume)  => Pause.Paused(PauseItem.ToTitle)
+        case Pause.Paused(PauseItem.ToTitle) => Pause.Paused(PauseItem.Resume)
+        case Pause.Running                   => Pause.Running
+    }
+
+    /// ポーズで選んでいる項目を決める（続ける・タイトルへ）。ポーズしていなければ何もしない。
+    pub def choosePause(w: World): World =
+        let chosen = sessionOf(w) |> Option.map(s -> rec(s)#pause);
+        if (chosen == Some(Pause.Paused(PauseItem.Resume))) resume(w)
+        else if (chosen == Some(Pause.Paused(PauseItem.ToTitle))) toTitle(w)
+        else w
 
     // ── 遊んでいる場面を読む（Session を受ける） ──
 
@@ -144,6 +247,15 @@ mod World {
     /// このコマに起きた事。
     pub def eventsOf(s: Session): List[Event] = rec(s)#events
 
+    /// 拾った物の番号。
+    pub def takenOf(s: Session): Set[Int32] = rec(s)#taken
+
+    /// 最後に拾った時の知らせ（まだ拾っていなければ None）。
+    pub def noticeOf(s: Session): Option[Notice] = rec(s)#notice
+
+    /// 倒した数。
+    pub def killsOf(s: Session): Int32 = rec(s)#kills
+
     /// 時刻 t の照準のカメラ。
     pub def cameraOf(res: Res.Res, t: Float64, s: Session): Camera3d.Camera3d = aimOf(res, t, rec(s))
 
@@ -162,19 +274,36 @@ mod World {
     /// 遊びの時計の今（秒）。
     pub def seconds(w: World): Float64 = Clock.secondsOf(Clock.nowOf(w#play))
 
-    /// 遊びの時計の進み方: 終了の確認の窓が出ている間は止める（App.addClock が毎フレーム 1 回だけ進める）。
+    /// 遊びの時計の進み方: 終了の確認の窓が出ている間とポーズの間は止める（App.addClock が毎フレーム 1 回だけ進める）。
     pub def paceOf(w: World): Clock.Pace[PlayClock.Play, PlayClock.Halt] =
-        Clock.paceOf(if (w#quit == Quit.Asking) Clock.Run.Paused(PlayClock.Halt.AskingQuit) else Clock.Run.Running)
+        Clock.paceOf(
+            if (w#quit == Quit.Asking) Clock.Run.Paused(PlayClock.Halt.AskingQuit)
+            else if (isPaused(w)) Clock.Run.Paused(PlayClock.Halt.Paused)
+            else Clock.Run.Running)
 
-    /// 入力から次の状態を作る（秒は遊びの時計がこのコマに進んだ分）。終了の確認の窓が出ている間は歩かず撃たない（起きた事も無い）。
-    pub def step(res: Res.Res, input: Input, w: World): World =
-        if (w#quit != Quit.Playing) mapSession(s -> { events = Nil | s }, w)
-        else mapSession(stepSession(res, input, w#play), w)
+    /// 入力から次の状態を作る（秒は遊びの時計がこのコマに進んだ分）。終了の確認の窓・ポーズの間は歩かず撃たない（起きた事も無い）。
+    /// クリアしてから clearSeconds が過ぎたコマに、クリアの画面へ移る。
+    pub def step(res: Res.Res, input: Input, w: World): World = match w#screen {
+        case Screen.Play(s) if w#quit != Quit.Playing or rec(s)#pause != Pause.Running => mapSession(r -> { events = Nil | r }, w)
+        case Screen.Play(s) =>
+            let next = stepSession(res, input, w#play, rec(s));
+            { screen = if (isClearDue(res, w#play, next)) Screen.Clear(tallyAt(w#play, next)) else Screen.Play(SessionOf.SessionOf(next)) | w }
+        case _ => w
+    }
+
+    /// クリアしてから clearSeconds が過ぎたか。
+    def isClearDue(res: Res.Res, clock: Clock.Clock[PlayClock.Play], s: SessionRec): Bool =
+        s#clearedAt |> Option.exists(at -> Clock.secondsOf(Clock.nowOf(clock)) - at >= PlayerDoc.rec(res#player)#clearSeconds)
+
+    /// 今のクリアの記録（かかった時間はクリアした時刻まで）。
+    def tallyAt(clock: Clock.Clock[PlayClock.Play], s: SessionRec): Tally =
+        let endAt = s#clearedAt |> Option.getWithDefault(Clock.secondsOf(Clock.nowOf(clock)));
+        { seconds = endAt - s#startedAt, kills = s#kills, x = s#walker#x, z = s#walker#z, yaw = s#walker#yaw, endedAt = endAt }
 
     /// 歩くだけの入力（引き金は引かず・持ち替えない）。
     pub def walking(d: Walker.Drive): Input = { drive = d, trigger = Arsenal.released(), choice = Arsenal.Choice.Keep }
 
-    /// 1 コマ: 倒れている間はやり直す時刻を待つだけ。ほかは 歩く → 見回しの遅れ → 持ち替え → 部屋に入る → 撃つ → 群れ → 傷と粒。
+    /// 1 コマ: 倒れている間はやり直す時刻を待つだけ。ほかは 歩く → 見回しの遅れ → 持ち替え → 部屋に入る → 拾う → 撃つ（か空撃ち）→ 群れ → 傷と粒 → 倒した数とクリア。
     def stepSession(res: Res.Res, input: Input, clock: Clock.Clock[PlayClock.Play], s0: SessionRec): SessionRec =
         let s = { events = Nil | s0 };
         let t = Clock.secondsOf(Clock.nowOf(clock));
@@ -186,12 +315,54 @@ mod World {
             let vm = FpViewmodelDoc.rec(res#viewmodel);
             let equipped = Arsenal.equip(vm, t, input#choice, s#arsenal);
             let moved = { walker = Walker.step(res#collision, WalkDoc.rec(res#walk), input#drive, clock, s#walker),
-                          sway = swayAfter(vm, input#drive, dt, s#sway), arsenal = equipped, particles = Particles3d.step(t, s#particles) | s };
-            let entered = enterZone(res, t, moved);
-            let wants = Arsenal.wantsToFire(Arsenal.statsOf(res#weapons, equipped), input#trigger);
-            let fired = if (wants and Arsenal.canFire(res#weapons, t, equipped)) shoot(res, t, dt, entered) else entered;
-            stepHorde(res, t, dt, fired)
+                          sway = swayAfter(vm, input#drive, dt, s#sway), arsenal = equipped, particles = Particles3d.step(t, s#particles),
+                          events = switched(s#arsenal, equipped) | s };
+            let picked = pickUp(res, t, enterZone(res, t, moved));
+            let a = picked#arsenal;
+            let wants = Arsenal.wantsToFire(Arsenal.statsOf(res#weapons, a), input#trigger);
+            let fired =
+                if (wants and Arsenal.canFire(res#weapons, t, a)) shoot(res, t, dt, picked)
+                else if (wants and Arsenal.isReady(t, a) and Arsenal.isEmpty(res#weapons, a)) dryFire(res, t, picked)
+                else picked;
+            tally(res, t, stepHorde(res, t, dt, fired))
         }
+
+    /// 持ち替えた事（替えた先が今と違えば 1 つ）。
+    def switched(before: Arsenal.Arsenal, after: Arsenal.Arsenal): List[Event] =
+        if (after#current != before#current) Event.Switched(after#current) :: Nil else Nil
+
+    /// 足元の近くの物を拾い、拾った物の番号・知らせ・起きた事を足す。
+    def pickUp(res: Res.Res, t: Float64, s: SessionRec): SessionRec =
+        let rules = { t = t, weapons = res#weapons, viewmodel = FpViewmodelDoc.rec(res#viewmodel), player = PlayerDoc.rec(res#player) };
+        let got = Pickups.collect(rules, PickupsDoc.rec(res#pickups)#radius, { x = s#walker#x, z = s#walker#z }, res#pickupPoints, s#taken,
+                                  { arsenal = s#arsenal, health = s#health });
+        if (List.isEmpty(got#picked)) s
+        else {
+            let events = got#picked |> List.map(p -> Event.PickedUp(p#kind));
+            { arsenal = got#carry#arsenal, health = got#carry#health, taken = got#taken,
+              notice = List.last(got#picked) |> Option.map(p -> { kind = p#kind, amount = p#amount, at = t }),
+              events = List.flatten(s#events :: events :: switched(s#arsenal, got#carry#arsenal) :: Nil) | s }
+        }
+
+    /// 弾の尽きた武器で引き金を引いた: 空撃ちして、弾のある武器があれば持ち替える。
+    def dryFire(res: Res.Res, t: Float64, s: SessionRec): SessionRec =
+        let after = Arsenal.dryFire(res#weapons, FpViewmodelDoc.rec(res#viewmodel), t, s#arsenal);
+        { arsenal = after, events = List.flatten(s#events :: (Event.DryFire(s#arsenal#current) :: Nil) :: switched(s#arsenal, after) :: Nil) | s }
+
+    /// 倒した数を数え、最後の部屋を空にした最初のコマにクリアの時刻を控える。
+    def tally(res: Res.Res, t: Float64, s: SessionRec): SessionRec =
+        let downs = s#events |> List.count(e -> match e {
+            case Event.EnemyDown(_) => true
+            case _                  => false
+        });
+        let cleared = Option.isEmpty(s#clearedAt) and isFinalRoomClear(res, s#horde);
+        { kills = s#kills + downs, clearedAt = if (cleared) Some(t) else s#clearedAt,
+          events = if (cleared) List.append(s#events, Event.Cleared :: Nil) else s#events | s }
+
+    /// 最後の部屋が湧き終わり、その部屋で湧いた敵が残っていないか（まだ入っていなければ偽）。
+    def isFinalRoomClear(res: Res.Res, h: Horde.Horde): Bool =
+        let finalZone = res#maze#finalZone;
+        Horde.isTriggered(finalZone, h) and not Set.memberOf(finalZone, Horde.zonesInPlay(h))
 
     /// 部屋に入った: 前にいた区画と違う部屋なら、やり直す所をその入口に控え（控えた部屋と同じなら書き換えない）、群れを湧かせる。
     /// WhyNot: 壁ぎわで体の真ん中が壁のマスへ入った None を「区画を出た」と数えない — Some(A) → None → Some(A) で
@@ -205,7 +376,7 @@ mod World {
                 let fresh = not Horde.isTriggered(id, s#horde);
                 let checkpoint = if (s#checkpoint#zone == Some(id)) s#checkpoint
                                  else { x = b#x, z = b#z, yawDeg = b#yaw * 180.0 / Num.pi(), zone = Some(id) };
-                { lastZone = Some(id), checkpoint = checkpoint, horde = Horde.enter(res, id, t, s#horde),
+                { lastZone = Some(id), checkpoint = checkpoint, horde = Horde.enter(res, id, t, { x = b#x, z = b#z }, s#horde),
                   events = if (fresh) List.append(s#events, Event.RoomTriggered(id) :: Nil) else s#events | s }
         }
 
@@ -290,9 +461,9 @@ mod World {
     /// マウスを窓にキャプチャして視点を回しているか（App.withMouseCapture がこれを見て当てる）。
     pub def isLooking(w: World): Bool = sessionOf(w) |> Option.exists(s -> rec(s)#look == Look.Captured)
 
-    /// キャプチャを始める・放す。終了の確認の窓が出ている間はキャプチャしない（窓の中を押せない）。
+    /// キャプチャを始める・放す。終了の確認の窓・ポーズの間はキャプチャしない（窓の中を押せない）。
     pub def setLooking(on: Bool, w: World): World =
-        mapSession(s -> { look = if (on and w#quit == Quit.Playing) Look.Captured else Look.Released | s }, w)
+        mapSession(s -> { look = if (on and w#quit == Quit.Playing and s#pause == Pause.Running) Look.Captured else Look.Released | s }, w)
 
     /// F3 の診断の表示を切り替える。
     pub def toggleDiagnostics(w: World): World =
@@ -300,7 +471,7 @@ mod World {
 
     // ── 終了の確認 ──
 
-    /// Esc・閉じるボタン: 遊んでいる間なら確認の窓を出す（キャプチャは放す）。
+    /// 閉じるボタン・タイトルの Esc: 確認の窓を出す（キャプチャは放す）。
     pub def askQuit(w: World): World =
         if (w#quit == Quit.Playing) mapSession(s -> { look = Look.Released | s }, { quit = Quit.Asking | w }) else w
 

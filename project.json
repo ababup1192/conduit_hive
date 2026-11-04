@@ -27,6 +27,26 @@
       "name": "shot",
       "path": "assets/sfx/shot.wav",
       "looping": false
+    },
+    {
+      "name": "pickup",
+      "path": "assets/sfx/pickup.wav",
+      "looping": false
+    },
+    {
+      "name": "switch",
+      "path": "assets/sfx/switch.wav",
+      "looping": false
+    },
+    {
+      "name": "dryfire",
+      "path": "assets/sfx/dryfire.wav",
+      "looping": false
+    },
+    {
+      "name": "clear",
+      "path": "assets/sfx/clear.wav",
+      "looping": false
     }
   ],
   "editor": {
@@ -127,6 +147,13 @@
         "pattern": "assets/conduit_hive.spawns.json",
         "title": "spawn の群れ（印の名前ごとの数・間隔・型）",
         "schema": "assets/spawns.schema.json",
+        "role": "tuning"
+      },
+      {
+        "id": "pickups",
+        "pattern": "assets/conduit_hive.pickups.json",
+        "title": "拾う物（量・浮き方・光）",
+        "schema": "assets/pickups.schema.json",
         "role": "tuning"
       },
       {

@@ -1,10 +1,10 @@
-# 最初の部屋の中（x 14 m・z 22 m）で東を向いて前へ歩かせ、Esc で終了の確認を出して取り消す。確認の窓の間は歩かず撃たない。
+# 最初の部屋の中（x 14 m・z 22 m）で東を向いて前へ歩かせ、Esc でポーズして戻す。ポーズの間は歩かず撃たない。
 start at x=14 z=22 yaw=90
-expect quit=Playing&x=14&shots=0
+expect screen=Play&quit=Playing&x=14&shots=0
 hold forward 0.5
 expect x>14
 tap cancel
-expect quit=Asking
+expect screen=Paused
 hold forward 0.5
 tap cancel
-expect quit=Playing&shots=0
+expect screen=Play&shots=0

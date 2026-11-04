@@ -1,0 +1,36 @@
+{
+  "version": 1,
+  "title": "拾う物",
+  "note": "拾う物の量と見え方。迷路の Doc（maze.stage.json）の pickup の印の name がここの items の鍵を指す（引けない名前の印は置かない）。種類は health_small・health_large（体力を足す）・ammo_shotgun・ammo_rifle（弾を足す）・weapon_shotgun・weapon_rifle（武器が加わってその場で持ち替え、弾も足す。もう持っていれば弾だけ）。満タンの時は拾わない・弾の上限は conduit_hive.weapons.json の maxAmmo（規則はコード src/Pickups.flix）。radius = 拾う距離（m）・scale = 物の大きさの倍率（床の台座は替えない）・hover / bob / bobSeconds = 床から浮かせる高さ・揺れる幅（m）・1 往復（秒）・spinDegPerSec = 回る速さ・glow = 発光の筋の強さ・lightIntensity / lightRange / lights = 弱い点光源の強さ・届く距離・灯す数（目に近い物から）・noticeSeconds = 拾った知らせを出す長さ（秒）。",
+  "radius": 1.3,
+  "scale": 1.4,
+  "hover": 0.6,
+  "bob": 0.08,
+  "bobSeconds": 2.4,
+  "spinDegPerSec": 55.0,
+  "glow": 2.2,
+  "lightIntensity": 0.7,
+  "lightRange": 3.5,
+  "lights": 2,
+  "noticeSeconds": 1.6,
+  "items": {
+    "health_small": {
+      "amount": 25
+    },
+    "health_large": {
+      "amount": 60
+    },
+    "ammo_shotgun": {
+      "amount": 8
+    },
+    "ammo_rifle": {
+      "amount": 60
+    },
+    "weapon_shotgun": {
+      "amount": 12
+    },
+    "weapon_rifle": {
+      "amount": 90
+    }
+  }
+}

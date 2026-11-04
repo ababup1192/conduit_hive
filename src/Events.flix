@@ -24,5 +24,13 @@ mod Events {
         case Respawned
         // 部屋に入って群れが湧き始めた。
         case RoomTriggered(Char)
+        // 拾った（種類）。
+        case PickedUp(Pickups.Kind)
+        // 持ち替えた（替えた先の武器。数字キー・ホイール・拾った武器・弾が尽きた時の自動の持ち替え）。
+        case Switched(WeaponsDoc.Weapon)
+        // 弾の尽きた武器で引き金を引いた（空撃ち）。
+        case DryFire(WeaponsDoc.Weapon)
+        // 最後の部屋を空にした。
+        case Cleared
     }
 }

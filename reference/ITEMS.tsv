@@ -1,6 +1,9 @@
-corridor	dynamic=96	static=0
-fight	dynamic=96	static=0
-fire	dynamic=96	static=0
-hall	dynamic=96	static=0
-horde	dynamic=96	static=0
-wall	dynamic=96	static=0
+clear	dynamic=108	static=0
+corridor	dynamic=112	static=0
+fight	dynamic=112	static=0
+fire	dynamic=112	static=0
+hall	dynamic=112	static=0
+horde	dynamic=112	static=0
+pickups	dynamic=112	static=0
+title	dynamic=247	static=0
+wall	dynamic=112	static=0

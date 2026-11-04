@@ -36,10 +36,19 @@ mod E2e {
               { name = "z", doc = "足元の z（m）", read = Flow.Probe.Num(Resources.read((_, w) -> playing(w, s -> World.walkerOf(s)#z))) } ::
               { name = "zone", doc = "今いる区画の文字（壁の中は -）", read = Flow.Probe.Text(Resources.read((res, w) -> zoneName(res, w))) } ::
               { name = "quit", doc = "終了の確認（Playing・Asking・Confirmed）", read = Flow.Probe.Text(Resources.read((_, w) -> "${w#quit}")) } ::
+              { name = "screen", doc = "画面（Title・Play・Paused・Clear）", read = Flow.Probe.Text(Resources.read((_, w) -> screenName(w))) } ::
+              { name = "weapon", doc = "構えている武器（Pistol・Shotgun・Rifle）", read = Flow.Probe.Text(Resources.read((_, w) -> World.sessionOf(w) |> Option.map(s -> "${World.arsenalOf(s)#current}") |> Option.getWithDefault("-"))) } ::
               { name = "shots", doc = "撃った回数の合計", read = Flow.Probe.Num(Resources.read((_, w) -> playing(w, s -> Int32.toFloat64(World.arsenalOf(s)#shots)))) } ::
               { name = "health", doc = "プレイヤーの体力", read = Flow.Probe.Num(Resources.read((_, w) -> playing(w, s -> World.healthOf(s)#points))) } ::
               { name = "enemies", doc = "倒れていない敵の数", read = Flow.Probe.Num(Resources.read((_, w) -> playing(w, s -> Int32.toFloat64(Horde.aliveCount(World.hordeOf(s)))))) } :: Nil
           | Flow.emptyTable() }
+
+    /// 画面の名前（ポーズは Paused）。
+    def screenName(w: World.World): String = match w#screen {
+        case World.Screen.Title    => "Title"
+        case World.Screen.Play(_)  => if (World.isPaused(w)) "Paused" else "Play"
+        case World.Screen.Clear(_) => "Clear"
+    }
 
     /// 遊んでいる場面の数（ほかの画面では 0）。
     def playing(w: World.World, f: World.Session -> Float64): Float64 = World.sessionOf(w) |> Option.map(f) |> Option.getWithDefault(0.0)
@@ -51,5 +60,5 @@ mod E2e {
     pub def fingerprint(res: Res.Res, w: World.World): String =
         let at = World.sessionOf(w) |> Option.map(s -> { let b = World.walkerOf(s); "${b#x},${b#z}" }) |> Option.getWithDefault("-");
         let shots = World.sessionOf(w) |> Option.map(s -> World.arsenalOf(s)#shots) |> Option.getWithDefault(0);
-        "at=${at}|zone=${zoneName(res, w)}|quit=${w#quit}|shots=${shots}"
+        "screen=${screenName(w)}|at=${at}|zone=${zoneName(res, w)}|quit=${w#quit}|shots=${shots}"
 }

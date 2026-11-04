@@ -18,10 +18,10 @@ mod TestShooting {
 
     def vm(): FpViewmodelDoc.Rec = FpViewmodelDoc.rec(FpViewmodelDoc.defaults())
 
-    /// 散弾銃と連射銃も始めから持っている Doc。
+    /// 散弾銃と連射銃も始めから持ち、弾を上限まで持っている Doc。
     def armed(): WeaponsDoc.Doc =
         let d = WeaponsDoc.rec(weapons());
-        WeaponsDoc.Doc.Doc({ shotgun = { owned = true | d#shotgun }, rifle = { owned = true | d#rifle } | d })
+        WeaponsDoc.Doc.Doc({ shotgun = { owned = true, ammo = d#shotgun#maxAmmo | d#shotgun }, rifle = { owned = true, ammo = d#rifle#maxAmmo | d#rifle } | d })
 
     def struckOf(hits: List[Hitscan.Impact]): List[Hitscan.Struck] = hits |> List.map(h -> h#struck)
 

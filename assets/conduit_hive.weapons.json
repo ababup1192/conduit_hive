@@ -1,7 +1,7 @@
 {
   "version": 1,
   "title": "武器",
-  "note": "武器ごとの数。撃ち方の規則（連射・持ち替え・当たり判定）はコード（src/Arsenal.flix・Hitscan.flix）。interval = 次を撃てるまでの秒・spread = 照準から外れる角の最大（度）・pellets = 1 回に飛ぶ粒の数・recoil = 照準が跳ね上がる角（度）・range = 届く距離（m）・automatic = 押している間撃ち続ける・infinite = 弾が無限・ammo = 始めの弾の数・owned = 始めから持っている（偽の武器は拾うまで使えない。拾う所は段 4）。",
+  "note": "武器ごとの数。撃ち方の規則（連射・持ち替え・当たり判定・拾う・弾が尽きた時）はコード（src/Arsenal.flix・Hitscan.flix）。interval = 次を撃てるまでの秒・spread = 照準から外れる角の最大（度）・pellets = 1 回に飛ぶ粒の数・recoil = 照準が跳ね上がる角（度）・range = 届く距離（m）・automatic = 押している間撃ち続ける・infinite = 弾が無限・ammo = 始めの弾の数・maxAmmo = 持てる弾の上限（拾っても超えない）・owned = 始めから持っている（偽の武器は拾うまで使えない。拾う量は conduit_hive.pickups.json）。",
   "pistol": {
     "damage": 25.0,
     "interval": 0.25,
@@ -12,6 +12,7 @@
     "automatic": false,
     "infinite": true,
     "ammo": 0,
+    "maxAmmo": 0,
     "owned": true
   },
   "shotgun": {
@@ -23,7 +24,8 @@
     "range": 30.0,
     "automatic": false,
     "infinite": false,
-    "ammo": 16,
+    "ammo": 0,
+    "maxAmmo": 40,
     "owned": false
   },
   "rifle": {
@@ -35,7 +37,8 @@
     "range": 70.0,
     "automatic": true,
     "infinite": false,
-    "ammo": 120,
+    "ammo": 0,
+    "maxAmmo": 240,
     "owned": false
   }
 }

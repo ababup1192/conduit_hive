@@ -5,7 +5,7 @@ mod Shots {
     use fge::{Hash01, Num, Vec3}
 
     /// 描き出せる場面の名前（この並びが source of truth。Makefile の SHOTS と assets/*.scenes.json もそろえる）。
-    pub def names(): List[String] = "corridor" :: "hall" :: "fire" :: "wall" :: "horde" :: "fight" :: Nil
+    pub def names(): List[String] = "corridor" :: "hall" :: "fire" :: "wall" :: "horde" :: "fight" :: "title" :: "pickups" :: "clear" :: Nil
 
     /// 構図: 立つマス（列・行）・マスの真ん中から東へずらす距離（m）・向き（度。0 が北・90 が東）・見下ろす角（度）。
     type alias Shot = { col = Int32, row = Int32, dx = Float64, yaw = Float64, pitch = Float64 }
@@ -13,7 +13,9 @@ mod Shots {
     /// 場面の構図。corridor = 東の長い通路の南の角から北の奥を見る（区画を 3 つまたいだ先まで見通す）・
     /// hall = 最後の広い部屋に入った所から奥を見る・fire = 最後の部屋で的の柱を撃った瞬間（柱から西へ 2 マス・南へ 1 マスの所から柱へ向く）・
     /// wall = 最初の部屋の西の壁に体を付けて壁を見る（銃が壁に埋まらないかを見る 1 枚）・
-    /// horde = 最後の部屋の西の端から東を向き、40 体の群れが迫ってくる所・fight = 同じ所で近い群れを撃ち、何体か倒れている所。
+    /// horde = 最後の部屋の西の端から東を向き、40 体の群れが迫ってくる所・fight = 同じ所で近い群れを撃ち、何体か倒れている所・
+    /// pickups = 最初の部屋から東の通路を抜けた先の部屋の入口から北東を見る（散弾銃と、その奥に弾倉が浮いている）。
+    /// title と clear は構図を持たない画面（titleWorld・clearWorld）。
     def shotOf(name: String): Option[Shot] = match name {
         case "corridor" => Some({ col = 38, row = 34, dx = 0.0, yaw = 0.0, pitch = -2.0 })
         case "hall"     => Some({ col = 18, row = 10, dx = 0.0, yaw = 62.0, pitch = -6.0 })
@@ -21,11 +23,25 @@ mod Shots {
         case "wall"     => Some({ col = 2, row = 34, dx = -1.6, yaw = 270.0, pitch = 0.0 })
         case "horde"    => Some({ col = 16, row = 6, dx = 0.0, yaw = 90.0, pitch = -3.0 })
         case "fight"    => Some({ col = 16, row = 6, dx = 0.0, yaw = 90.0, pitch = 0.0 })
+        case "pickups"  => Some({ col = 15, row = 34, dx = 0.0, yaw = 45.0, pitch = 12.0 })
         case _          => None
     }
 
     /// 名前 → 描き出しと同じ初めの World から組んだ場面の World。
-    pub def worldOf(name: String, res: Res.Res): Option[World.World] =
+    pub def worldOf(name: String, res: Res.Res): Option[World.World] = match name {
+        case "title" => Some(World.title())
+        case "clear" => Some(clearWorld(res))
+        case _       => playWorldOf(name, res)
+    }
+
+    /// クリアの画面: 最後の部屋の真ん中の 2 マス東で西を向いて終えた記録（5 分 12 秒・96 体）。
+    def clearWorld(res: Res.Res): World.World =
+        let (x, z) = Maze.middleCellOf(res#maze, res#maze#finalZone) |> Option.map(c -> Maze.centerOf(res#maze, { col = c#col + 2 | c }))
+            |> Option.getWithDefault((res#maze#start#x, res#maze#start#z));
+        { screen = World.Screen.Clear({ seconds = 312.4, kills = 96, x = x, z = z, yaw = Num.pi() * 1.5, endedAt = 0.0 }) | World.title() }
+
+    /// 遊んでいる場面（構図のある場面）。
+    def playWorldOf(name: String, res: Res.Res): Option[World.World] =
         shotOf(name) |> Option.map(s -> {
             let (x, z) = Maze.centerOf(res#maze, { col = s#col, row = s#row });
             let viewer = { x = x + s#dx, z = z, yaw = s#yaw * Num.pi() / 180.0 };

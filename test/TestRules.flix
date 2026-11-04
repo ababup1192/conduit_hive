@@ -1,4 +1,4 @@
-// 遊びの規則: 終了の確認・マウスのキャプチャ・層の並び・始まりの区画。
+// 遊びの規則: 終了の確認・マウスのキャプチャ・層の並び・始まりの区画。画面の移り変わりとポーズは TestFlow。
 mod TestRules {
     use fge::{App, SortingLayer}
     use fge::GameEngine.Key
@@ -30,17 +30,17 @@ mod TestRules {
     def testClickCapturesTheMouse(): Unit \ Assert =
         Assert.assertEq(expected = true, World.isLooking(Controls.step({ mouseClicked = true | App.emptyFrame() }, res(), w0())))
 
-    /// キャプチャ中の Esc はキャプチャを放すだけで、終了の確認は出さない。
+    /// 遊んでいる間の Esc はポーズしてキャプチャを放す（終了の確認は出さない）。
     @Test
-    def testEscapeWhileCapturedOnlyReleases(): Unit \ Assert =
+    def testEscapeWhilePlayingPauses(): Unit \ Assert =
         let captured = Controls.step({ mouseClicked = true | App.emptyFrame() }, res(), w0());
-        let released = Controls.step(pressing(Key.Escape), res(), captured);
-        Assert.assertEq(expected = (false, false), (World.isLooking(released), World.isAskingQuit(released)))
+        let paused = Controls.step(pressing(Key.Escape), res(), captured);
+        Assert.assertEq(expected = (true, false, false), (World.isPaused(paused), World.isLooking(paused), World.isAskingQuit(paused)))
 
-    /// 放している時の Esc で終了の確認を出す。
+    /// タイトルの Esc で終了の確認を出す。
     @Test
-    def testEscapeWhileReleasedAsksQuit(): Unit \ Assert =
-        Assert.assertEq(expected = true, World.isAskingQuit(Controls.step(pressing(Key.Escape), res(), w0())))
+    def testEscapeOnTitleAsksQuit(): Unit \ Assert =
+        Assert.assertEq(expected = true, World.isAskingQuit(Controls.step(pressing(Key.Escape), res(), World.title())))
 
     /// 終了の確認の窓が出ている間は、前へ押しても歩かない。
     @Test

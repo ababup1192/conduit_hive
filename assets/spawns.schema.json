@@ -2,10 +2,19 @@
   "//": "conduit_hive.spawns.json の形（Studio の sections 方言）。既定は src/SpawnsDoc.flix の defaults() が正。",
   "version": 1,
   "sections": {
+    "minDistance": {
+      "kind": "field",
+      "type": "float",
+      "label": "これより近い印からは湧かせない（m）",
+      "order": 1,
+      "default": 10.0,
+      "min": 0,
+      "max": 40
+    },
     "groups": {
       "kind": "catalog",
       "label": "群れの種類（鍵 = 迷路の spawn の印の name）",
-      "order": 1,
+      "order": 2,
       "fields": {
         "melee": {
           "type": "int",

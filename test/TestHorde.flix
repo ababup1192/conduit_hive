@@ -140,6 +140,9 @@ mod TestHorde {
 
     def packRes(): Res.Res = resWith(roomMaze(spawnMark("pack", 4, 1) :: spawnMark("pack", 5, 2) :: Nil))
 
+    /// 部屋 A の start の足元（x 6 m・z 10 m）。pack の印（x 18 m・z 10 m と x 22 m・z 6 m）からはどちらも 12 m 以上離れている。
+    def entrance(): { x = Float64, z = Float64 } = { x = 6.0, z = 10.0 }
+
     /// spawns.json に無い名前の印は 1 行知らせて置かない（pack の印 1 つだけが残る）。
     @Test
     def testUnknownSpawnNameIsReportedAndDropped(): Unit \ {Assert, IO} =
@@ -149,18 +152,26 @@ mod TestHorde {
     /// pack の印 2 つの部屋に入ると、pack 2 つ分が湧く予定になる。
     @Test
     def testEnteringARoomSchedulesTheMarkedGroups(): Unit \ Assert =
-        Assert.assertEq(expected = packSize() |> Option.map(n -> 2 * n), Some(List.length(Horde.enter(packRes(), 'A', 0.0, Horde.empty())#pending)))
+        Assert.assertEq(expected = packSize() |> Option.map(n -> 2 * n), Some(List.length(Horde.enter(packRes(), 'A', 0.0, entrance(), Horde.empty())#pending)))
+
+    /// minDistance を 10 m にした群れの Doc で x 10 m・z 10 m から入ると、8 m 先の印（x 18 m・z 10 m）からは湧かず、
+    /// 約 12.6 m 先の印（x 22 m・z 6 m）の pack 1 つ分だけが湧く予定になる。
+    @Test
+    def testMarksTooCloseToThePlayerDoNotSpawn(): Unit \ Assert =
+        let r = packRes();
+        let near = { spawns = SpawnsDoc.Doc.Doc({ minDistance = 10.0 | SpawnsDoc.rec(r#spawns) }) | r };
+        Assert.assertEq(expected = packSize(), Some(List.length(Horde.enter(near, 'A', 0.0, { x = 10.0, z = 10.0 }, Horde.empty())#pending)))
 
     /// もう一度入っても予定を足さない（1 部屋 1 回だけ）。
     @Test
     def testEnteringTwiceSpawnsOnce(): Unit \ Assert =
-        let twice = Horde.enter(packRes(), 'A', 1.0, Horde.enter(packRes(), 'A', 0.0, Horde.empty()));
+        let twice = Horde.enter(packRes(), 'A', 1.0, entrance(), Horde.enter(packRes(), 'A', 0.0, entrance(), Horde.empty()));
         Assert.assertEq(expected = packSize() |> Option.map(n -> 2 * n), Some(List.length(twice#pending)))
 
     /// 予定の時刻を過ぎた（60 秒後の）コマには全部出ている。
     @Test
     def testScheduledEnemiesAppearByTheirTime(): Unit \ Assert =
-        let entered = Horde.enter(packRes(), 'A', 0.0, Horde.empty());
+        let entered = Horde.enter(packRes(), 'A', 0.0, entrance(), Horde.empty());
         Assert.assertEq(expected = packSize() |> Option.map(n -> 2 * n), Some(Horde.aliveCount(Horde.step(packRes(), 60.0, 0.1, playerAt(6.0, 10.0), entered)#horde)))
 
     // ── 押し合い ──

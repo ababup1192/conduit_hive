@@ -1,11 +1,11 @@
-// Res — 描く元の束: Doc と、Doc から作る物（迷路の形・見える区画の組・当たり判定・弾の的・灰色の箱の絵・粒の絵・spawn の点）と、
-// 読み込んだ腕と銃・敵の glb。読むだけで、Doc の読み直しの時だけ替わる。
+// Res — 描く元の束: Doc と、Doc から作る物（迷路の形・見える区画の組・当たり判定・弾の的・灰色の箱の絵・粒の絵・spawn の点・拾う物）と、
+// 読み込んだ腕と銃・敵・拾う武器の glb。読むだけで、Doc の読み直しの時だけ替わる。
 // 遊びの状態は World が持ち、App の w は Resources.With[Res, World] の組（Game）。
 // Res は World を使わない（使う向きは World → Res だけ。lint/rules.flix の module-cycle）。
 mod Res {
     use fge::{CollisionShape3d, CollisionWorld3d, PxSpriteAtlas, Rect2}
 
-    /// 起動時と描き出しが同じ形で読む Doc の束と、腕と銃・敵の glb（Controls.loadDocs）。
+    /// 起動時と描き出しが同じ形で読む Doc の束と、腕と銃・敵・拾う武器の glb（Controls.loadDocs）。
     pub type alias Docs = {
         uiText = UiTextDoc.Doc,
         keys = KeysDoc.Doc,
@@ -19,8 +19,10 @@ mod Res {
         player = PlayerDoc.Doc,
         enemies = EnemiesDoc.Doc,
         spawns = SpawnsDoc.Doc,
+        pickups = PickupsDoc.Doc,
         viewmodels = FpViewmodel.Viewmodels,
-        creatures = Creatures.Bodies
+        creatures = Creatures.Bodies,
+        pickupModels = PickupModels.Models
     }
 
     /// 描く元の束。
@@ -37,12 +39,16 @@ mod Res {
         player = PlayerDoc.Doc,
         enemies = EnemiesDoc.Doc,
         spawns = SpawnsDoc.Doc,
+        pickups = PickupsDoc.Doc,
         viewmodels = FpViewmodel.Viewmodels,
         // 敵の体と、そのクリップの長さ（glb が読めない型は既定の長さ）。
         creatures = Creatures.Bodies,
         timing = Creatures.Timing,
         // 迷路の spawn の印を spawns.json の群れで引いた点。
         spawnPoints = List[Spawner.Point],
+        // 迷路の pickup の印を pickups.json の量で引いた物と、拾う物の形（武器の glb を含む）。
+        pickupPoints = List[Pickups.Point],
+        pickupArt = PickupModels.Art,
         // 迷路の形と見える区画の組（見える距離は霧のかかり切る距離）。
         maze = Maze.Maze,
         collision = CollisionWorld3d.CollisionWorld3d,
@@ -60,8 +66,9 @@ mod Res {
         let stage = stageOf(docs#maze, docs#look, docs#spawns);
         { uiText = docs#uiText, keys = docs#keys, theme = docs#theme, walk = docs#walk, look = docs#look, mazeDoc = docs#maze,
           weapons = docs#weapons, viewmodel = docs#viewmodel, particles = docs#particles, player = docs#player, enemies = docs#enemies,
-          spawns = docs#spawns, viewmodels = docs#viewmodels, creatures = docs#creatures, timing = Creatures.timingOf(docs#creatures),
-          spawnPoints = stage#spawnPoints, maze = stage#maze, collision = stage#collision, props = stage#props, hitTargets = stage#hitTargets,
+          spawns = docs#spawns, pickups = docs#pickups, viewmodels = docs#viewmodels, creatures = docs#creatures, timing = Creatures.timingOf(docs#creatures),
+          spawnPoints = stage#spawnPoints, pickupPoints = Pickups.pointsOf(stage#maze, docs#pickups),
+          pickupArt = PickupModels.build(LookDoc.rec(docs#look), docs#pickups, docs#pickupModels), maze = stage#maze, collision = stage#collision, props = stage#props, hitTargets = stage#hitTargets,
           art = stage#art, particleTexture = Particles3d.textureOf() }
 
     /// 迷路と見た目と spawn の群れから作る物。
@@ -87,7 +94,8 @@ mod Res {
     def withStage(mazeDoc: MazeDoc.Doc, look: LookDoc.Doc, res: Res): Res =
         let stage = stageOf(mazeDoc, look, res#spawns);
         { mazeDoc = mazeDoc, look = look, maze = stage#maze, collision = stage#collision, props = stage#props, hitTargets = stage#hitTargets,
-          art = stage#art, spawnPoints = stage#spawnPoints | res }
+          art = stage#art, spawnPoints = stage#spawnPoints, pickupPoints = Pickups.pointsOf(stage#maze, res#pickups),
+          pickupArt = PickupModels.build(LookDoc.rec(look), res#pickups, res#pickupArt#models) | res }
 
     /// 粒の種類の絵のコマ。
     pub def particleRegion(res: Res, kind: Particles3d.Kind): Option[Rect2.Rect2] = Particles3d.regionOf(res#particleTexture, kind)
@@ -117,4 +125,8 @@ mod Res {
     pub def withEnemies(enemies: EnemiesDoc.Doc, res: Res): Res = { enemies = enemies | res }
 
     pub def withSpawns(spawns: SpawnsDoc.Doc, res: Res): Res = { spawns = spawns, spawnPoints = Spawner.pointsOf(res#maze, spawns) | res }
+
+    pub def withPickups(pickups: PickupsDoc.Doc, res: Res): Res =
+        { pickups = pickups, pickupPoints = Pickups.pointsOf(res#maze, pickups),
+          pickupArt = PickupModels.build(LookDoc.rec(res#look), pickups, res#pickupArt#models) | res }
 }

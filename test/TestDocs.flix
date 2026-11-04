@@ -102,4 +102,29 @@ mod TestDocs {
     def testPlayerOverridesOneField(): Unit \ Assert =
         Assert.assertEq(expected = Some((80.0, PlayerDoc.rec(PlayerDoc.defaults())#respawnSeconds)),
             PlayerDoc.fromJson("{\"health\": 80.0}") |> Option.map(d -> (PlayerDoc.rec(d)#health, PlayerDoc.rec(d)#respawnSeconds)))
+
+    @Test
+    def testPickupsBrokenJsonIsNone(): Unit \ Assert =
+        Assert.assertEq(expected = true, Option.isEmpty(PickupsDoc.fromJson("{ broken")))
+
+    /// 拾う距離だけを上書きすると、ほかの欄と量は既定のまま。
+    @Test
+    def testPickupsOverrideOneField(): Unit \ Assert =
+        let d = PickupsDoc.rec(PickupsDoc.defaults());
+        Assert.assertEq(expected = Some((2.0, d#hover, d#amounts)),
+            PickupsDoc.fromJson("{\"radius\": 2.0}") |> Option.map(x -> (PickupsDoc.rec(x)#radius, PickupsDoc.rec(x)#hover, PickupsDoc.rec(x)#amounts)))
+
+    /// items の行の数に追随する（2 行なら名前 2 つ・量のない行は捨てる）。
+    @Test
+    def testPickupsItemsFollowTheRows(): Unit \ Assert =
+        Assert.assertEq(expected = Some(Map#{"health_small" => 10, "ammo_rifle" => 30}),
+            PickupsDoc.fromJson("{\"items\": {\"health_small\": {\"amount\": 10}, \"ammo_rifle\": {\"amount\": 30}, \"weapon_rifle\": {}}}")
+                |> Option.map(x -> PickupsDoc.rec(x)#amounts))
+
+    /// 操作の一覧は行の数に追随する（key の無い行は捨てる）。
+    @Test
+    def testUiTextControlsFollowTheRows(): Unit \ Assert =
+        let controls = UiTextDoc.fromJson("{\"controls\": [{\"key\": \"F\", \"action\": \"USE\"}, {\"action\": \"NOTHING\"}]}") |> Option.map(x -> UiTextDoc.rec(x)#controls);
+        Assert.assertEq(expected = Some((1, Some(("F", "USE")))),
+            controls |> Option.map(cs -> (List.length(cs), List.head(cs) |> Option.map(c -> (c#key, c#action)))))
 }

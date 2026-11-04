@@ -1,6 +1,8 @@
 // Controls — キーとマウスを World.Input へ写し、World.step で 1 歩進める（純粋）。
 // どのキーがどの操作かは KeysDoc（player.keys.json）が決める。マウスは窓を押すと窓にキャプチャし（App.withMouseCapture）、
-// 動いた量（frame#mouseDelta）で視点を回す。Esc で放し、放している時の Esc で終了の確認を出す。
+// 動いた量（frame#mouseDelta）で視点を回す。
+// 画面ごと: タイトルは Enter か押すと遊び始め・Esc で終了の確認。遊んでいる間の Esc はポーズ（上下で選び Enter で決める・Esc で続ける）。
+// クリアの画面は Enter・Esc・押すとタイトルへ。窓の閉じるボタンはどの画面でも終了の確認（Main の withCloseRequest）。
 // キャプチャしている間は左ボタンが引き金・数字キーの 1〜3 とホイールが持ち替え（FPS の慣習の固定のキー）。
 // Doc の読み込み（loadDocs）と、保存即反映（watchFile）・F1 一括リロードの読み直しもここに置く。
 mod Controls {
@@ -39,36 +41,71 @@ mod Controls {
         slot |> Option.getWithDefault(wheel)
 
     /// 毎フレームのシステム。終了の確認の窓が出ている間は Enter で終わる・Esc で戻る（マウスは tapAt）。
-    /// 遊んでいる間は、窓を押すとマウスをキャプチャし、Esc でキャプチャを放す。放している時の Esc で終了の確認を出す。
-    /// Esc・Enter・F3（診断の表示）は OS とゲームの慣習に合わせた固定のキー（割り当ての Doc には載せない）。
+    /// ほかは画面ごとのキーとマウス（screenStep）。Esc・Enter・F3（診断の表示）は OS とゲームの慣習に合わせた固定のキー（割り当ての Doc には載せない）。
     pub def step(frame: App.Frame, res: Res.Res, w: World.World): World.World =
-        let pressed = key -> App.justPressed(key, frame);
-        let w1 =
-            if (World.isAskingQuit(w))
-                (if (pressed(GameEngine.Key.Enter)) World.answerQuit(true, w)
-                 else if (pressed(GameEngine.Key.Escape)) World.answerQuit(false, w)
-                 else if (frame#mouseClicked) tapAt(res, frame#cursor, w)
-                 else w)
-            else if (pressed(GameEngine.Key.Escape) and World.isLooking(w)) World.setLooking(false, w)
-            else if (pressed(GameEngine.Key.Escape)) World.askQuit(w)
-            else if (frame#mouseClicked and not World.isLooking(w)) World.setLooking(true, w)
-            else w;
-        let w2 = if (pressed(GameEngine.Key.F3)) World.toggleDiagnostics(w1) else w1;
+        let w1 = if (World.isAskingQuit(w)) answerStep(frame, res, w) else screenStep(frame, res, w);
+        let w2 = if (App.justPressed(GameEngine.Key.F3, frame)) World.toggleDiagnostics(w1) else w1;
         let aiming = World.isLooking(w) and World.isLooking(w2) and frame#windowFocused;
         World.step(res, inputOf(frame, res, aiming, w2), w2)
 
-    /// 終了の確認の窓が出ている時に cursor を押した。押した物は絵と同じ木（View.layers）から描く順の手前で選ぶ。
+    /// 終了の確認の窓への答え。
+    def answerStep(frame: App.Frame, res: Res.Res, w: World.World): World.World =
+        if (App.justPressed(GameEngine.Key.Enter, frame)) World.answerQuit(true, w)
+        else if (App.justPressed(GameEngine.Key.Escape, frame)) World.answerQuit(false, w)
+        else if (frame#mouseClicked) tapAt(res, frame#cursor, w)
+        else w
+
+    /// 画面ごとのキーとマウス。
+    def screenStep(frame: App.Frame, res: Res.Res, w: World.World): World.World = match w#screen {
+        case World.Screen.Title    => titleStep(frame, res, w)
+        case World.Screen.Clear(_) => clearStep(frame, res, w)
+        case World.Screen.Play(_)  => if (World.isPaused(w)) pauseStep(frame, res, w) else playStep(frame, w)
+    }
+
+    /// タイトル: Enter か押すと遊び始める・Esc で終了の確認。
+    def titleStep(frame: App.Frame, res: Res.Res, w: World.World): World.World =
+        if (App.justPressed(GameEngine.Key.Enter, frame)) World.startPlay(res, w)
+        else if (App.justPressed(GameEngine.Key.Escape, frame)) World.askQuit(w)
+        else if (frame#mouseClicked) tapAt(res, frame#cursor, w)
+        else w
+
+    /// クリアの画面: Enter・Esc・押すとタイトルへ。
+    def clearStep(frame: App.Frame, res: Res.Res, w: World.World): World.World =
+        if (App.justPressed(GameEngine.Key.Enter, frame) or App.justPressed(GameEngine.Key.Escape, frame)) World.toTitle(w)
+        else if (frame#mouseClicked) tapAt(res, frame#cursor, w)
+        else w
+
+    /// ポーズ: Esc で続ける・前と後ろへ歩くキーで項目を選ぶ・Enter で決める・項目を押す。
+    def pauseStep(frame: App.Frame, res: Res.Res, w: World.World): World.World =
+        let k = KeysDoc.rec(res#keys);
+        let pressedAny = ks -> List.exists(key -> App.justPressed(key, frame), ks);
+        if (App.justPressed(GameEngine.Key.Escape, frame)) World.resume(w)
+        else if (App.justPressed(GameEngine.Key.Enter, frame)) World.choosePause(w)
+        else if (pressedAny(k#forward) or pressedAny(k#back)) World.movePauseSelection(w)
+        else if (frame#mouseClicked) tapAt(res, frame#cursor, w)
+        else w
+
+    /// 遊んでいる間: Esc でポーズ・窓を押すとマウスをキャプチャする。
+    def playStep(frame: App.Frame, w: World.World): World.World =
+        if (App.justPressed(GameEngine.Key.Escape, frame)) World.pause(w)
+        else if (frame#mouseClicked and not World.isLooking(w)) World.setLooking(true, w)
+        else w
+
+    /// cursor を押した。押した物は絵と同じ木（View.layers）から描く順の手前で選ぶ。
     pub def tapAt(res: Res.Res, cursor: Vec2.Vec2, w: World.World): World.World =
         let ctx = App.pickCtx({ x = World.width(), y = World.height() });
         match SortingLayer.pickFrom(cursor, View.layers(ctx, View.inputOf(res, w))) {
             case Some(World.Press.QuitYes) => World.answerQuit(true, w)
             case Some(World.Press.QuitNo)  => World.answerQuit(false, w)
+            case Some(World.Press.Start)   => World.startPlay(res, w)
+            case Some(World.Press.Resume)  => World.resume(w)
+            case Some(World.Press.ToTitle) => World.toTitle(w)
             case None                      => w
         }
 
     // ── Doc の読み込み・読み直し（watchFile / F1） ──
 
-    /// 起動時と描き出しが同じ形で読む Doc の束と腕と銃・敵の glb。区切りごとに進み具合を知らせる
+    /// 起動時と描き出しが同じ形で読む Doc の束と腕と銃・敵・拾う武器の glb。区切りごとに進み具合を知らせる
     /// （実機は起動画面が進む・描き出しとテストと flow は HeadlessLoad.handle で絵を解く）。
     pub def loadDocs(): Res.Docs \ Fs.FileRead + IO + LoadProgress =
         LoadProgress.report("reading docs...", 0, 0);
@@ -76,7 +113,11 @@ mod Controls {
           walk = WalkDoc.load(WalkDoc.path()), look = LookDoc.load(LookDoc.path()), maze = MazeDoc.load(MazeDoc.path()),
           weapons = WeaponsDoc.load(WeaponsDoc.path()), viewmodel = FpViewmodelDoc.load(FpViewmodelDoc.path()),
           particles = Particles3dDoc.load(Particles3dDoc.path()), player = PlayerDoc.load(PlayerDoc.path()), enemies = EnemiesDoc.load(EnemiesDoc.path()),
-          spawns = SpawnsDoc.load(SpawnsDoc.path()), viewmodels = FpViewmodel.load(), creatures = Creatures.load() }
+          spawns = SpawnsDoc.load(SpawnsDoc.path()), pickups = PickupsDoc.load(PickupsDoc.path()),
+          viewmodels = FpViewmodel.load(), creatures = Creatures.load(), pickupModels = PickupModels.load() }
+
+    def restartPlay(res: Res.Res, w: World.World): World.World =
+        if (Option.isEmpty(World.sessionOf(w))) w else { play = w#play | World.initial(res) }
 
     def reloadUiText(res: Res.Res): Res.Res \ Fs.FileRead = Res.withUiText(UiTextDoc.load(UiTextDoc.path()), res)
 
@@ -96,6 +137,8 @@ mod Controls {
 
     def reloadSpawns(res: Res.Res): Res.Res \ Fs.FileRead = Res.withSpawns(SpawnsDoc.load(SpawnsDoc.path()), res)
 
+    def reloadPickups(res: Res.Res): Res.Res \ Fs.FileRead = Res.withPickups(PickupsDoc.load(PickupsDoc.path()), res)
+
     def reloadWalk(res: Res.Res): Res.Res \ Fs.FileRead = Res.withWalk(WalkDoc.load(WalkDoc.path()), res)
 
     def reloadLook(res: Res.Res): Res.Res \ Fs.FileRead = Res.withLook(LookDoc.load(LookDoc.path()), res)
@@ -104,7 +147,8 @@ mod Controls {
 
     /// Doc の一覧表(DocTable)。watchFile(保存即反映)・F1 の一括リロード・Studio へ名乗る「表示中」の 3 つは、どれもこの 1 枚から導出する。
     /// docId は project.json の editor.resources[] の id と同じ物。
-    /// 迷路を読み直したら、体を新しい start の印に立たせ直す（古い迷路の座標のままだと壁の中に残る）。
+    /// 迷路を読み直したら、遊んでいる間は新しい start の印から遊び直す（古い迷路の座標の体・拾った物の番号を残さない）。
+    /// タイトルとクリアの画面はそのまま（F1 の一括リロードと始まりの組み直しもこの行を通る）。
     pub def docTable(): List[DocTable.Entry[Resources.With[Res.Res, World.World]]] =
         let unchanged = (_, w) -> w;
         Resources.reloadRow("uitext", UiTextDoc.path(), reloadUiText, unchanged)
@@ -116,8 +160,9 @@ mod Controls {
             :: Resources.reloadRow("player", PlayerDoc.path(), reloadPlayer, unchanged)
             :: Resources.reloadRow("enemies", EnemiesDoc.path(), reloadEnemies, unchanged)
             :: Resources.reloadRow("spawns", SpawnsDoc.path(), reloadSpawns, unchanged)
+            :: Resources.reloadRow("pickups", PickupsDoc.path(), reloadPickups, unchanged)
             :: Resources.reloadRow("walk", WalkDoc.path(), reloadWalk, unchanged)
             :: Resources.reloadRow("look", LookDoc.path(), reloadLook, unchanged)
-            :: Resources.reloadRow("maze", MazeDoc.path(), reloadMaze, (res, w) -> { play = w#play | World.initial(res) })
+            :: Resources.reloadRow("maze", MazeDoc.path(), reloadMaze, restartPlay)
             :: Nil
 }
