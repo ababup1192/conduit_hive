@@ -1,0 +1,249 @@
+{
+  "//": "conduit_hive.weapons.json の形（Studio の sections 方言）。既定は src/WeaponsDoc.flix の defaults() が正。",
+  "version": 1,
+  "sections": {
+    "pistol": {
+      "kind": "record",
+      "label": "拳銃",
+      "order": 1,
+      "fields": {
+        "damage": {
+          "type": "float",
+          "label": "威力（1 粒）",
+          "order": 1,
+          "default": 25.0,
+          "min": 0,
+          "max": 500
+        },
+        "interval": {
+          "type": "float",
+          "label": "次を撃てるまで（秒）",
+          "order": 2,
+          "default": 0.25,
+          "min": 0.03,
+          "max": 3
+        },
+        "spread": {
+          "type": "float",
+          "label": "ばらつき（度）",
+          "order": 3,
+          "default": 0.6,
+          "min": 0,
+          "max": 30
+        },
+        "pellets": {
+          "type": "int",
+          "label": "1 回に飛ぶ粒の数",
+          "order": 4,
+          "default": 1,
+          "min": 1,
+          "max": 32
+        },
+        "recoil": {
+          "type": "float",
+          "label": "反動（照準が跳ね上がる度）",
+          "order": 5,
+          "default": 2.0,
+          "min": 0,
+          "max": 20
+        },
+        "range": {
+          "type": "float",
+          "label": "届く距離（m）",
+          "order": 6,
+          "default": 60.0,
+          "min": 1,
+          "max": 200
+        },
+        "automatic": {
+          "type": "bool",
+          "label": "押している間撃ち続ける",
+          "order": 7,
+          "default": false
+        },
+        "infinite": {
+          "type": "bool",
+          "label": "弾が無限",
+          "order": 8,
+          "default": true
+        },
+        "ammo": {
+          "type": "int",
+          "label": "始めの弾の数",
+          "order": 9,
+          "default": 0,
+          "min": 0,
+          "max": 999
+        },
+        "owned": {
+          "type": "bool",
+          "label": "始めから持っている",
+          "order": 10,
+          "default": true
+        }
+      }
+    },
+    "shotgun": {
+      "kind": "record",
+      "label": "散弾銃",
+      "order": 2,
+      "fields": {
+        "damage": {
+          "type": "float",
+          "label": "威力（1 粒）",
+          "order": 1,
+          "default": 12.0,
+          "min": 0,
+          "max": 500
+        },
+        "interval": {
+          "type": "float",
+          "label": "次を撃てるまで（秒）",
+          "order": 2,
+          "default": 0.9,
+          "min": 0.03,
+          "max": 3
+        },
+        "spread": {
+          "type": "float",
+          "label": "ばらつき（度）",
+          "order": 3,
+          "default": 7.0,
+          "min": 0,
+          "max": 30
+        },
+        "pellets": {
+          "type": "int",
+          "label": "1 回に飛ぶ粒の数",
+          "order": 4,
+          "default": 9,
+          "min": 1,
+          "max": 32
+        },
+        "recoil": {
+          "type": "float",
+          "label": "反動（照準が跳ね上がる度）",
+          "order": 5,
+          "default": 6.0,
+          "min": 0,
+          "max": 20
+        },
+        "range": {
+          "type": "float",
+          "label": "届く距離（m）",
+          "order": 6,
+          "default": 30.0,
+          "min": 1,
+          "max": 200
+        },
+        "automatic": {
+          "type": "bool",
+          "label": "押している間撃ち続ける",
+          "order": 7,
+          "default": false
+        },
+        "infinite": {
+          "type": "bool",
+          "label": "弾が無限",
+          "order": 8,
+          "default": false
+        },
+        "ammo": {
+          "type": "int",
+          "label": "始めの弾の数",
+          "order": 9,
+          "default": 16,
+          "min": 0,
+          "max": 999
+        },
+        "owned": {
+          "type": "bool",
+          "label": "始めから持っている",
+          "order": 10,
+          "default": false
+        }
+      }
+    },
+    "rifle": {
+      "kind": "record",
+      "label": "連射銃",
+      "order": 3,
+      "fields": {
+        "damage": {
+          "type": "float",
+          "label": "威力（1 粒）",
+          "order": 1,
+          "default": 14.0,
+          "min": 0,
+          "max": 500
+        },
+        "interval": {
+          "type": "float",
+          "label": "次を撃てるまで（秒）",
+          "order": 2,
+          "default": 0.1,
+          "min": 0.03,
+          "max": 3
+        },
+        "spread": {
+          "type": "float",
+          "label": "ばらつき（度）",
+          "order": 3,
+          "default": 1.8,
+          "min": 0,
+          "max": 30
+        },
+        "pellets": {
+          "type": "int",
+          "label": "1 回に飛ぶ粒の数",
+          "order": 4,
+          "default": 1,
+          "min": 1,
+          "max": 32
+        },
+        "recoil": {
+          "type": "float",
+          "label": "反動（照準が跳ね上がる度）",
+          "order": 5,
+          "default": 1.0,
+          "min": 0,
+          "max": 20
+        },
+        "range": {
+          "type": "float",
+          "label": "届く距離（m）",
+          "order": 6,
+          "default": 70.0,
+          "min": 1,
+          "max": 200
+        },
+        "automatic": {
+          "type": "bool",
+          "label": "押している間撃ち続ける",
+          "order": 7,
+          "default": true
+        },
+        "infinite": {
+          "type": "bool",
+          "label": "弾が無限",
+          "order": 8,
+          "default": false
+        },
+        "ammo": {
+          "type": "int",
+          "label": "始めの弾の数",
+          "order": 9,
+          "default": 120,
+          "min": 0,
+          "max": 999
+        },
+        "owned": {
+          "type": "bool",
+          "label": "始めから持っている",
+          "order": 10,
+          "default": false
+        }
+      }
+    }
+  }
+}

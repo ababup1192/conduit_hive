@@ -1,0 +1,17 @@
+{
+  "version": 1,
+  "title": "腕と銃の見え方",
+  "note": "画面の手前に重ねる腕と銃（ビューモデル）。ステージとは別の場面で描くので、壁に近づいても銃が壁に埋まらない。光の色と向きはステージの look と灯りに合わせ、強さだけ ambientScale・lampScale で沈める（目の真ん前の物はステージと同じ強さだと白っぽく見える）。霧は掛けない。長さは m・角度は度・時間は秒。",
+  "fovY": 55.0,
+  "near": 0.01,
+  "far": 4.0,
+  "bobSide": 0.012,
+  "bobLift": 0.008,
+  "swayScale": 0.6,
+  "swayMax": 4.0,
+  "swayFollow": 0.12,
+  "drawSeconds": 0.35,
+  "recoilRecover": 0.18,
+  "ambientScale": 0.55,
+  "lampScale": 0.3
+}

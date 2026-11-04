@@ -1,17 +1,22 @@
-// Res — 描く元の束: Doc と、Doc から作る物（迷路の形・見える区画の組・当たり判定・灰色の箱の絵）。読むだけで、Doc の読み直しの時だけ替わる。
+// Res — 描く元の束: Doc と、Doc から作る物（迷路の形・見える区画の組・当たり判定・弾の的・灰色の箱の絵・粒の絵）と、
+// 読み込んだ腕と銃の glb。読むだけで、Doc の読み直しの時だけ替わる。
 // 遊びの状態は World が持ち、App の w は Resources.With[Res, World] の組（Game）。
 // Res は World を使わない（使う向きは World → Res だけ。lint/rules.flix の module-cycle）。
 mod Res {
-    use fge::CollisionWorld3d
+    use fge::{CollisionShape3d, CollisionWorld3d, PxSpriteAtlas, Rect2}
 
-    /// 起動時と描き出しが同じ形で読む Doc の束（Controls.loadDocs）。
+    /// 起動時と描き出しが同じ形で読む Doc の束と、腕と銃の glb（Controls.loadDocs）。
     pub type alias Docs = {
         sample = SampleDoc.Doc,
         keys = KeysDoc.Doc,
         theme = ThemeDoc.Doc,
         walk = WalkDoc.Doc,
         look = LookDoc.Doc,
-        maze = MazeDoc.Doc
+        maze = MazeDoc.Doc,
+        weapons = WeaponsDoc.Doc,
+        hands = HandsDoc.Doc,
+        particles = Particles3dDoc.Doc,
+        rigs = Arms.Rigs
     }
 
     /// 描く元の束。
@@ -22,24 +27,42 @@ mod Res {
         walk = WalkDoc.Doc,
         look = LookDoc.Doc,
         mazeDoc = MazeDoc.Doc,
+        weapons = WeaponsDoc.Doc,
+        hands = HandsDoc.Doc,
+        particles = Particles3dDoc.Doc,
+        rigs = Arms.Rigs,
         // 迷路の形と見える区画の組（見える距離は霧のかかり切る距離）。
         maze = Maze.Maze,
         collision = CollisionWorld3d.CollisionWorld3d,
-        // 区画ごとの灰色の箱の絵と灯り。
-        art = Map[Char, MazeMesh.ZoneArt]
+        // 撃つ的の柱の箱（当たり判定・弾の的・絵が同じ箱を使う）と、弾の的の列。
+        props = List[CollisionShape3d.Box3d],
+        hitTargets = Hitscan.Targets,
+        // 区画ごとの灰色の箱の絵と灯り（的の柱は最後の部屋の絵に入る）。
+        art = Map[Char, MazeMesh.ZoneArt],
+        // 3D の粒のビルボードの絵（コードで塗った 1 枚。読み込みで 1 回だけ作る）。
+        particleTexture = PxSpriteAtlas.Baked
     }
 
     /// Doc の束から描く元を組む。
     pub def build(docs: Docs): Res =
         withStage(docs#maze, docs#look,
             { sample = docs#sample, keys = docs#keys, theme = docs#theme, walk = docs#walk, look = docs#look, mazeDoc = docs#maze,
-              maze = Maze.build(0.0, MazeDoc.defaults()), collision = CollisionWorld3d.empty(), art = Map.empty() })
+              weapons = docs#weapons, hands = docs#hands, particles = docs#particles, rigs = docs#rigs,
+              maze = Maze.build(0.0, MazeDoc.defaults()), collision = CollisionWorld3d.empty(), props = Nil, hitTargets = Nil, art = Map.empty(),
+              particleTexture = Particles3d.textureOf() })
 
-    /// 迷路と見た目から、形・当たり判定・絵を作り直す。
+    /// 迷路と見た目から、形・当たり判定・弾の的・絵を作り直す。
     /// WhyNot: 位置や時刻の更新ではここを通らない（作り直すのは迷路か見た目の Doc を読み直した時だけ）。
     def withStage(mazeDoc: MazeDoc.Doc, look: LookDoc.Doc, res: Res): Res =
         let maze = Maze.build(LookDoc.rec(look)#fogFar, mazeDoc);
-        { mazeDoc = mazeDoc, look = look, maze = maze, collision = Collider.worldOf(maze), art = MazeMesh.build(LookDoc.rec(look), maze) | res }
+        let props = Props.pillarsOf(maze);
+        let art = MazeMesh.build(LookDoc.rec(look), maze)
+            |> Map.adjust(z -> { instances = List.append(z#instances, Props.artOf(LookDoc.rec(look), props)) | z }, maze#finalZone);
+        { mazeDoc = mazeDoc, look = look, maze = maze, collision = Collider.worldOf(maze, props), props = props,
+          hitTargets = Hitscan.targetsOf(maze, props), art = art | res }
+
+    /// 粒の種類の絵のコマ。
+    pub def particleRegion(res: Res, kind: Particles3d.Kind): Option[Rect2.Rect2] = Particles3d.regionOf(res#particleTexture, kind)
 
     // ── Doc の差し替え（保存即反映。Controls.docTable の reload） ──
 
@@ -54,4 +77,10 @@ mod Res {
     pub def withLook(look: LookDoc.Doc, res: Res): Res = withStage(res#mazeDoc, look, res)
 
     pub def withMaze(mazeDoc: MazeDoc.Doc, res: Res): Res = withStage(mazeDoc, res#look, res)
+
+    pub def withWeapons(weapons: WeaponsDoc.Doc, res: Res): Res = { weapons = weapons | res }
+
+    pub def withHands(hands: HandsDoc.Doc, res: Res): Res = { hands = hands | res }
+
+    pub def withParticles(particles: Particles3dDoc.Doc, res: Res): Res = { particles = particles | res }
 }

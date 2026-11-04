@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "title": "武器",
+  "note": "武器ごとの数。撃ち方の規則（連射・持ち替え・当たり判定）はコード（src/Arsenal.flix・Hitscan.flix）。interval = 次を撃てるまでの秒・spread = 照準から外れる角の最大（度）・pellets = 1 回に飛ぶ粒の数・recoil = 照準が跳ね上がる角（度）・range = 届く距離（m）・automatic = 押している間撃ち続ける・infinite = 弾が無限・ammo = 始めの弾の数・owned = 始めから持っている（偽の武器は拾うまで使えない。拾う所は段 4）。",
+  "pistol": {
+    "damage": 25.0,
+    "interval": 0.25,
+    "spread": 0.6,
+    "pellets": 1,
+    "recoil": 2.0,
+    "range": 60.0,
+    "automatic": false,
+    "infinite": true,
+    "ammo": 0,
+    "owned": true
+  },
+  "shotgun": {
+    "damage": 12.0,
+    "interval": 0.9,
+    "spread": 7.0,
+    "pellets": 9,
+    "recoil": 6.0,
+    "range": 30.0,
+    "automatic": false,
+    "infinite": false,
+    "ammo": 16,
+    "owned": false
+  },
+  "rifle": {
+    "damage": 14.0,
+    "interval": 0.1,
+    "spread": 1.8,
+    "pellets": 1,
+    "recoil": 1.0,
+    "range": 70.0,
+    "automatic": true,
+    "infinite": false,
+    "ammo": 120,
+    "owned": false
+  }
+}

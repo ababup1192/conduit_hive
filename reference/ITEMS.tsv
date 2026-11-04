@@ -1,2 +1,4 @@
-corridor	dynamic=0	static=0
-hall	dynamic=0	static=0
+corridor	dynamic=90	static=0
+fire	dynamic=90	static=0
+hall	dynamic=90	static=0
+wall	dynamic=90	static=0

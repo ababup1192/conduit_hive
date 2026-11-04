@@ -2,20 +2,20 @@
 // flow の書き方は engine の engine_world/src/Flow.flix 冒頭。名前の一覧は流すたびに e2e/vocab.json へ書き出す。
 //   make flow FLOW=e2e/walk.flow   画面なしで最後まで流す
 mod E2e {
-    use fge::{App, Flow, InputMap, Resources}
+    use fge::{App, Flow, HeadlessLoad, InputMap, Resources}
     use fge::GameEngine.Key
 
     /// make flow（bin/fge flow run|check）が流す入口。
     pub def play(): Unit \ IO = App.Headless.exitWith(playJob(App.Headless.requestFromProcess()))
 
     def playJob(req: App.Headless.Request): Int32 \ IO =
-        run { Flow.Cli.mainOf(Game.app(Controls.loadDocs()), App.Headless.envOf(req)) } with Fs.FileRead.runWithIO with Fs.FileWrite.runWithIO
+        run { Flow.Cli.mainOf(Game.app(HeadlessLoad.handle(Controls.loadDocs)), App.Headless.envOf(req)) } with Fs.FileRead.runWithIO with Fs.FileWrite.runWithIO
 
     /// 語彙 e2e/vocab.json だけを書く入口（bin/headless-run が jar を作った時に流す・make flow-vocab）。
     pub def vocab(): Unit \ IO = App.Headless.exitWith(vocabJob(App.Headless.requestFromProcess()))
 
     def vocabJob(req: App.Headless.Request): Int32 \ IO =
-        run { Flow.Cli.vocabMainOf(Game.app(Controls.loadDocs()), App.Headless.envOf(req)) } with Fs.FileRead.runWithIO with Fs.FileWrite.runWithIO
+        run { Flow.Cli.vocabMainOf(Game.app(HeadlessLoad.handle(Controls.loadDocs)), App.Headless.envOf(req)) } with Fs.FileRead.runWithIO with Fs.FileWrite.runWithIO
 
     /// 常駐（App.Headless.serveJobs）が /run で流す E2e の入口の束。
     pub def jobs(): List[App.Headless.Job] =
@@ -35,7 +35,8 @@ mod E2e {
               { name = "x", doc = "足元の x（m）", read = Flow.Probe.Num(Resources.read((_, w) -> World.walkerOf(w)#x)) } ::
               { name = "z", doc = "足元の z（m）", read = Flow.Probe.Num(Resources.read((_, w) -> World.walkerOf(w)#z)) } ::
               { name = "zone", doc = "今いる区画の文字（壁の中は -）", read = Flow.Probe.Text(Resources.read((res, w) -> zoneName(res, w))) } ::
-              { name = "quit", doc = "終了の確認（Playing・Asking・Confirmed）", read = Flow.Probe.Text(Resources.read((_, w) -> "${w#quit}")) } :: Nil
+              { name = "quit", doc = "終了の確認（Playing・Asking・Confirmed）", read = Flow.Probe.Text(Resources.read((_, w) -> "${w#quit}")) } ::
+              { name = "shots", doc = "撃った回数の合計", read = Flow.Probe.Num(Resources.read((_, w) -> Int32.toFloat64(World.arsenalOf(w)#shots))) } :: Nil
           | Flow.emptyTable() }
 
     def zoneName(res: Res.Res, w: World.World): String =
@@ -44,5 +45,5 @@ mod E2e {
     /// 指紋の元（記録の再生が比べる）: 進行に効く欄だけ。
     pub def fingerprint(res: Res.Res, w: World.World): String =
         let b = World.walkerOf(w);
-        "at=${b#x},${b#z}|zone=${zoneName(res, w)}|quit=${w#quit}"
+        "at=${b#x},${b#z}|zone=${zoneName(res, w)}|quit=${w#quit}|shots=${World.arsenalOf(w)#shots}"
 }

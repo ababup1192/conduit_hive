@@ -1,4 +1,4 @@
-// テストの共通の道具: 小さな迷路の Doc・その迷路の描く元・刻み dt の遊びの時計。
+// テストの共通の道具: 小さな迷路の Doc・その迷路の描く元（腕と銃の glb は無し）・刻み dt の遊びの時計。
 mod TestSupport {
     use fge::Clock
 
@@ -10,7 +10,8 @@ mod TestSupport {
     /// 既定の Doc に迷路だけを差し替えた描く元。
     pub def resWith(maze: MazeDoc.Doc): Res.Res =
         Res.build({ sample = SampleDoc.defaults(), keys = KeysDoc.defaults(), theme = ThemeDoc.defaults(),
-                    walk = WalkDoc.defaults(), look = LookDoc.defaults(), maze = maze })
+                    walk = WalkDoc.defaults(), look = LookDoc.defaults(), maze = maze,
+                    weapons = WeaponsDoc.defaults(), hands = HandsDoc.defaults(), particles = Particles3dDoc.defaults(), rigs = Map.empty() })
 
     /// 刻みが dt 秒の遊びの時計（1 コマ進めた後）。
     pub def clockOf(dt: Float64): Clock.Clock[PlayClock.Play] =

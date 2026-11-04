@@ -30,7 +30,8 @@ mod GameLint {
                 |> allowIn(Fn.View_frame, "描く入口（App の view が World を渡す）。View.inputOf で In を組んで部品へ渡す")
                 |> allowIn(Fn.View_inputOf, "World から View の In を組む口（View の中で World を読むのは入口とここだけ。Controls も押し所を選ぶのに呼ぶ）")
                 |> allowIn(Fn.View_passPlan, "Pass の計画の入口（App の withPassPlan と描き出しが World を渡す）")
-                |> allowIn(Fn.View_stageIn, "World から一人称の場面の In を組む口（inputOf と passPlan が呼ぶ）"),
+                |> allowIn(Fn.View_stageIn, "World から一人称の場面の In を組む口（inputOf と passPlan が呼ぶ）")
+                |> allowIn(Fn.View_hudFrame, "HUD の入口（App の withHudView と描き出しが World を渡す）。Hud を組んで部品へ渡す"),
             customRule({ id = "rule-to-view", check = ruleToView }),
             customRule({ id = "module-cycle", check = moduleCycle }),
             customRule({ id = "pub-no-caller", check = pubNoCaller })

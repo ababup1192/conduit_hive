@@ -22,7 +22,13 @@
       "fontSize": 60.0
     }
   ],
-  "sounds": [],
+  "sounds": [
+    {
+      "name": "shot",
+      "path": "assets/sfx/shot.wav",
+      "looping": false
+    }
+  ],
   "editor": {
     "resources": [
       {
@@ -80,6 +86,27 @@
         "title": "場面の説明（ギャラリーに出る題と一言）",
         "schema": "assets/scenes.schema.json",
         "role": "tuning"
+      },
+      {
+        "id": "weapons",
+        "pattern": "assets/conduit_hive.weapons.json",
+        "title": "武器（威力・連射・ばらつき・弾・反動）",
+        "schema": "assets/weapons.schema.json",
+        "role": "tuning"
+      },
+      {
+        "id": "hands",
+        "pattern": "assets/conduit_hive.hands.json",
+        "title": "腕と銃（ビューモデル）の見え方（画角・揺れ・持ち替え）",
+        "schema": "assets/hands.schema.json",
+        "role": "tuning"
+      },
+      {
+        "id": "particles3d",
+        "pattern": "assets/conduit_hive.particles3d.json",
+        "title": "3D の粒（マズルフラッシュ・火花・撃った瞬間の灯り）",
+        "schema": "assets/particles3d.schema.json",
+        "role": "material"
       },
       {
         "id": "project",

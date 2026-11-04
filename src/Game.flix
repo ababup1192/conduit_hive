@@ -17,8 +17,14 @@ mod Game {
             view = Resources.view(View.frame),
             reloads = Nil
         })
+            // 照準・弾の数・F3 の診断の行（view の絵のどれよりも手前）。
+            |> App.withHudView(Resources.view(View.hudFrame))
             |> Resources.addClock({ clockOf = w -> w#play, withClock = (c, w) -> { play = c | w }, paceOf = (_, w) -> World.paceOf(w) })
             |> App.withDocTable(Controls.docTable())
+            // 撃った音（撃った回数が増えたコマに 1 回）。
+            |> App.withAudio(ws -> Sounds.events(ws#before#world, ws#after#world))
+            // 3D の粒のビルボードの絵を GPU へ上げる（鍵が同じ間は上げ直さない）。
+            |> App.withSpriteAtlases(Resources.read((r, _) -> { texture = Particles3d.textureName(), key = Particles3d.textureKey(), baked = r#particleTexture } :: Nil))
             // 窓を押すとマウスをキャプチャして視点を回す（Esc で放す。放している時の Esc は終了の確認で、既定の Esc の終了は使わない）。
             |> App.withMouseCapture(Resources.read((_, w) -> World.isLooking(w)))
             |> App.quitWhen((_, h) -> Resources.read((_, w) -> World.isQuitting(w), h))

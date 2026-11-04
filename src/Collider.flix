@@ -1,6 +1,7 @@
 // Collider — 迷路のマス目から作る当たり判定の箱の集まり（純粋）。
 // 壁は、床のマスに辺か角で接する壁のマスを、行ごとに続いている所をまとめた縦長の箱。床は迷路全体の下に敷く 1 枚の板。
-// 体を箱の中で動かす規則は engine の CharacterBody3d。
+// 天井はマスごとの板（弾を止めるだけ。体は天井に届かない）。
+// 体を箱の中で動かす規則は engine の CharacterBody3d。弾の当たりは Hitscan が同じ箱を的にする。
 mod Collider {
     use fge::{CollisionShape3d, CollisionWorld3d, Vec3}
 
@@ -27,7 +28,7 @@ mod Collider {
         }, Nil) |> List.reverse
 
     /// 壁の箱の列（上の行から・行の中は西から）。
-    def wallBoxes(m: Maze.Maze): List[CollisionShape3d.Box3d] =
+    pub def wallBoxes(m: Maze.Maze): List[CollisionShape3d.Box3d] =
         let top = Maze.maxHeight(m) + headroom();
         List.range(0, m#rows) |> List.flatMap(row -> wallRunsOf(m, row) |> List.map(span -> {
             let (c0, c1) = span;
@@ -37,12 +38,20 @@ mod Collider {
         }))
 
     /// 迷路全体の下に敷く床の板（上の面が y = 0）。
-    def floorBox(m: Maze.Maze): CollisionShape3d.Box3d =
+    pub def floorBox(m: Maze.Maze): CollisionShape3d.Box3d =
         let w = Int32.toFloat64(m#cols) * m#cellSize;
         let d = Int32.toFloat64(m#rows) * m#cellSize;
         CollisionShape3d.box3d(Vec3.v3(w / 2.0, 0.0 - slab() / 2.0, d / 2.0), Vec3.v3(w / 2.0, slab() / 2.0, d / 2.0))
 
-    /// 迷路の当たり判定の集まり（格子の 1 マスは迷路の 1 マスと同じ幅）。
-    pub def worldOf(m: Maze.Maze): CollisionWorld3d.CollisionWorld3d =
-        CollisionWorld3d.build(m#cellSize, List.append(wallBoxes(m), floorBox(m) :: Nil))
+    /// 床のマスごとの天井の板（下の面がその区画の高さ）。
+    pub def ceilingBoxes(m: Maze.Maze): List[CollisionShape3d.Box3d] =
+        let half = m#cellSize / 2.0;
+        m#zones |> Map.valuesOf |> List.flatMap(zone -> zone#cells |> List.map(cell -> {
+            let (cx, cz) = Maze.centerOf(m, cell);
+            CollisionShape3d.box3d(Vec3.v3(cx, zone#height + slab() / 2.0, cz), Vec3.v3(half, slab() / 2.0, half))
+        }))
+
+    /// 迷路の当たり判定の集まり（格子の 1 マスは迷路の 1 マスと同じ幅）。props = 床に立てた物（撃つ的の柱など）。
+    pub def worldOf(m: Maze.Maze, props: List[CollisionShape3d.Box3d]): CollisionWorld3d.CollisionWorld3d =
+        CollisionWorld3d.build(m#cellSize, List.append(wallBoxes(m), floorBox(m) :: props))
 }

@@ -8,7 +8,6 @@ mod ZOrder {
 
     pub enum Layer with Eq, ToString {
         case Scene   // 一人称の場面（3D と後処理を Pass で組み、面 1 枚で画面へ）
-        case Hud     // 照準の点・F3 の診断の行
         case Prompt  // 終了の確認の窓（どれよりも手前）
     }
 
@@ -16,11 +15,10 @@ mod ZOrder {
         pub def zRange(layer: Layer): (Int32, Int32) =
             match layer {
                 case Layer.Scene  => (0, 199)
-                case Layer.Hud    => (200, 209)
                 case Layer.Prompt => (300, 309)
             }
     }
 
     /// 奥から手前へ全部の層（F8 の注釈の文脈・表のテストが使う）。
-    pub def layers(): List[Layer] = Layer.Scene :: Layer.Hud :: Layer.Prompt :: Nil
+    pub def layers(): List[Layer] = Layer.Scene :: Layer.Prompt :: Nil
 }

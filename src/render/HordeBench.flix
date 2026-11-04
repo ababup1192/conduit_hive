@@ -8,7 +8,7 @@
 //   窓の測り             … 1 コマの間隔（frame#realNow の差）と FrameDiagnostics（GL へ送る・swap・GPU・3D の数）
 // 結果は debug/bench/horde-<label>.txt に書く（App.addOutput）。
 mod HordeBench {
-    use fge::{AnimationClip3d, App, Clock, FrameDiagnostics, Gltf, Log, LwjglLayer, Model3d, Render, Scene3d}
+    use fge::{AnimationClip3d, App, Clock, FrameDiagnostics, Gltf, HeadlessLoad, Log, LwjglLayer, Model3d, Render, Scene3d}
 
     import java.io.File
     import java.lang.System
@@ -80,10 +80,10 @@ mod HordeBench {
 
     def loadKit(env: Map[String, String]): Result[String, Kit] \ IO =
         let cfg = configOf(env);
-        let (docs, model) = run { (Controls.loadDocs(), Gltf.load(guardPath())) } with Fs.FileRead.runWithIO;
+        let (docs, model) = run { (HeadlessLoad.handle(Controls.loadDocs), Gltf.load(guardPath())) } with Fs.FileRead.runWithIO;
         let res = Res.build(docs);
         let zone = MazeDoc.rec(res#mazeDoc)#finalZone;
-        let center = Map.get(zone, res#maze#zones) |> Option.flatMap(z -> middleCell(z#cells)) |> Option.toOk("最後の部屋 ${zone} が迷路に無い");
+        let center = Maze.middleCellOf(res#maze, zone) |> Option.toOk("最後の部屋 ${zone} が迷路に無い");
         forM (
             m <- model;
             body <- bodyOf(m);
@@ -98,15 +98,6 @@ mod HordeBench {
               out = "${outDir()}/horde-${cfg#label}.txt", micro = Nil }
         }
 
-    /// 区画のマスの並びの真ん中に近いマス（列と行の真ん中）。
-    def middleCell(cells: List[Maze.Cell]): Option[Maze.Cell] =
-        let cols = cells |> List.map(c -> c#col) |> List.sort;
-        let rows = cells |> List.map(c -> c#row) |> List.sort;
-        forM (
-            col <- List.drop(List.length(cols) / 2, cols) |> List.head;
-            row <- List.drop(List.length(rows) / 2, rows) |> List.head
-        ) yield { col = col, row = row }
-
     def initial(kit: Kit): State =
         { world = kit#start, horde = HordeScene.spawnHorde(kit#cfg, kit#body, kit#res#maze, MazeDoc.rec(kit#res#mazeDoc)#finalZone, kit#viewer),
           frame = 0, lastAt = -1.0, samples = Nil }
@@ -117,6 +108,7 @@ mod HordeBench {
         App.game({ init = initial(kit), update = (frame, s) -> step(kit, frame, s),
                    view = (ctx, s) -> View.frame(ctx, kit#res, s#world), reloads = Nil })
             |> App.withPassPlan(s -> passPlan(kit, s))
+            |> App.withSpriteAtlases(_ -> { texture = Particles3d.textureName(), key = Particles3d.textureKey(), baked = kit#res#particleTexture } :: Nil)
             |> App.withDiagnostics
             |> App.addOutput({ keyOf = s -> if (isDone(kit, s)) kit#cfg#label else "", write = s -> writeReport(kit, s), onJump = App.OnJump.Skip })
             |> App.quitWhen((_, s) -> s#frame >= kit#warmup + kit#frames + 4)

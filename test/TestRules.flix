@@ -33,7 +33,7 @@ mod TestRules {
     @Test
     def testBodyStaysWhileAskingQuit(): Unit \ Assert =
         let asked = World.askQuit(w0());
-        let after = World.step(res(), { drive = { forward = 1.0 | Walker.idle() } }, asked);
+        let after = World.step(res(), World.walking({ forward = 1.0 | Walker.idle() }), asked);
         Assert.assertEq(expected = World.walkerOf(asked)#x, World.walkerOf(after)#x)
 
     @Test

@@ -1,12 +1,12 @@
 // View — World から「(置き場所, 見せたい物) のリスト」と、その前に描く Pass の計画への投影（純粋）。
 //
 // ── 画面の層（奥から手前へ）──
-// 場面（Layer.Scene）: 一人称の迷路（StageView。Pass の中で 3D の場面とブルームを組み、後処理の面 1 枚で画面へ）。
-// 印（Layer.Hud）: マウスをキャプチャしている間の照準の点・F3 の診断の行。
+// 場面（Layer.Scene）: 一人称の迷路と手前の腕と銃（StageView。Pass の中で 3D の場面とブルームを組み、後処理の面 1 枚で画面へ）。
 // 終了の確認の窓（Layer.Prompt）: 場面のどれよりも手前に出る。押せる物の当たりは絵と同じ木に ZStack.hit で積む。
+// HUD（照準・弾の数・F3 の診断の行）は App.withHudView に繋ぐ hudFrame（view の絵のどれよりも手前。本格的な HUD は後の段）。
 mod View {
 
-    use fge::{App, Color, FrameDiagnostics, RawDraw, Render, SortingLayer, TextDraw, Vec2, ZStack}
+    use fge::{App, Bezier, Color, FrameDiagnostics, Mat4, Num, Render, Scene3d, SortingLayer, TextDraw, Vec2, Vec3, ZStack}
     use ZOrder.Layer
 
     /// 描くのに要る値。部品は World でなくこれを読む（lint/rules.flix の view-no-world）。
@@ -14,25 +14,65 @@ mod View {
         stage = StageView.In,
         theme = ThemeDoc.Doc,
         askingQuit = Bool,
-        quitPrompt = String,
-        // マウスをキャプチャしているか（画面の真ん中に照準の点を出す）・F3 の診断の行を出すか。
-        looking = Bool,
-        showsDiagnostics = Bool
+        quitPrompt = String
     }
 
-    /// 描く元と World から描くのに要る値だけを写す（View の中で World を読むのは入口の frame・passPlan とここだけ）。
-    pub def inputOf(res: Res.Res, w: World.World): In =
-        { stage = stageIn(res, w), theme = res#theme, askingQuit = World.isAskingQuit(w), quitPrompt = SampleDoc.rec(res#sample)#quitPrompt,
-          looking = World.isLooking(w), showsDiagnostics = World.showsDiagnostics(w) }
+    /// HUD を描くのに要る値。
+    pub type alias Hud = {
+        theme = ThemeDoc.Doc,
+        askingQuit = Bool,
+        // マウスをキャプチャしているか（照準を明るくする）・F3 の診断の行を出すか。
+        looking = Bool,
+        showsDiagnostics = Bool,
+        // 構えている武器の残りの弾（無限なら None）。
+        ammo = Option[Int32]
+    }
 
-    /// 一人称の場面の値: 目と、今いる区画から見える区画の絵。
+    /// 描く元と World から描くのに要る値だけを写す（View の中で World を読むのは入口の frame・passPlan・hudFrame とここだけ）。
+    pub def inputOf(res: Res.Res, w: World.World): In =
+        { stage = stageIn(res, w), theme = res#theme, askingQuit = World.isAskingQuit(w), quitPrompt = SampleDoc.rec(res#sample)#quitPrompt }
+
+    /// HUD の入口（Game の App.withHudView と描き出しが呼ぶ）。
+    pub def hudFrame(ctx: App.ViewCtx, res: Res.Res, w: World.World): List[Render.PlacedItem] =
+        hud(ctx, { theme = res#theme, askingQuit = World.isAskingQuit(w), looking = World.isLooking(w),
+                   showsDiagnostics = World.showsDiagnostics(w), ammo = Arsenal.ammoOf(res#weapons, World.arsenalOf(w)) })
+
+    /// 一人称の場面の値: 照準のカメラ・今いる区画から見える区画の絵・火花・手前の腕と銃・撃った瞬間の灯り。
     pub def stageIn(res: Res.Res, w: World.World): StageView.In =
-        let walk = WalkDoc.rec(res#walk);
         let body = World.walkerOf(w);
+        let t = World.seconds(w);
+        let camera = World.cameraOf(res, w);
+        let a = World.arsenalOf(w);
+        let particles = World.particlesOf(w);
         let drawn = Maze.visibleFrom(res#maze, body#x, body#z);
-        { t = World.seconds(w), eye = Walker.eyeOf(walk, body), yaw = body#yaw, pitch = body#pitch, fovY = walk#fovY,
-          look = LookDoc.rec(res#look),
-          zones = drawn |> Set.toList |> List.filterMap(id -> Map.get(id, res#art)) }
+        let motion = { phase = Walker.stridePhase(WalkDoc.rec(res#walk), body), sway = World.swayOf(w) };
+        let hands = handsIn(res, a, particles, motion, t);
+        { t = t, camera = camera, look = LookDoc.rec(res#look),
+          zones = drawn |> Set.toList |> List.filterMap(id -> Map.get(id, res#art)),
+          billboards = Particles3d.billboards(res#particles, Particles3d.textureName(), Res.particleRegion(res), Particles3d.Space.World, Mat4.identity(), t, particles),
+          flash = hands |> Option.toList |> List.flatMap(h -> flashLights(res, a, t, StageView.fromEye(camera, fst(h)))),
+          hands = hands |> Option.map(snd) }
+
+    /// 手前の腕と銃: 今の銃口（目の座標）と、場面に入れる物。構えている武器の glb が読めていなければ None。
+    def handsIn(res: Res.Res, a: Arsenal.Arsenal, particles: List[Particles3d.Particle], motion: Arms.Motion, t: Float64): Option[(Vec3.Vec3, StageView.Hands)] =
+        let hd = HandsDoc.rec(res#hands);
+        Map.get(a#current, res#rigs) |> Option.map(rig -> {
+            let pose = Arms.poseOf(rig, Arms.playingAt(hd, Arms.clipLength(rig, "fire"), t, a));
+            let place = Arms.placeOf(hd, motion);
+            let frame = Arms.muzzleFrame(rig, pose, place);
+            let muzzle = Mat4.apply(frame, Vec3.zero());
+            (muzzle, { instances = Arms.instancesOf(rig, pose, place), textures = rig#model#textures,
+                       billboards = Particles3d.billboards(res#particles, Particles3d.textureName(), Res.particleRegion(res), Particles3d.Space.Muzzle, frame, t, particles),
+                       flash = flashLights(res, a, t, muzzle), fovY = hd#fovY, near = hd#near, far = hd#far,
+                       ambientScale = hd#ambientScale, lampScale = hd#lampScale })
+        })
+
+    /// 撃った瞬間の灯り（点 at に 1 本。最後に撃ってから light の life の間だけ）。
+    def flashLights(res: Res.Res, a: Arsenal.Arsenal, t: Float64, at: Vec3.Vec3): List[Scene3d.PointLight] =
+        let lit = Particles3dDoc.rec(res#particles)#light;
+        a#last |> Option.filter(s -> { let age = t - s#at; age >= 0.0 and age < lit#life })
+            |> Option.map(_ -> { position = at, color = lit#color, intensity = lit#intensity, range = lit#range })
+            |> Option.toList
 
     pub def frame(ctx: App.ViewCtx, res: Res.Res, w: World.World): List[Render.PlacedItem] =
         frameOf(ctx, inputOf(res, w))
@@ -46,25 +86,72 @@ mod View {
 
     /// 層ごとの木（絵と押せる物の当たり）。Controls.tapAt も同じ木から押した物を選ぶ。
     pub def layers(ctx: App.ViewCtx, w: In): List[(Layer, ZStack.Tree[Layer, World.Press])] =
-        (Layer.Scene, StageView.frameTree()) :: (Layer.Hud, ZStack.leaf(hud(ctx, w))) :: (Layer.Prompt, quitPrompt(ctx, w)) :: Nil
+        (Layer.Scene, StageView.frameTree()) :: (Layer.Prompt, quitPrompt(ctx, w)) :: Nil
 
-    // ── 画面の上の小さな印（Layer.Hud） ──
+    // ── HUD（App.withHudView） ──
 
-    /// マウスをキャプチャしている間だけ画面の真ん中に照準の点と、F3 の診断の行（左上）。
-    def hud(ctx: App.ViewCtx, w: In): List[Render.PlacedItem] =
+    def p(x: Float64, y: Float64): Vec2.Vec2 = { x = x, y = y }
+
+    /// 照準（真ん中）・右下の弾の数・F3 の診断の行（左上）。照準はキャプチャしていない間は薄くする（撃てないことを見せる）。
+    /// 終了の確認の窓が出ている間は出さない（窓の文言を読ませる）。
+    def hud(ctx: App.ViewCtx, w: Hud): List[Render.PlacedItem] =
         let theme = ThemeDoc.rec(w#theme);
-        let center = { x = World.width() / 2.0, y = World.height() / 2.0 };
-        let dot = if (w#looking and not w#askingQuit)
-                      RawDraw.circleAt(center, 1.6, Color.darken(theme#bg, 0.3), 0) :: RawDraw.circleAt(center, 1.0, theme#accent, 1) :: Nil
-                  else Nil;
+        let alpha = if (w#looking) 1.0 else 0.35;
+        let marks = if (w#askingQuit) Nil else Render.fadeAll(alpha, List.append(crosshair(theme#accent, theme#bg), ammoPanel(ctx, theme#accent, theme#bg, w#ammo)));
         let rows = if (w#showsDiagnostics) ctx#diagnostics |> Option.map(FrameDiagnostics.summaryLines) |> Option.getWithDefault(Nil) else Nil;
         let lines = rows |> List.zipWithIndex |> List.map(e -> {
             let (i, line) = e;
             let size = 8.0;
-            TextDraw.centered({ text = line, atlas = ctx#atlas, size = size, color = theme#accent, z = 2,
+            TextDraw.centered({ text = line, atlas = ctx#atlas, size = size, color = theme#accent, z = 4,
                                 centerX = 4.0 + TextDraw.width(line, ctx#atlas, size) / 2.0, y = 4.0 + Int32.toFloat64(i) * (size + 2.0) })
         });
-        List.append(dot, lines)
+        List.append(marks, lines)
+
+    /// 頂点ごとに色と濃さを持つ多角形を、画面の座標のまま置く。
+    def gradAt(vertices: List[(Vec2.Vec2, Color, Float64)], z: Int32): Render.PlacedItem =
+        { at = Vec2.zero(), item = Render.gradPolygon(vertices |> List.map(v -> { let (at, c, a) = v; { pos = at, color = c, alpha = a } }), z) }
+
+    /// 照準: 真ん中を空けて 4 方向へ先細りに伸びる針（根元が濃く先へ薄れる）と、真ん中の小さな菱形。
+    /// どれも 1 px 太い暗い影を下に敷き、明るい壁の前でも読める。
+    def crosshair(ink: Color, shade: Color): List[Render.PlacedItem] =
+        let c = p(World.width() / 2.0, World.height() / 2.0);
+        let dirs = (1.0, 0.0) :: (-1.0, 0.0) :: (0.0, 1.0) :: (0.0, -1.0) :: Nil;
+        let needle = (grow: Float64, color: Color, alphaIn: Float64, alphaOut: Float64, z: Int32, dir: (Float64, Float64)) -> {
+            let (dx, dy) = dir;
+            let (gap, len) = (3.0 - grow, 5.0 + grow * 2.0);
+            let (wIn, wOut) = (0.8 + grow, 0.25 + grow);
+            let at = (along: Float64, side: Float64) -> p(c#x + dx * along - dy * side, c#y + dy * along + dx * side);
+            gradAt((at(gap, 0.0 - wIn), color, alphaIn) :: (at(gap + len, 0.0 - wOut), color, alphaOut)
+                       :: (at(gap + len, wOut), color, alphaOut) :: (at(gap, wIn), color, alphaIn) :: Nil, z)
+        };
+        let diamond = (r: Float64, color: Color, a: Float64, z: Int32) ->
+            gradAt((p(c#x, c#y - r), color, a) :: (p(c#x + r, c#y), color, a) :: (p(c#x, c#y + r), color, a) :: (p(c#x - r, c#y), color, a) :: Nil, z);
+        List.flatten(
+            (dirs |> List.map(needle(0.7, shade, 0.7, 0.2, 0)))
+                :: (dirs |> List.map(needle(0.0, ink, 1.0, 0.35, 1)))
+                :: (diamond(1.6, shade, 0.7, 0) :: diamond(0.9, ink, 1.0, 1) :: Nil) :: Nil)
+
+    /// 右下の弾の数の板: 角の丸い縦のグラデの板に差し色の細い縁、中に弾の数（無限は ∞ の線）。
+    def ammoPanel(ctx: App.ViewCtx, ink: Color, bg: Color, ammo: Option[Int32]): List[Render.PlacedItem] =
+        let size = p(44.0, 22.0);
+        let at = p(World.width() - 10.0 - size#x, World.height() - 10.0 - size#y);
+        let center = p(at#x + size#x / 2.0, at#y + size#y / 2.0);
+        let panel = Render.vgrad(size, { top = Color.lighten(bg, 0.08), bottom = Color.darken(bg, 0.4) }, 0)
+            |> Render.fade(0.8) |> Render.rounded(4.0) |> Render.outlineA({ color = ink, alpha = 0.45, width = 1.0 });
+        let count = match ammo {
+            case Some(n) => TextDraw.centeredAt({ text = Int32.toString(n), atlas = ctx#atlas, size = 14.0, color = ink, z = 2, center = center }) :: Nil
+            case None    => infinity(center, ink)
+        };
+        { at = at, item = panel } :: count
+
+    /// ∞ の線（横に寝た 8 の字。字の無いフォントでも出る）。
+    def infinity(center: Vec2.Vec2, ink: Color): List[Render.PlacedItem] =
+        let points = List.range(0, 41) |> List.map(i -> {
+            let t = Int32.toFloat64(i) * Num.tau() / 40.0;
+            let k = 1.0 + Num.sin(t) * Num.sin(t);
+            p(center#x + 9.0 * Num.cos(t) / k, center#y + 9.0 * Num.sin(t) * Num.cos(t) / k)
+        });
+        Bezier.polyline(points, { width = 1.6 }, ink, 2)
 
     // ── 終了の確認の窓（Layer.Prompt） ──
 
@@ -77,8 +164,9 @@ mod View {
             let size = { x = World.width() * 0.6, y = 48.0 };
             let at = { x = (World.width() - size#x) / 2.0, y = (World.height() - size#y) / 2.0 };
             let window =
-                { at = Vec2.zero(), item = RawDraw.box({ x = World.width(), y = World.height() }, theme#bg, 0) |> Render.fade(0.6) }
-                    :: { at = at, item = RawDraw.box(size, Color.darken(theme#bg, 0.2), 1) }
+                { at = Vec2.zero(), item = Render.vgrad({ x = World.width(), y = World.height() }, { top = theme#bg, bottom = Color.darken(theme#bg, 0.6) }, 0) |> Render.fade(0.6) }
+                    :: { at = at, item = Render.vgrad(size, { top = Color.lighten(theme#bg, 0.06), bottom = Color.darken(theme#bg, 0.35) }, 1)
+                                          |> Render.rounded(6.0) |> Render.outlineA({ color = theme#accent, alpha = 0.5, width = 1.0 }) }
                     :: TextDraw.centeredAt({ text = w#quitPrompt, atlas = ctx#atlas, size = 16.0, color = theme#accent, z = 2,
                                              center = { x = World.width() / 2.0, y = World.height() / 2.0 } })
                     :: Nil;

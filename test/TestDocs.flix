@@ -48,4 +48,28 @@ mod TestDocs {
     @Test
     def testSampleBrokenJsonIsNone(): Unit \ Assert =
         Assert.assertEq(expected = true, Option.isEmpty(SampleDoc.fromJson("{ broken")))
+
+    @Test
+    def testWeaponsBrokenJsonIsNone(): Unit \ Assert =
+        Assert.assertEq(expected = true, Option.isEmpty(WeaponsDoc.fromJson("{ broken")))
+
+    /// 武器の欄の 1 つだけを上書きすると、その武器のほかの欄とほかの武器は既定のまま。
+    @Test
+    def testWeaponsOverrideOneField(): Unit \ Assert =
+        let d = WeaponsDoc.rec(WeaponsDoc.defaults());
+        Assert.assertEq(expected = Some((0.5, d#shotgun#damage, d#rifle#interval)),
+            WeaponsDoc.fromJson("{\"shotgun\": {\"interval\": 0.5}}")
+                |> Option.map(x -> (WeaponsDoc.rec(x)#shotgun#interval, WeaponsDoc.rec(x)#shotgun#damage, WeaponsDoc.rec(x)#rifle#interval)))
+
+    @Test
+    def testViewmodelOverridesOneField(): Unit \ Assert =
+        Assert.assertEq(expected = Some((40.0, HandsDoc.rec(HandsDoc.defaults())#near)),
+            HandsDoc.fromJson("{\"fovY\": 40.0}") |> Option.map(d -> (HandsDoc.rec(d)#fovY, HandsDoc.rec(d)#near)))
+
+    /// 粒の欄の 1 つだけを上書きすると、同じ粒のほかの欄は既定のまま。
+    @Test
+    def testParticlesOverrideOneField(): Unit \ Assert =
+        let d = Particles3dDoc.rec(Particles3dDoc.defaults());
+        Assert.assertEq(expected = Some((3, d#spark#life)),
+            Particles3dDoc.fromJson("{\"spark\": {\"count\": 3}}") |> Option.map(x -> (Particles3dDoc.rec(x)#spark#count, Particles3dDoc.rec(x)#spark#life)))
 }

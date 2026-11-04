@@ -69,8 +69,12 @@ mod Walker {
     pub def overlapDepth(world: CollisionWorld3d.CollisionWorld3d, walk: WalkDoc.Rec, w: Walker): Float64 =
         CharacterBody3d.overlapDepth(world, Nil, settingsOf(walk), bodyOf(w))
 
+    /// 歩いた距離の 1 歩の位相（ラジアン。1 歩で π 進む）。頭の上下とビューモデルの揺れが同じ拍で動く。
+    pub def stridePhase(walk: WalkDoc.Rec, w: Walker): Float64 =
+        let stride = Float64.max(0.1, if (w#running) walk#runStride else walk#stride);
+        Num.pi() * w#distance / stride
+
     /// 目の位置（足元の真上・目の高さ + 歩く上下）。
     pub def eyeOf(walk: WalkDoc.Rec, w: Walker): Vec3.Vec3 =
-        let stride = Float64.max(0.1, if (w#running) walk#runStride else walk#stride);
-        Vec3.v3(w#x, w#feet + walk#eyeHeight + walk#bobHeight * Float64.abs(Num.sin(Num.pi() * w#distance / stride)), w#z)
+        Vec3.v3(w#x, w#feet + walk#eyeHeight + walk#bobHeight * Float64.abs(Num.sin(stridePhase(walk, w))), w#z)
 }

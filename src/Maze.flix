@@ -165,4 +165,14 @@ mod Maze {
     /// マス cell の区画の高さ（床でなければ 0）。
     pub def heightAt(m: Maze, cell: Cell): Float64 =
         Map.get(charAt(m, cell), m#zones) |> Option.map(z -> z#height) |> Option.getWithDefault(0.0)
+
+    /// 区画 id のマスの並びの真ん中に近いマス（列と行それぞれの真ん中。区画が無ければ None）。
+    pub def middleCellOf(m: Maze, id: Char): Option[Cell] =
+        let cells = Map.get(id, m#zones) |> Option.map(z -> z#cells) |> Option.getWithDefault(Nil);
+        let cols = cells |> List.map(c -> c#col) |> List.sort;
+        let rows = cells |> List.map(c -> c#row) |> List.sort;
+        forM (
+            col <- List.drop(List.length(cols) / 2, cols) |> List.head;
+            row <- List.drop(List.length(rows) / 2, rows) |> List.head
+        ) yield { col = col, row = row }
 }

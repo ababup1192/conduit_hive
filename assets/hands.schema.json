@@ -1,0 +1,126 @@
+{
+  "//": "conduit_hive.hands.json の形（Studio の sections 方言）。既定は src/HandsDoc.flix の defaults() が正。",
+  "version": 1,
+  "sections": {
+    "fovY": {
+      "kind": "field",
+      "type": "float",
+      "label": "縦の画角（度。ステージとは別）",
+      "order": 1,
+      "group": "見え方",
+      "default": 55.0,
+      "min": 20,
+      "max": 100
+    },
+    "near": {
+      "kind": "field",
+      "type": "float",
+      "label": "写す手前の端（m）",
+      "order": 2,
+      "group": "見え方",
+      "default": 0.01,
+      "min": 0.001,
+      "max": 0.1
+    },
+    "far": {
+      "kind": "field",
+      "type": "float",
+      "label": "写す奥の端（m）",
+      "order": 3,
+      "group": "見え方",
+      "default": 4.0,
+      "min": 0.5,
+      "max": 20
+    },
+    "bobSide": {
+      "kind": "field",
+      "type": "float",
+      "label": "歩く揺れ・左右（m）",
+      "order": 4,
+      "group": "揺れ",
+      "default": 0.012,
+      "min": 0,
+      "max": 0.1
+    },
+    "bobLift": {
+      "kind": "field",
+      "type": "float",
+      "label": "歩く揺れ・上下（m）",
+      "order": 5,
+      "group": "揺れ",
+      "default": 0.008,
+      "min": 0,
+      "max": 0.1
+    },
+    "swayScale": {
+      "kind": "field",
+      "type": "float",
+      "label": "見回しの遅れ・回した角に掛ける割合",
+      "order": 6,
+      "group": "揺れ",
+      "default": 0.6,
+      "min": 0,
+      "max": 2
+    },
+    "swayMax": {
+      "kind": "field",
+      "type": "float",
+      "label": "見回しの遅れの上限（度）",
+      "order": 7,
+      "group": "揺れ",
+      "default": 4.0,
+      "min": 0,
+      "max": 20
+    },
+    "swayFollow": {
+      "kind": "field",
+      "type": "float",
+      "label": "見回しの遅れが戻る速さ（秒）",
+      "order": 8,
+      "group": "揺れ",
+      "default": 0.12,
+      "min": 0.01,
+      "max": 1
+    },
+    "drawSeconds": {
+      "kind": "field",
+      "type": "float",
+      "label": "持ち替えの長さ（秒）",
+      "order": 9,
+      "group": "持ち替えと反動",
+      "default": 0.35,
+      "min": 0.05,
+      "max": 2
+    },
+    "recoilRecover": {
+      "kind": "field",
+      "type": "float",
+      "label": "反動の照準が戻るまで（秒）",
+      "order": 10,
+      "group": "持ち替えと反動",
+      "default": 0.18,
+      "min": 0.02,
+      "max": 2
+    },
+    "ambientScale": {
+      "kind": "field",
+      "type": "float",
+      "label": "環境光と hemisphere の倍率（線形）",
+      "order": 11,
+      "group": "光",
+      "default": 0.55,
+      "min": 0,
+      "max": 2
+    },
+    "lampScale": {
+      "kind": "field",
+      "type": "float",
+      "label": "ステージの灯りの倍率（線形）",
+      "order": 12,
+      "group": "光",
+      "default": 0.3,
+      "min": 0,
+      "max": 2
+    }
+  }
+}

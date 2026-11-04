@@ -3,7 +3,7 @@
 //       make render SHOT=corridor → debug/corridor.png（1 枚だけ）
 // 3D の場面と後処理の Pass は SoftRaster が CPU で塗る（実機の GPU と同じ式。MSAA は掛からない）。
 mod SceneRender {
-    use fge::{App, Color, FontAtlas, HeadlessFont, HeadlessRender, Render, Vec2}
+    use fge::{App, Color, FontAtlas, GameEngine, HeadlessFont, HeadlessLoad, HeadlessRender, PxSpriteAtlas, Render, Vec2}
 
     import java.io.File
 
@@ -18,7 +18,7 @@ mod SceneRender {
 
     /// 描く元（実機の起動と同じ Controls.loadDocs から組む）。
     def loadRes(): Res.Res \ IO =
-        Res.build(run { Controls.loadDocs() } with Fs.FileRead.runWithIO)
+        Res.build(run { HeadlessLoad.handle(Controls.loadDocs) } with Fs.FileRead.runWithIO)
 
     pub def all(): Unit \ IO = App.Headless.exitWith(allJob(App.Headless.requestFromProcess()))
 
@@ -56,23 +56,28 @@ mod SceneRender {
         discard (new File(outDir)).mkdirs();
         let atlas = HeadlessFont.buildUiAtlas(ttf(), ttf());
         let res = loadRes();
-        let cfg = cfgOf(outDir, atlas, LookDoc.rec(res#look)#fogColor);
+        let (cfg, texInfo) = withAtlasOf(cfgOf(outDir, atlas, LookDoc.rec(res#look)#fogColor), res);
         let ctx = App.viewCtxOf(atlas, design());
         Shots.names() |> List.filter(keep) |> List.filterMap(name ->
             Shots.worldOf(name, res) |> Option.map(w -> {
-                let path = shoot(cfg, ctx, res, w, name);
+                let path = shoot(cfg, texInfo, ctx, res, w, name);
                 App.Headless.writeShotRecord(outDir, name, Some(E2e.fingerprint(res, w)));
                 path
             }))
 
+    /// 実機が GPU へ上げるのと同じ粒の絵の画素を PNG に落とし、そこから貼れる cfg と texInfo を返す。
+    def withAtlasOf(cfg: HeadlessRender.RenderConfig, res: Res.Res): (HeadlessRender.RenderConfig, String -> Option[GameEngine.TextureInfo]) \ IO =
+        let images = PxSpriteAtlas.asImages({ texture = Particles3d.textureName(), baked = res#particleTexture } :: Nil);
+        ({ texturePath = HeadlessRender.imagePngs("debug", images) | cfg }, HeadlessRender.imageTextureInfo(images))
+
     /// 1 場面を Pass つきで PNG に生成する。
-    def shoot(cfg: HeadlessRender.RenderConfig, ctx: App.ViewCtx, res: Res.Res, w: World.World, name: String): String \ IO =
-        let noTextures = _ -> None;
-        let prepared = Render.passSpecsOf(noTextures, View.passPlan(res, w));
+    def shoot(cfg: HeadlessRender.RenderConfig, texInfo: String -> Option[GameEngine.TextureInfo],
+              ctx: App.ViewCtx, res: Res.Res, w: World.World, name: String): String \ IO =
+        let prepared = Render.passSpecsOf(texInfo, View.passPlan(res, w));
         prepared#issues |> List.forEach(i -> println("[render] Pass の計画: ${i}"));
-        let items = View.frame(ctx, res, w);
+        let items = App.composeScene(None, 1.0, design(), { world = View.frame(ctx, res, w), hud = View.hudFrame(ctx, res, w) });
         let surfaces = Render.shaderSurfaces(items);
-        let (drawables, polygons) = Render.drawWith(noTextures, Render.withoutShaders(items));
+        let (drawables, polygons) = Render.drawWith(texInfo, Render.withoutShaders(items));
         HeadlessRender.renderPngWithPasses(cfg, prepared#specs, drawables, polygons, surfaces, name);
         let path = "${cfg#outDir}/${name}.png";
         println("rendered: ${path}");

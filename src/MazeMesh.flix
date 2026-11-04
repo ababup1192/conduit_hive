@@ -156,7 +156,7 @@ mod MazeMesh {
         })
 
     /// 自分で光る材質（頂点の色に光る色を足す。強さは線形の倍率）。
-    def glowMaterial(name: String, c: Color, intensity: Float64): Scene3d.Material3d =
+    pub def glowMaterial(name: String, c: Color, intensity: Float64): Scene3d.Material3d =
         let vc = chan -> Field.VertexColor({ chan = chan });
         let spec = { name = name, cycleRate = 0.0, bindings = Nil,
                      out = Out.Fill({ shade = Shade.Rgb({ r = vc(ShaderDoc.TexChan.R), g = vc(ShaderDoc.TexChan.G), b = vc(ShaderDoc.TexChan.B) }), alpha = Field.Const(1.0) }) };
