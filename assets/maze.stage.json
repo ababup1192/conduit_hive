@@ -1,0 +1,361 @@
+{
+  "version": 1,
+  "title": "迷路（マス目）",
+  "note": "1 文字 = 1 マス（cellSize m 四方）。'#' は壁、ほかの文字は床で、その文字が区画（部屋と通路の塊）の名前。区画の名前・種類（room = 部屋で天井に灯りを吊る / corridor = 通路）・天井の高さは zones の行（行の無い文字は通路・wallHeight）。marks は x = 列・y = 行（左上が 0, 0）の印で、kind = start（歩き始める所・yaw は向きの度で 0 が上の行の向き・90 が右）/ spawn（敵が湧く所）/ pickup（name が拾う物の種類の名前）。印は種類の名前だけを持ち、湧く数と拾う物の量は別の Doc が正。finalZone は最後の広い部屋の文字。",
+  "cellSize": 4.0,
+  "wallHeight": 4.0,
+  "finalZone": "H",
+  "rows": [
+    "########################################",
+    "###############HHHHHHHHHHHHHHHHHHHHHHH##",
+    "###############HHHHHHHHHHHHHHHHHHHHHHH##",
+    "##GGGGGGG######HHHHHHHHHHHHHHHHHHHHHHH##",
+    "##GGGGGGG######HHHHHHHHHHHHHHHHHHHHHHH##",
+    "##GGGGGGGiiiiiiHHHHHHHHHHHHHHHHHHHHHHH##",
+    "##GGGGGGG######HHHHHHHHHHHHHHHHHHHHHHH##",
+    "##GGGGGGG######HHHHHHHHHHHHHHHHHHHHHHH##",
+    "##GGGGGGG######HHHHHHHHHHHHHHHHHHHHHHH##",
+    "#####h#########HHHHHHHHHHHHHHHHHHHHHHHn#",
+    "#####h#########HHHHHHHHHHHHHHHHHHHHHHHn#",
+    "#####h#########HHHHHHHHHHHHHHHHHHHHHHHn#",
+    "#####h############j###################n#",
+    "#####h############j###################n#",
+    "#####h############j###################n#",
+    "#####h############j###################n#",
+    "##DDDDDDD#####EEEEEEEE################n#",
+    "##DDDDDDD#####EEEEEEEE#####FFFFFFF####n#",
+    "##DDDDDDD#####EEEEEEEE#####FFFFFFF####n#",
+    "##DDDDDDDfffffEEEEEEEE#####FFFFFFF####n#",
+    "##DDDDDDD#####EEEEEEEEgggggFFFFFFF####n#",
+    "##DDDDDDD#####EEEEEEEE#####FFFFFFF####n#",
+    "##DDDDDDD#####EEEEEEEE#####FFFFFFF####n#",
+    "####c#########EEEEEEEE#####FFFFFFF####n#",
+    "####c###########d#############e#######m#",
+    "####c###########d#############e#######m#",
+    "####c###########d#############e#######m#",
+    "####c###########d#############e#######m#",
+    "####c###########d#############e#######m#",
+    "####c###########d#############e#######m#",
+    "####c########BBBBBBB##########e#######l#",
+    "##AAAAAA#####BBBBBBB#######CCCCCCCC###l#",
+    "##AAAAAA#####BBBBBBB#######CCCCCCCC###l#",
+    "##AAAAAA#####BBBBBBBbbbbbbbCCCCCCCC###l#",
+    "##AAAAAAaaaaaBBBBBBB#######CCCCCCCCkkkk#",
+    "##AAAAAA#####BBBBBBB#######CCCCCCCC#####",
+    "##AAAAAA#####BBBBBBB#######CCCCCCCC#####",
+    "##AAAAAA###################CCCCCCCC#####",
+    "########################################",
+    "########################################"
+  ],
+  "zones": [
+    {
+      "id": "A",
+      "name": "start",
+      "kind": "room",
+      "height": 6.0
+    },
+    {
+      "id": "B",
+      "name": "pump",
+      "kind": "room",
+      "height": 6.0
+    },
+    {
+      "id": "C",
+      "name": "relay",
+      "kind": "room",
+      "height": 6.0
+    },
+    {
+      "id": "D",
+      "name": "filter",
+      "kind": "room",
+      "height": 6.0
+    },
+    {
+      "id": "E",
+      "name": "hub",
+      "kind": "room",
+      "height": 7.0
+    },
+    {
+      "id": "F",
+      "name": "coolant",
+      "kind": "room",
+      "height": 6.0
+    },
+    {
+      "id": "G",
+      "name": "vault",
+      "kind": "room",
+      "height": 6.0
+    },
+    {
+      "id": "H",
+      "name": "hive",
+      "kind": "room",
+      "height": 10.0
+    },
+    {
+      "id": "a",
+      "name": "A-B",
+      "kind": "corridor",
+      "height": 4.0
+    },
+    {
+      "id": "b",
+      "name": "B-C",
+      "kind": "corridor",
+      "height": 4.0
+    },
+    {
+      "id": "c",
+      "name": "A-D",
+      "kind": "corridor",
+      "height": 4.0
+    },
+    {
+      "id": "d",
+      "name": "B-E",
+      "kind": "corridor",
+      "height": 4.0
+    },
+    {
+      "id": "e",
+      "name": "C-F",
+      "kind": "corridor",
+      "height": 4.0
+    },
+    {
+      "id": "f",
+      "name": "D-E",
+      "kind": "corridor",
+      "height": 4.0
+    },
+    {
+      "id": "g",
+      "name": "E-F",
+      "kind": "corridor",
+      "height": 4.0
+    },
+    {
+      "id": "h",
+      "name": "D-G",
+      "kind": "corridor",
+      "height": 4.0
+    },
+    {
+      "id": "i",
+      "name": "G-H",
+      "kind": "corridor",
+      "height": 4.0
+    },
+    {
+      "id": "j",
+      "name": "E-H",
+      "kind": "corridor",
+      "height": 4.0
+    },
+    {
+      "id": "k",
+      "name": "C-east",
+      "kind": "corridor",
+      "height": 4.0
+    },
+    {
+      "id": "l",
+      "name": "east-1",
+      "kind": "corridor",
+      "height": 4.0
+    },
+    {
+      "id": "m",
+      "name": "east-2",
+      "kind": "corridor",
+      "height": 4.0
+    },
+    {
+      "id": "n",
+      "name": "east-3",
+      "kind": "corridor",
+      "height": 4.0
+    }
+  ],
+  "marks": [
+    {
+      "kind": "start",
+      "name": "start",
+      "x": 4,
+      "y": 34,
+      "yaw": 90.0
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 17,
+      "y": 31
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 16,
+      "y": 35
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 31,
+      "y": 32
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 33,
+      "y": 36
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 3,
+      "y": 17
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 7,
+      "y": 21
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 20,
+      "y": 17
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 15,
+      "y": 22
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 32,
+      "y": 18
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 28,
+      "y": 22
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 3,
+      "y": 4
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 8,
+      "y": 7
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 20,
+      "y": 3
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 26,
+      "y": 2
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 33,
+      "y": 3
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 36,
+      "y": 6
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 22,
+      "y": 9
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 30,
+      "y": 10
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 36,
+      "y": 10
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 17,
+      "y": 6
+    },
+    {
+      "kind": "pickup",
+      "name": "health_small",
+      "x": 7,
+      "y": 36
+    },
+    {
+      "kind": "pickup",
+      "name": "ammo_shotgun",
+      "x": 19,
+      "y": 30
+    },
+    {
+      "kind": "pickup",
+      "name": "weapon_shotgun",
+      "x": 34,
+      "y": 37
+    },
+    {
+      "kind": "pickup",
+      "name": "health_small",
+      "x": 8,
+      "y": 16
+    },
+    {
+      "kind": "pickup",
+      "name": "weapon_rifle",
+      "x": 21,
+      "y": 23
+    },
+    {
+      "kind": "pickup",
+      "name": "ammo_rifle",
+      "x": 33,
+      "y": 23
+    },
+    {
+      "kind": "pickup",
+      "name": "health_large",
+      "x": 2,
+      "y": 3
+    },
+    {
+      "kind": "pickup",
+      "name": "ammo_shotgun",
+      "x": 38,
+      "y": 20
+    }
+  ]
+}

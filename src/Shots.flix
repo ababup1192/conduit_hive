@@ -2,29 +2,24 @@
 // START=shot:<場面>）が同じ関数で組むので、実機で開いた場面はギャラリーの絵と同じ World から始まる。
 // WhyNot: 描き出しの物（HeadlessRender・HeadlessFont・java.io）を引かない — Game.app から engine_tools へつながり、ブラウザ版で組めなくなる。
 mod Shots {
-    /// 描き出せる場面の名前。make render の使い方も SHOT の当たり判定も、この並びが source of truth。
-    /// 場面の題と一言（Studio のギャラリーに出るラベル）は assets/*.scenes.json 側で、
-    /// name をここの名前とそろえる。ラベルを足しても描き出す場面は増えない。
-    /// 場面を足したら、ここと sceneOf と Makefile の SHOTS を一緒に足す。
-    pub def names(): List[String] =
-        "main" :: "quit" :: Nil
+    /// 描き出せる場面の名前（この並びが source of truth。Makefile の SHOTS と assets/*.scenes.json もそろえる）。
+    pub def names(): List[String] = "corridor" :: "hall" :: Nil
 
-    /// 名前 → 描き出しと同じ初めの World（initialWorld）から組んだ場面の World。描き出しはこの World をそのまま描く。
-    pub def worldOf(name: String, _res: Res.Res): Option[World.World] = sceneOf(name, initialWorld())
+    /// 構図: 立つマス（列・行）と向き（度。0 が北・90 が東）と見下ろす角（度）。
+    type alias Shot = { col = Int32, row = Int32, yaw = Float64, pitch = Float64 }
 
-    /// 描き出しの初めの World（時刻は renderTime）。アトリエの候補テーマもこの World で描く。
-    pub def initialWorld(): World.World = { t = renderTime() | World.initial() }
+    /// 場面の構図。corridor = 東の長い通路の南の角から北の奥を見る（区画を 3 つまたいだ先まで見通す）・
+    /// hall = 最後の広い部屋に入った所から奥を見る。
+    def shotOf(name: String): Option[Shot] = match name {
+        case "corridor" => Some({ col = 38, row = 34, yaw = 0.0, pitch = -2.0 })
+        case "hall"     => Some({ col = 18, row = 10, yaw = 62.0, pitch = -6.0 })
+        case _          => None
+    }
 
-    /// 生成するときの時刻（秒）。実時間でなく固定値を使う — 空の流れも塵の位置もこの t
-    /// だけで決まるので、何度生成しても同じ PNG が出る（スナップショットのバイト比較が成り立つ）。
-    def renderTime(): Float64 = 3.0
-
-    /// 名前 → その場面の World。names と対で保つ。名前で引く形にしてあるので、
-    /// SHOT で 1 枚だけ生成するときに残りの場面は組まない。
-    def sceneOf(name: String, w0: World.World): Option[World.World] =
-        match name {
-            case "main" => Some(w0)
-            case "quit" => Some(World.askQuit(w0))   // Esc・閉じるボタンで出る終了の確認（Layer.Prompt）
-            case _      => None
-        }
+    /// 名前 → 描き出しと同じ初めの World から組んだ場面の World。
+    pub def worldOf(name: String, res: Res.Res): Option[World.World] =
+        shotOf(name) |> Option.map(s -> {
+            let (x, z) = Maze.centerOf(res#maze, { col = s#col, row = s#row });
+            World.placeWalker(res, { x = x, z = z }, s#yaw, s#pitch, World.initial(res))
+        })
 }

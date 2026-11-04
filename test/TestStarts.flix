@@ -2,21 +2,19 @@
 mod TestStarts {
     use fge::{App, Resources, Vec2}
 
-    def heroOf(w: World.World): Option[(Float64, Float64)] = World.heroAt(w) |> Option.map(p -> (p#x, p#y))
-
     def app(): App.App[Resources.With[Res.Res, World.World], {}] \ Fs.FileRead = Game.app(Controls.loadDocs())
 
-    /// at は主人公を x・y に置く。
+    /// at は体を x・z に置く（start の部屋 A の中の点）。
     @Test
-    def testAtPlacesTheHero(): Unit \ Assert + Fs.FileRead =
-        let started = App.startOrBug(app(), "at", Map#{"x" => "60", "y" => "50"});
-        Assert.assertEq(expected = Some((60.0, 50.0)), Resources.read((_, w) -> heroOf(w), started))
+    def testAtPlacesTheBody(): Unit \ Assert + Fs.FileRead =
+        let started = App.startOrBug(app(), "at", Map#{"x" => "14", "z" => "22", "yaw" => "90"});
+        Assert.assertEq(expected = (14.0, 22.0), Resources.read((_, w) -> (World.walkerOf(w)#x, World.walkerOf(w)#z), started))
 
     /// 数でない座標は組まずに理由を返す。
     @Test
     def testAtRefusesANonNumber(): Unit \ Assert + Fs.FileRead =
         Assert.assertEq(expected = Err("始まり 'at': x は数（'left'）"),
-            App.buildStart(app(), Vec2.zero(), "at", Map#{"x" => "left"}) |> Result.map(Resources.read((_, w) -> heroOf(w))))
+            App.buildStart(app(), Vec2.zero(), "at", Map#{"x" => "left"}) |> Result.map(Resources.read((_, w) -> World.walkerOf(w)#x)))
 
     /// ギャラリーの場面は全部、実機と同じ App から shot:<名前> の始まりで組める。
     @Test

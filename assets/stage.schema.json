@@ -1,0 +1,33 @@
+{
+  "//": "maze.stage.json の形（Studio の sections 方言）。既定は src/MazeDoc.flix の defaults() が正。マス目から作る当たり判定・灰色の箱・区画の隣り合いと見える区画の組はコード（src/Maze.flix・Collider.flix・MazeMesh.flix）。",
+  "version": 1,
+  "sections": {
+    "cellSize": { "kind": "field", "type": "float", "label": "1 マスの幅（m）", "group": "迷路", "order": 1, "default": 4.0, "min": 1.0, "max": 12.0 },
+    "wallHeight": { "kind": "field", "type": "float", "label": "zones に行の無い区画の天井の高さ（m）", "group": "迷路", "order": 2, "default": 4.0, "min": 2.0, "max": 20.0 },
+    "finalZone": { "kind": "field", "type": "text", "label": "最後の広い部屋の文字", "group": "迷路", "order": 3, "default": "H" },
+    "rows": { "kind": "field", "type": "grid", "label": "マス目（1 文字 = 1 マス。'#' が壁・ほかの文字は床でその文字が区画の名前）", "order": 4 },
+    "zones": {
+      "kind": "list",
+      "label": "区画（マス目の文字ごとの名前・種類・天井の高さ）",
+      "order": 5,
+      "fields": {
+        "id": { "type": "text", "label": "マス目の文字（1 文字）", "order": 1, "required": true },
+        "name": { "type": "text", "label": "名前", "order": 2, "default": "" },
+        "kind": { "type": { "enum": ["room", "corridor"] }, "label": "種類（room = 部屋で天井に灯りを吊る・corridor = 通路）", "order": 3, "default": "corridor" },
+        "height": { "type": "float", "label": "天井の高さ（m）", "order": 4, "default": 4.0, "min": 2.0, "max": 20.0 }
+      }
+    },
+    "marks": {
+      "kind": "list",
+      "label": "マスの印（x = 列・y = 行。左上が 0, 0）",
+      "order": 6,
+      "fields": {
+        "kind": { "type": { "enum": ["start", "spawn", "pickup"] }, "label": "種類（start = 歩き始める所・spawn = 敵が湧く所・pickup = 拾う物の置き場）", "order": 1, "default": "pickup" },
+        "name": { "type": "text", "label": "種類の名前（pickup なら拾う物の名前。量は拾う物の Doc が正）", "order": 2, "default": "" },
+        "x": { "type": "int", "label": "列", "order": 3, "min": 0, "required": true },
+        "y": { "type": "int", "label": "行", "order": 4, "min": 0, "required": true },
+        "yaw": { "type": "float", "label": "向き（度。start だけ。0 が上の行の向き・90 が右）", "order": 5, "default": 0.0, "min": -360.0, "max": 360.0 }
+      }
+    }
+  }
+}

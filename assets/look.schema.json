@@ -1,0 +1,252 @@
+{
+  "//": "conduit_hive.look.json の形（Studio の sections 方言）。既定は src/LookDoc.flix の defaults() が正。",
+  "version": 1,
+  "sections": {
+    "wallColor": {
+      "kind": "field",
+      "label": "壁の色（くすんだ鋼）",
+      "order": 1,
+      "group": "面",
+      "default": "#5b636b",
+      "type": "color"
+    },
+    "floorColor": {
+      "kind": "field",
+      "label": "床の色（黒鉛）",
+      "order": 2,
+      "group": "面",
+      "default": "#34383d",
+      "type": "color"
+    },
+    "ceilingColor": {
+      "kind": "field",
+      "label": "天井の色",
+      "order": 3,
+      "group": "面",
+      "default": "#24272b",
+      "type": "color"
+    },
+    "stripColor": {
+      "kind": "field",
+      "label": "光る筋の色",
+      "order": 4,
+      "group": "光",
+      "default": "#5fe3f0",
+      "type": "color"
+    },
+    "stripIntensity": {
+      "kind": "field",
+      "label": "光る筋の明るさ（線形の倍率）",
+      "order": 5,
+      "group": "光",
+      "default": 6.0,
+      "type": "float",
+      "min": 0,
+      "max": 40
+    },
+    "roomLightColor": {
+      "kind": "field",
+      "label": "部屋の灯りの色",
+      "order": 6,
+      "group": "光",
+      "default": "#cfe6ee",
+      "type": "color"
+    },
+    "roomLightIntensity": {
+      "kind": "field",
+      "label": "部屋の灯りの強さ",
+      "order": 7,
+      "group": "光",
+      "default": 2.2,
+      "type": "float",
+      "min": 0,
+      "max": 20
+    },
+    "corridorLightIntensity": {
+      "kind": "field",
+      "label": "通路の灯りの強さ",
+      "group": "光",
+      "type": "float",
+      "min": 0,
+      "max": 20,
+      "default": 1.2,
+      "order": 8
+    },
+    "lampSpacing": {
+      "kind": "field",
+      "label": "灯具の間隔（マス）",
+      "group": "光",
+      "type": "int",
+      "min": 1,
+      "max": 16,
+      "default": 4,
+      "order": 9
+    },
+    "roomLightReach": {
+      "kind": "field",
+      "label": "灯りの届く距離（灯具の間隔に対する割合）",
+      "order": 10,
+      "group": "光",
+      "default": 1.6,
+      "type": "float",
+      "min": 0.1,
+      "max": 3
+    },
+    "ambient": {
+      "kind": "field",
+      "label": "どこにでも当たる光",
+      "order": 11,
+      "group": "光",
+      "default": "#2e3640",
+      "type": "color"
+    },
+    "hemisphere": {
+      "kind": "field",
+      "label": "上を向く面の明るさ",
+      "order": 12,
+      "group": "光",
+      "default": 0.35,
+      "type": "float",
+      "min": 0,
+      "max": 2
+    },
+    "fogColor": {
+      "kind": "field",
+      "label": "霧の色",
+      "order": 13,
+      "group": "霧",
+      "default": "#0b0e12",
+      "type": "color"
+    },
+    "fogNear": {
+      "kind": "field",
+      "label": "霧のかかり始め（m）",
+      "order": 14,
+      "group": "霧",
+      "default": 10.0,
+      "type": "float",
+      "min": 0,
+      "max": 200
+    },
+    "fogFar": {
+      "kind": "field",
+      "label": "霧のかかり切る距離（m・写す奥行きの端・見通しの距離）",
+      "order": 15,
+      "group": "霧",
+      "default": 56.0,
+      "type": "float",
+      "min": 5,
+      "max": 300
+    },
+    "exposure": {
+      "kind": "field",
+      "label": "露出（stop）",
+      "order": 16,
+      "group": "仕上げ",
+      "default": 0.0,
+      "type": "float",
+      "min": -4,
+      "max": 4
+    },
+    "whitePoint": {
+      "kind": "field",
+      "label": "白の点",
+      "order": 17,
+      "group": "仕上げ",
+      "default": 4.0,
+      "type": "float",
+      "min": 0.5,
+      "max": 16
+    },
+    "bloomThreshold": {
+      "kind": "field",
+      "label": "ブルームのしきい",
+      "order": 18,
+      "group": "ブルーム",
+      "default": 0.9,
+      "type": "float",
+      "min": 0,
+      "max": 8
+    },
+    "bloomKnee": {
+      "kind": "field",
+      "label": "ブルームの幅",
+      "order": 19,
+      "group": "ブルーム",
+      "default": 0.6,
+      "type": "float",
+      "min": 0.01,
+      "max": 4
+    },
+    "bloomStrength": {
+      "kind": "field",
+      "label": "ブルームの強さ",
+      "order": 20,
+      "group": "ブルーム",
+      "default": 0.6,
+      "type": "float",
+      "min": 0,
+      "max": 4
+    },
+    "bloomRadius": {
+      "kind": "field",
+      "label": "ぼかしの半径",
+      "order": 21,
+      "group": "ブルーム",
+      "default": 0.04,
+      "type": "float",
+      "min": 0.001,
+      "max": 0.3
+    },
+    "bloomTaps": {
+      "kind": "field",
+      "label": "ぼかしの標本の数",
+      "order": 22,
+      "group": "ブルーム",
+      "default": 12,
+      "type": "int",
+      "min": 1,
+      "max": 32
+    },
+    "bloomScale": {
+      "kind": "field",
+      "label": "ブルームの Pass の倍率",
+      "order": 23,
+      "group": "ブルーム",
+      "default": 0.5,
+      "type": "float",
+      "min": 0.1,
+      "max": 1
+    },
+    "msaaSamples": {
+      "kind": "field",
+      "label": "MSAA の標本の数（1・2・4・8）",
+      "order": 24,
+      "group": "仕上げ",
+      "default": 4,
+      "type": "int",
+      "min": 1,
+      "max": 32
+    },
+    "vignette": {
+      "kind": "field",
+      "label": "周辺の暗さ",
+      "order": 25,
+      "group": "仕上げ",
+      "default": 0.35,
+      "type": "float",
+      "min": 0,
+      "max": 1
+    },
+    "grain": {
+      "kind": "field",
+      "label": "フィルムの粒",
+      "order": 26,
+      "group": "仕上げ",
+      "default": 0.015,
+      "type": "float",
+      "min": 0,
+      "max": 0.2
+    }
+  }
+}

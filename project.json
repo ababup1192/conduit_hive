@@ -6,13 +6,21 @@
   "windowWidth": 960,
   "windowHeight": 540,
   "windowScale": 2,
-  "clearColor": {"r": 0.066667, "g": 0.066667, "b": 0.101961},
+  "clearColor": {
+    "r": 0.043137,
+    "g": 0.054902,
+    "b": 0.070588
+  },
   "maxDeltaTime": 0.05,
   "textures": [],
   "// glyphs": "起動時に焼く字。auto=出た字から順に焼く / used=ソースとアセットにある字を先に焼く / all=フォントの全字",
   "glyphs": "auto",
   "fonts": [
-    {"name": "default", "path": "assets/Xolonium-Regular.ttf", "fontSize": 60.0}
+    {
+      "name": "default",
+      "path": "assets/Xolonium-Regular.ttf",
+      "fontSize": 60.0
+    }
   ],
   "sounds": [],
   "editor": {
@@ -25,13 +33,6 @@
         "role": "material"
       },
       {
-        "id": "shader",
-        "pattern": "assets/*.shader.json",
-        "title": "空の塗り",
-        "schema": "assets/shader.schema.json",
-        "role": "material"
-      },
-      {
         "id": "sprite",
         "pattern": "assets/*.sprite.json",
         "title": "ドット絵",
@@ -41,16 +42,37 @@
       {
         "id": "sample",
         "pattern": "assets/sample.kind.json",
-        "title": "手触り（速さ）",
+        "title": "画面の文言",
         "schema": "assets/sample.schema.json",
         "role": "tuning"
       },
       {
         "id": "keys",
         "pattern": "assets/player.keys.json",
-        "title": "キー割り当て（どのキーで動かすか）",
+        "title": "キー割り当て（歩く・走る・向きを変える）",
         "schema": "assets/keys.schema.json",
         "role": "tuning"
+      },
+      {
+        "id": "maze",
+        "pattern": "assets/maze.stage.json",
+        "title": "迷路（マス目・区画・印）",
+        "schema": "assets/stage.schema.json",
+        "role": "tuning"
+      },
+      {
+        "id": "walk",
+        "pattern": "assets/conduit_hive.walk.json",
+        "title": "歩く手触り",
+        "schema": "assets/walk.schema.json",
+        "role": "tuning"
+      },
+      {
+        "id": "look",
+        "pattern": "assets/conduit_hive.look.json",
+        "title": "施設の色・光・霧と画面の仕上げ",
+        "schema": "assets/look.schema.json",
+        "role": "material"
       },
       {
         "id": "scenes",

@@ -1,0 +1,20 @@
+{
+  "version": 1,
+  "title": "歩く手触り",
+  "note": "一人称で歩く速さ・見回し・体の寸法。走るのは Shift を押している間。跳ばない。長さは m・角度は度・速さは 1 秒あたり。",
+  "walkSpeed": 4.5,
+  "runSpeed": 7.5,
+  "turnSpeed": 120.0,
+  "mouseSensitivity": 0.15,
+  "invertY": false,
+  "pitchLimit": 80.0,
+  "eyeHeight": 1.65,
+  "radius": 0.35,
+  "height": 1.8,
+  "stepHeight": 0.35,
+  "gravity": 9.8,
+  "bobHeight": 0.03,
+  "stride": 1.6,
+  "runStride": 2.2,
+  "fovY": 70.0
+}

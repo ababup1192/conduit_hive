@@ -28,7 +28,9 @@ mod GameLint {
         Flixlint.customs(List#{
             customRule({ id = "view-no-world", check = viewNoWorld })
                 |> allowIn(Fn.View_frame, "描く入口（App の view が World を渡す）。View.inputOf で In を組んで部品へ渡す")
-                |> allowIn(Fn.View_inputOf, "World から View の In を組む口（View の中で World を読むのは入口とここだけ。Controls も押し所を選ぶのに呼ぶ）"),
+                |> allowIn(Fn.View_inputOf, "World から View の In を組む口（View の中で World を読むのは入口とここだけ。Controls も押し所を選ぶのに呼ぶ）")
+                |> allowIn(Fn.View_passPlan, "Pass の計画の入口（App の withPassPlan と描き出しが World を渡す）")
+                |> allowIn(Fn.View_stageIn, "World から一人称の場面の In を組む口（inputOf と passPlan が呼ぶ）"),
             customRule({ id = "rule-to-view", check = ruleToView }),
             customRule({ id = "module-cycle", check = moduleCycle }),
             customRule({ id = "pub-no-caller", check = pubNoCaller })
@@ -38,7 +40,6 @@ mod GameLint {
                 |> allowIn(Fn.E2e_play, "Makefile の口（make flow）が名前で呼ぶ入口")
                 |> allowIn(Fn.E2e_vocab, "Makefile の口（make flow-vocab）と bin/headless-run が名前で呼ぶ入口")
                 |> allowIn(Fn.E2e_jobs, "描き出しの常駐（HEADLESS_RESIDENT=1）が名前で呼ぶ入口の束")
-                |> allowIn(Fn.SceneRender_atelier, "Makefile の口（make atelier-preview）が flix run --entrypoint で呼ぶ入口")
                 |> allowIn(Fn.Palette_write, "Makefile の口（make palette）が flix run --entrypoint で呼ぶ入口"),
             customRule({ id = "test-calc", check = testCalc })
                 |> allowIn(Fn.TestStarts_testEveryShotBuildsFromTheApp, "性質テストの決まり（どの場面も shot:<名前> の始まりで組める）。組めない場面の名前だけを集める"),

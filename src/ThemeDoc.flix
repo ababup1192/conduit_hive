@@ -29,7 +29,7 @@ mod ThemeDoc {
                              grainScale = 1, lightX = -1, lightY = -1 } })
 
     /// テキストから Doc へ（fail-open）。色の表記（#rrggbb）は UiDoc.colorOf に委ねる。
-    pub def fromJson(text: String): Option[Doc] =
+    def fromJson(text: String): Option[Doc] =
         DocJson.decodeObject(fromRoot, text)
 
     def fromRoot(root: Map[String, Json]): Doc =
@@ -65,7 +65,7 @@ mod ThemeDoc {
     // ── 派生色と resolver ──
 
     /// 白に近づける（ハイライト）。
-    pub def lighten(c: Color, k: Float64): Color =
+    def lighten(c: Color, k: Float64): Color =
         Color.lighten(c, k)
 
     /// スプライトの意味色キー → 実色。未知のキーはマゼンタ（描き忘れが目に見える）。

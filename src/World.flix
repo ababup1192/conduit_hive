@@ -1,19 +1,29 @@
 // World — 遊びの状態そのものと、次の状態を作る規則（すべて純粋）。
-// 主人公を矢印キーで動かすだけの最小の骨組み。Doc（速さ・キー・色・絵・空の塗り）と
-// Doc から作る物（仕上げたドット絵・アトラス）は Res が持ち、World は持たない（読む口は res を受ける）。
+// Doc と迷路（形・当たり判定・絵）は Res が持ち、World は持たない（読む口は res を受ける）。
 //
 // ── 場面 ──
-// 画面は Screen の enum で分け、その画面だけが持つ値は payload に入れる。今は Play の 1 つだけ。
-// 表紙・クリア等を足すときは Screen に case を足し、step と View を match で分ける（手本は tidepool-starter）。
+// Play = 一人称で迷路を歩いている。表紙・クリアなどを足す時は Screen に case を足し、step と View を match で分ける。
 mod World {
 
-    use fge::{Num, PxSprite, Vec2}
+    use fge::{Clock, Num}
 
-    /// このフレームの入力（横・縦の軸値。-1 / 0 / +1）。
-    pub type alias Input = { x = Float64, y = Float64 }
+    /// このフレームの入力: 歩き方（Walker.Drive）。
+    pub type alias Input = { drive = Walker.Drive }
 
-    /// 終了の確認。Esc か窓の閉じるボタンで Asking（確認の窓を出し、主人公は止まる）、
-    /// はいで Confirmed（Main の App.quitWhen がこれを見て閉じる）、いいえで Playing へ戻る。
+    /// マウスの視点。Captured = マウスを窓にキャプチャして視点を回している。
+    pub enum Look with Eq, ToString {
+        case Captured
+        case Released
+    }
+
+    /// F3 の診断の表示。
+    pub enum DiagnosticsView with Eq, ToString {
+        case Shown
+        case Hidden
+    }
+
+    /// 終了の確認。Esc か窓の閉じるボタンで Asking（確認の窓を出し、歩けない）、
+    /// はいで Confirmed（Game の App.quitWhen がこれを見て閉じる）、いいえで Playing へ戻る。
     pub enum Quit with Eq, ToString {
         case Playing
         case Asking
@@ -26,104 +36,103 @@ mod World {
         case QuitNo    // 窓の外（Esc と同じ）
     }
 
-    /// どの画面か。その画面だけが持つ値を payload に持つ。
-    pub enum Screen {
-        /// 主人公を動かしている。
-        case Play(Session)
-    }
-
-    /// 遊んでいる間の中身（主人公の中心の位置）。
+    /// 歩いている間の中身: 体・マウスの視点・F3 の診断を出すか。
     pub type alias SessionRec = {
-        x = Float64,
-        y = Float64
+        walker = Walker.Walker,
+        look = Look,
+        diagnosticsView = DiagnosticsView
     }
 
-    /// 遊んでいる間の中身。作るのは World の中（initial・mapSessionRec）だけ。読む口は sessionRecOf・書く口は mapSession。
+    /// 歩いている間の中身。作るのは World の中だけ。読む口は sessionOf・書く口は mapSession。
     enum SessionOf(SessionRec)
 
     pub type alias Session = SessionOf
 
-    /// 遊びの状態。t は積み上げた秒（空の流れ・塵・待ち姿の揺れがこれを見る）。
-    /// t と quit はどの画面でも使うので、Screen の外に置く。
+    /// どの画面か。その画面だけが持つ値を payload に持つ。
+    pub enum Screen {
+        case Play(Session)
+    }
+
+    /// 遊びの状態。play = 遊びの時計（歩く・頭の上下がこれを見る。終了の確認の間は止まる）。
     pub type alias World = {
-        t = Float64,
+        play = Clock.Clock[PlayClock.Play],
         screen = Screen,
         quit = Quit
     }
 
-    // ── 盤の寸法（design 480×270 の中の定数。project.json と同じ値） ──
+    // ── 盤の寸法（design 480×270。project.json と同じ値） ──
 
     pub def width(): Float64 = 480.0
     pub def height(): Float64 = 270.0
 
-    /// ドット絵を何倍の大きさで描くか（1 セル = 何 px か）。
-    pub def spriteScale(): Int32 = 2
-
-    /// 主人公の大きさ = 絵の大きさ。
-    /// WhyNot: 固定値にしない。絵だけ大きくして当たりが古いまま、という食い違いが出る。
-    /// 絵がまだ読めていないときだけ 16×16 にする（fail-open）。
-    pub def heroBox(res: Res.Res): Vec2.Vec2 =
-        PxSprite.sizeOf(res#sprites, "hero", "idle", spriteScale())
-            |> Option.getWithDefault({ x = 16.0, y = 16.0 })
-
     pub def spritePath(): String = "assets/conduit_hive.sprite.json"
 
-    pub def shaderPath(): String = "assets/conduit_hive.shader.json"
+    /// 歩き始める体（迷路の start の印に立ち、足元を床に合わせる）。
+    def startWalker(res: Res.Res): Walker.Walker =
+        let s = res#maze#start;
+        Walker.settle(res#collision, WalkDoc.rec(res#walk), Walker.standing(s#x, 0.0, s#z, s#yaw))
 
-    /// ゲーム開始時の状態。主人公は画面の真ん中。
-    pub def initial(): World =
-        { t = 0.0, screen = Screen.Play(SessionOf.SessionOf({ x = width() / 2.0, y = height() / 2.0 })),
-          quit = Quit.Playing }
+    /// 遊びから始める状態。
+    pub def initial(res: Res.Res): World =
+        { play = Clock.start(), quit = Quit.Playing,
+          screen = Screen.Play(SessionOf.SessionOf({ walker = startWalker(res), look = Look.Released, diagnosticsView = DiagnosticsView.Hidden })) }
 
-    def sessionRec(session: Session): SessionRec = match session {
-        case SessionOf.SessionOf(rec) => rec
+    def rec(s: Session): SessionRec = match s { case SessionOf.SessionOf(r) => r }
+
+    def sessionOf(w: World): SessionRec = match w#screen {
+        case Screen.Play(s) => rec(s)
     }
 
-    def mapSessionRec(f: SessionRec -> SessionRec, session: Session): Session = SessionOf.SessionOf(f(sessionRec(session)))
-
-    /// 遊んでいる間の中身（Play の外は None）。
-    def sessionRecOf(w: World): Option[SessionRec] = match w#screen {
-        case Screen.Play(session) => Some(sessionRec(session))
-    }
-
-    /// 遊んでいる間の中身を f で替える（Play の外はそのまま）。
     def mapSession(f: SessionRec -> SessionRec, w: World): World = match w#screen {
-        case Screen.Play(session) => { screen = Screen.Play(mapSessionRec(f, session)) | w }
+        case Screen.Play(s) => { screen = Screen.Play(SessionOf.SessionOf(f(rec(s)))) | w }
     }
 
-    /// 主人公の中心（主人公が出ていない画面では None）。
-    pub def heroAt(w: World): Option[Vec2.Vec2] =
-        sessionRecOf(w) |> Option.map(rec -> { x = rec#x, y = rec#y })
+    /// 今の体。
+    pub def walkerOf(w: World): Walker.Walker = sessionOf(w)#walker
 
-    /// 主人公の中心を p に置く（画面の外は内へ寄せる。主人公が出ていない画面ではそのまま）。
-    pub def placeHero(res: Res.Res, p: Vec2.Vec2, w: World): World =
-        let q = clampInside(heroBox(res), p);
-        mapSession(_ -> { x = q#x, y = q#y }, w)
+    /// 体を x・z に置き直す（描き出しの場面・始まり）。向きと見下ろす角は度。足元は床に合わせる。
+    pub def placeWalker(res: Res.Res, at: { x = Float64, z = Float64 }, yawDeg: Float64, pitchDeg: Float64, w: World): World =
+        let placed = Walker.settle(res#collision, WalkDoc.rec(res#walk), Walker.standing(at#x, 0.0, at#z, yawDeg));
+        mapSession(s -> { walker = { pitch = pitchDeg * Num.pi() / 180.0 | placed } | s }, w)
 
-    /// 大きさ box の物が画面から出ない位置へ丸める（端で止まるのはルール）。
-    def clampInside(box: Vec2.Vec2, p: Vec2.Vec2): Vec2.Vec2 =
-        { x = Num.clamp(box#x / 2.0, width() - box#x / 2.0, p#x),
-          y = Num.clamp(box#y / 2.0, height() - box#y / 2.0, p#y) }
+    /// 今いる区画（壁の中・迷路の外は None）。
+    pub def zoneOf(res: Res.Res, w: World): Option[Char] =
+        let b = walkerOf(w);
+        Maze.zoneAt(res#maze, b#x, b#z)
 
-    /// 入力の向きに Doc（sample.kind.json）の速さで主人公を動かす。
-    def moveHero(res: Res.Res, input: Input, dt: Float64, rec: SessionRec): SessionRec =
-        let speed = SampleDoc.rec(res#sample)#speed;
-        let moved = { x = rec#x + input#x * speed * dt, y = rec#y + input#y * speed * dt };
-        let p = clampInside(heroBox(res), moved);
-        { x = p#x, y = p#y }
+    /// 遊びの時計の今（秒）。
+    pub def seconds(w: World): Float64 = Clock.secondsOf(Clock.nowOf(w#play))
 
-    /// 入力と経過時間から次の状態を作る。
-    /// 終了の確認の窓が出ている間は動かない（時刻だけ進むので空や塵は流れ続ける）。
-    pub def step(res: Res.Res, input: Input, dt: Float64, w: World): World =
-        let advanced = { t = w#t + dt | w };
-        if (w#quit != Quit.Playing) advanced
-        else mapSession(rec -> moveHero(res, input, dt, rec), advanced)
+    /// 遊びの時計の進み方: 終了の確認の窓が出ている間は止める（App.addClock が毎フレーム 1 回だけ進める）。
+    pub def paceOf(w: World): Clock.Pace[PlayClock.Play, PlayClock.Halt] =
+        Clock.paceOf(if (w#quit == Quit.Asking) Clock.Run.Paused(PlayClock.Halt.AskingQuit) else Clock.Run.Running)
+
+    /// 入力から次の状態を作る（秒は遊びの時計がこのコマに進んだ分）。終了の確認の窓が出ている間は歩かない。
+    pub def step(res: Res.Res, input: Input, w: World): World =
+        if (w#quit != Quit.Playing) w
+        else mapSession(s -> { walker = Walker.step(res#collision, WalkDoc.rec(res#walk), input#drive, w#play, s#walker) | s }, w)
+
+    // ── マウスの視点・診断 ──
+
+    /// マウスを窓にキャプチャして視点を回しているか（App.withMouseCapture がこれを見て当てる）。
+    pub def isLooking(w: World): Bool = sessionOf(w)#look == Look.Captured
+
+    /// キャプチャを始める・放す。終了の確認の窓が出ている間はキャプチャしない（窓の中を押せない）。
+    pub def setLooking(on: Bool, w: World): World =
+        mapSession(s -> { look = if (on and w#quit == Quit.Playing) Look.Captured else Look.Released | s }, w)
+
+    /// F3 の診断の表示を切り替える。
+    pub def toggleDiagnostics(w: World): World =
+        mapSession(s -> { diagnosticsView = if (s#diagnosticsView == DiagnosticsView.Shown) DiagnosticsView.Hidden else DiagnosticsView.Shown | s }, w)
+
+    /// F3 の診断を出しているか。
+    pub def showsDiagnostics(w: World): Bool = sessionOf(w)#diagnosticsView == DiagnosticsView.Shown
 
     // ── 終了の確認 ──
 
-    /// Esc・閉じるボタン: 遊んでいる間なら確認の窓を出す。
+    /// Esc・閉じるボタン: 遊んでいる間なら確認の窓を出す（キャプチャは放す）。
     pub def askQuit(w: World): World =
-        if (w#quit == Quit.Playing) { quit = Quit.Asking | w } else w
+        if (w#quit == Quit.Playing) mapSession(s -> { look = Look.Released | s }, { quit = Quit.Asking | w }) else w
 
     /// 確認の窓への答え（yes なら終わる・no なら遊びへ戻る）。窓が出ていないときは何もしない。
     pub def answerQuit(yes: Bool, w: World): World =

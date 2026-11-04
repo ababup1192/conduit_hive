@@ -2,7 +2,7 @@
 // flow の書き方は engine の engine_world/src/Flow.flix 冒頭。名前の一覧は流すたびに e2e/vocab.json へ書き出す。
 //   make flow FLOW=e2e/walk.flow   画面なしで最後まで流す
 mod E2e {
-    use fge::{App, Flow, InputMap, Resources, Vec2}
+    use fge::{App, Flow, InputMap, Resources}
     use fge::GameEngine.Key
 
     /// make flow（bin/fge flow run|check）が流す入口。
@@ -24,24 +24,25 @@ mod E2e {
 
     /// 役の名前 → キー（表の先頭のキーを押す。player.keys.json の既定と同じ）。
     def roles(): InputMap.Table[String] =
-        (Key.Left, "left") :: (Key.Right, "right") :: (Key.Up, "up") :: (Key.Down, "down") ::
+        (Key.W, "forward") :: (Key.S, "back") :: (Key.A, "left") :: (Key.D, "right") ::
+        (Key.Left, "turnLeft") :: (Key.Right, "turnRight") :: (Key.LeftShift, "sprint") ::
         (Key.Enter, "confirm") :: (Key.Escape, "cancel") :: Nil
-
-    /// 主人公の中心（出ていない画面では -1）。
-    def heroCoord(pick: Vec2.Vec2 -> Float64, w: World.World): Float64 =
-        World.heroAt(w) |> Option.map(pick) |> Option.getWithDefault(-1.0)
 
     /// flow の表: 役と問い。
     pub def table(): Flow.Table[Resources.With[Res.Res, World.World]] =
         { roles = _ -> roles(),
           probes =
-              { name = "x", doc = "主人公の中心の x（出ていない画面では -1）", read = Flow.Probe.Num(Resources.read((_, w) -> heroCoord(p -> p#x, w))) } ::
-              { name = "y", doc = "主人公の中心の y（出ていない画面では -1）", read = Flow.Probe.Num(Resources.read((_, w) -> heroCoord(p -> p#y, w))) } ::
+              { name = "x", doc = "足元の x（m）", read = Flow.Probe.Num(Resources.read((_, w) -> World.walkerOf(w)#x)) } ::
+              { name = "z", doc = "足元の z（m）", read = Flow.Probe.Num(Resources.read((_, w) -> World.walkerOf(w)#z)) } ::
+              { name = "zone", doc = "今いる区画の文字（壁の中は -）", read = Flow.Probe.Text(Resources.read((res, w) -> zoneName(res, w))) } ::
               { name = "quit", doc = "終了の確認（Playing・Asking・Confirmed）", read = Flow.Probe.Text(Resources.read((_, w) -> "${w#quit}")) } :: Nil
           | Flow.emptyTable() }
 
+    def zoneName(res: Res.Res, w: World.World): String =
+        World.zoneOf(res, w) |> Option.map(c -> "${c}") |> Option.getWithDefault("-")
+
     /// 指紋の元（記録の再生が比べる）: 進行に効く欄だけ。
-    pub def fingerprint(_res: Res.Res, w: World.World): String =
-        let at = World.heroAt(w) |> Option.map(p -> "${p#x},${p#y}") |> Option.getWithDefault("-");
-        "hero=${at}|quit=${w#quit}"
+    pub def fingerprint(res: Res.Res, w: World.World): String =
+        let b = World.walkerOf(w);
+        "at=${b#x},${b#z}|zone=${zoneName(res, w)}|quit=${w#quit}"
 }

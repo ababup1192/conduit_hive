@@ -1,0 +1,154 @@
+{
+  "//": "conduit_hive.walk.json の形（Studio の sections 方言）。既定は src/WalkDoc.flix の defaults() が正。",
+  "version": 1,
+  "sections": {
+    "walkSpeed": {
+      "kind": "field",
+      "type": "float",
+      "label": "歩く速さ（m/秒）",
+      "order": 1,
+      "default": 4.5,
+      "group": "動き",
+      "min": 0.5,
+      "max": 12
+    },
+    "runSpeed": {
+      "kind": "field",
+      "type": "float",
+      "label": "走る速さ（m/秒・Shift）",
+      "order": 2,
+      "default": 7.5,
+      "group": "動き",
+      "min": 0.5,
+      "max": 20
+    },
+    "turnSpeed": {
+      "kind": "field",
+      "type": "float",
+      "label": "キーで向きを変える速さ（度/秒）",
+      "order": 3,
+      "default": 120.0,
+      "group": "動き",
+      "min": 10,
+      "max": 400
+    },
+    "mouseSensitivity": {
+      "kind": "field",
+      "type": "float",
+      "label": "マウス 1 px で向く角（度・キャプチャ中）",
+      "order": 4,
+      "default": 0.15,
+      "group": "動き",
+      "min": 0.01,
+      "max": 1
+    },
+    "invertY": {
+      "kind": "field",
+      "type": "bool",
+      "label": "マウスの上下を逆にする",
+      "order": 5,
+      "default": false,
+      "group": "動き"
+    },
+    "pitchLimit": {
+      "kind": "field",
+      "type": "float",
+      "label": "見上げ見下ろしの上限（度）",
+      "order": 6,
+      "default": 80.0,
+      "group": "動き",
+      "min": 10,
+      "max": 89
+    },
+    "eyeHeight": {
+      "kind": "field",
+      "type": "float",
+      "label": "目の高さ（m）",
+      "order": 7,
+      "default": 1.65,
+      "group": "体",
+      "min": 0.5,
+      "max": 3
+    },
+    "radius": {
+      "kind": "field",
+      "type": "float",
+      "label": "体の半径（m）",
+      "order": 8,
+      "default": 0.35,
+      "group": "体",
+      "min": 0.1,
+      "max": 1
+    },
+    "height": {
+      "kind": "field",
+      "type": "float",
+      "label": "体の高さ（m）",
+      "order": 9,
+      "default": 1.8,
+      "group": "体",
+      "min": 0.5,
+      "max": 3
+    },
+    "stepHeight": {
+      "kind": "field",
+      "type": "float",
+      "label": "そのまま上がれる段の高さ（m）",
+      "order": 10,
+      "default": 0.35,
+      "group": "体",
+      "min": 0,
+      "max": 1
+    },
+    "gravity": {
+      "kind": "field",
+      "type": "float",
+      "label": "落ちる速さの増え方（m/秒²）",
+      "order": 11,
+      "default": 9.8,
+      "group": "体",
+      "min": 1,
+      "max": 40
+    },
+    "bobHeight": {
+      "kind": "field",
+      "type": "float",
+      "label": "歩く時の頭の上下（m）",
+      "order": 12,
+      "default": 0.03,
+      "group": "見え方",
+      "min": 0,
+      "max": 0.2
+    },
+    "stride": {
+      "kind": "field",
+      "type": "float",
+      "label": "1 歩の長さ（m）",
+      "order": 13,
+      "default": 1.6,
+      "group": "見え方",
+      "min": 0.2,
+      "max": 4
+    },
+    "runStride": {
+      "kind": "field",
+      "type": "float",
+      "label": "走る時の 1 歩の長さ（m）",
+      "order": 14,
+      "default": 2.2,
+      "group": "見え方",
+      "min": 0.2,
+      "max": 5
+    },
+    "fovY": {
+      "kind": "field",
+      "type": "float",
+      "label": "縦の画角（度）",
+      "order": 15,
+      "default": 70.0,
+      "group": "見え方",
+      "min": 30,
+      "max": 110
+    }
+  }
+}
