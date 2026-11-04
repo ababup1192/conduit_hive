@@ -43,12 +43,14 @@ mod StageView {
         look = LookDoc.Rec,
         // 描く区画の絵（見える区画の組の分だけ）。
         zones = List[MazeMesh.ZoneArt],
-        // ステージの座標の粒（当たった所の火花・体液・projectile の玉）と、撃った瞬間の灯り。
+        // ステージの座標の粒（当たった所の火花と煙・体液・弾けた時の輪・projectile の玉・溜めの光）と、撃った瞬間の灯り・弾けた瞬間の光。
         billboards = List[Scene3d.Billboard3d],
         flash = List[Scene3d.PointLight],
         // 敵（姿勢つきの置いた物）と、拾う物（浮いて回る物と床の台座）と、場面の材質が読む絵（ステージの trim sheet と lightmap・敵と拾う武器の glb の絵）。
         creatures = List[Scene3d.Instance3d],
         pickups = List[Scene3d.Instance3d],
+        // 弾けた肉片と、連射銃の曳光弾の光る線。
+        effects = List[Scene3d.Instance3d],
         textures = List[Texture3d.Texture3d],
         // projectile の玉と拾う物の弱い点光源。
         glows = List[Scene3d.PointLight],
@@ -78,7 +80,7 @@ mod StageView {
     /// 見える区画を engine の Scene3d 1 つで描く。
     def scene(w: In): Render.PlacedItem =
         let lk = w#look;
-        Render.scene3d(Vec2.zero(), { instances = List.flatten((w#zones |> List.flatMap(z -> z#instances)) :: w#creatures :: w#pickups :: Nil),
+        Render.scene3d(Vec2.zero(), { instances = List.flatten((w#zones |> List.flatMap(z -> z#instances)) :: w#creatures :: w#pickups :: w#effects :: Nil),
                                       textures = w#textures,
                                       billboards = w#billboards,
                                       pointLights = List.append(w#flash, List.append(w#glows, stageLights(w))),

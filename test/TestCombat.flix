@@ -138,7 +138,7 @@ mod TestCombat {
         let aimed = withMelee(r, 12.0, 10.0, Num.pi() * 1.5, 'A', World.initial(r));
         let shot = World.step(r, { trigger = { pressed = true, held = true } | idle() }, at(0.05, 0.05, aimed));
         Assert.assertEq(expected = Some(Events.Event.RoomTriggered('A') :: Events.Event.Fired(WeaponsDoc.Weapon.Pistol)
-                                        :: Events.Event.EnemyHit(Kind.Melee, Hitscan.Part.Body) :: Events.Event.EnemyDown(Kind.Melee) :: Nil),
+                                        :: Events.Event.EnemyHit(Kind.Melee, Hitscan.Part.Body) :: Events.Event.EnemyDown(Kind.Melee, Events.Death.Fell) :: Nil),
             eventsIn(shot))
 
     /// 部屋に入ったコマに撃つと、扉の音と、拳銃の 1 つ目の変化の音が鳴る（最初の 1 発は撃った回数 0 番）。

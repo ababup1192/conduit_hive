@@ -9,25 +9,30 @@
 //   5. 押し合いと壁（Separation）
 // プレイヤーが受けたダメージ・弾けた所・起きた事を Outcome で返し、体力と粒と音は World が持つ。
 //
-// melee は attackRange の内で attack のクリップを始め、始めてから hitTime を過ぎた最初のコマに 1 回だけ、プレイヤーが前の扇（reach・arc）の内ならダメージ。
-// ranged は keepDistance を保ち、壁の箱へレイを当てて見通しがある時だけ attack を始め、hitTime を過ぎた最初のコマに口から projectile を吐く
-// （その時に飛んでいる数が上限なら吐かない）。
-// 撃たれると（applyDamage）体力が減り、追っている途中で staggerCooldown が明けていればよろけ（hit のクリップ）、0 で倒れる（die のクリップ）。
+// melee は lungeRange の内でプレイヤーまで見通せれば飛びかかる（Lunge: 速さ lungeBoost 倍でまっすぐ寄り、体が前へ伸びる）。
+// attackRange の内に入れば attack のクリップを始め、始めてから hitTime を過ぎた最初のコマに 1 回だけ、プレイヤーが前の扇（reach・arc）の内ならダメージ。
+// 飛びかかりが lungeSeconds の内に届かなければ追うへ戻り、cooldown の間は飛びかからない。
+// ranged は keepDistance を保ち、壁の箱へレイを当てて見通しがある時だけ溜め（Charge: chargeSeconds の間立ち止まって喉を光らせる）を始め、
+// 溜め終えて attack のクリップを始め、hitTime を過ぎた最初のコマに口から projectile を吐く（その時に飛んでいる数が上限なら吐かない）。
+// 撃たれると（applyDamage）体力が減り、撃たれた向きへ押され（のけぞり・Knockback）、追う・飛びかかる・溜める途中で staggerCooldown が明けていれば
+// よろけ（hit のクリップ）、0 で倒れる（die のクリップ）。倒れた敵は撃たれた向きへ吹っ飛ぶか、条件に当たれば弾けて消える（Gibs.bursts）。
 mod Horde {
-    use fge::{CollisionShape3d, CollisionWorld3d, Mat4, Num, Ray3d, Vec3}
+    use fge::{CollisionShape3d, Hash01, Mat4, Num, Ray3d, Vec3}
     use Creatures.{Clip, Kind}
     use Events.Event
 
-    /// 敵のしている事。Attack = 始めた時刻と、当てた（吐いた）か・Hurt と Dying はその時刻から。
+    /// 敵のしている事。Attack = 始めた時刻と、当てた（吐いた）か・Lunge（melee の飛びかかり）・Charge（ranged の溜め）・Hurt と Dying はその時刻から。
     pub enum Act with Eq, ToString {
         case Chase
+        case Lunge(Float64)
+        case Charge(Float64)
         case Attack(Float64, Bool)
         case Hurt(Float64)
         case Dying(Float64)
     }
 
     /// 敵 1 体。readyAt = 次の攻撃を始められる時刻・staggerReadyAt = 次によろけられる時刻・moving = このコマに歩いたか（walk と idle を分ける）・
-    /// home = 湧いた部屋。
+    /// home = 湧いた部屋・push = 撃たれて押されている（のけぞり）・flight = 倒れて吹っ飛んでいる。
     pub type alias Enemy = {
         id = Int32,
         kind = Kind,
@@ -40,7 +45,9 @@ mod Horde {
         readyAt = Float64,
         staggerReadyAt = Float64,
         moving = Bool,
-        anim = Creatures.Anim
+        anim = Creatures.Anim,
+        push = Knockback.Push,
+        flight = Knockback.Flight
     }
 
     /// 群れ。queue = 湧くのを待っている敵（湧く順）・waves = 入った区画の wave の進み（鍵が無い区画はまだ入っていない）・
@@ -59,8 +66,18 @@ mod Horde {
     /// 1 コマの結果: 次の群れ・プレイヤーが受けたダメージの合計・projectile が弾けた所・起きた事。
     pub type alias Outcome = { horde = Horde, damage = Float64, splashes = List[Projectiles.Splash], events = List[Event] }
 
-    /// 撃たれた結果: 次の群れ・起きた事（当たった・倒れた）・この弾で倒れた敵。
-    pub type alias Damaged = { horde = Horde, events = List[Event], fallen = List[Enemy] }
+    /// 撃った 1 回: 時刻・1 粒の威力・武器・撃った点（目）・何回目か（弾けるかの種）。
+    pub type alias Shot = { t = Float64, damage = Float64, weapon = WeaponsDoc.Weapon, origin = Vec3.Vec3, index = Int32 }
+
+    /// 撃たれた結果: 次の群れ・起きた事（当たった・倒れた）・この弾で倒れた敵（弾けた敵も）・そのうち弾けて群れから消えた敵。
+    pub type alias Damaged = { horde = Horde, events = List[Event], fallen = List[Enemy], burst = List[Enemy] }
+
+    /// 撃たれた 1 体のその後。
+    enum Fate with Eq {
+        case Hurt
+        case Fell
+        case Burst
+    }
 
     /// 何もいない群れ。
     pub def empty(): Horde =
@@ -121,7 +138,8 @@ mod Horde {
 
     def newEnemy(res: Res.Res, id: Int32, s: { kind = Kind, x = Float64, z = Float64, yaw = Float64, home = Char }): Enemy =
         { id = id, kind = s#kind, home = s#home, x = s#x, z = s#z, yaw = s#yaw, health = healthOf(doc(res), s#kind),
-          act = Act.Chase, readyAt = 0.0, staggerReadyAt = 0.0, moving = true, anim = Creatures.walkAnim() }
+          act = Act.Chase, readyAt = 0.0, staggerReadyAt = 0.0, moving = true, anim = Creatures.walkAnim(),
+          push = Knockback.noPush(), flight = Knockback.grounded() }
 
     def healthOf(d: EnemiesDoc.Rec, k: Kind): Float64 = match k {
         case Kind.Melee  => d#melee#health
@@ -164,22 +182,44 @@ mod Horde {
 
     // ── 撃たれる ──
 
-    /// 時刻 t に、1 粒の威力 damage の弾が impacts に当たった（頭は headMultiplier 倍）。同じ敵に何粒当たっても 1 回の傷として足す。
-    pub def applyDamage(res: Res.Res, t: Float64, damage: Float64, impacts: List[Hitscan.Impact], h: Horde): Damaged =
+    /// 撃った 1 回 shot の粒が impacts に当たった（頭は headMultiplier 倍）。同じ敵に何粒当たっても 1 回の傷として足す。
+    /// 生き残った敵は撃たれた向きへ押され、倒れた敵は吹っ飛ぶか、条件に当たれば弾けて群れから消える。
+    pub def applyDamage(res: Res.Res, shot: Shot, impacts: List[Hitscan.Impact], h: Horde): Damaged =
         let d = doc(res);
         let hits = impacts |> List.filterMap(hit -> match hit#struck {
             case Hitscan.Struck.Enemy(id, part) => Some((id, part))
             case _ => None
         });
-        let taken = hits |> List.foldLeft((acc, hit) -> {
-            let (id, part) = hit;
-            Map.insertWith((a, b) -> a + b, id, damage * (if (part == Hitscan.Part.Head) d#headMultiplier else 1.0), acc)
-        }, Map.empty());
-        let enemies = h#enemies |> List.map(e -> Map.get(e#id, taken) |> Option.map(amount -> hurt(d, t, amount, e)) |> Option.getWithDefault(e));
+        let amountOf = (part: Hitscan.Part) -> shot#damage * (if (part == Hitscan.Part.Head) d#headMultiplier else 1.0);
+        let taken = hits |> List.foldLeft((acc, hit) -> Map.insertWith((a, b) -> a + b, fst(hit), amountOf(snd(hit)), acc), Map.empty());
+        let onHead = hits |> List.filter(hit -> snd(hit) == Hitscan.Part.Head)
+            |> List.foldLeft((acc, hit) -> Map.insertWith((a, b) -> a + b, fst(hit), amountOf(snd(hit)), acc), Map.empty());
+        let outcomes = h#enemies |> List.map(e -> Map.get(e#id, taken) |> Option.map(amount -> struck(res, shot, amount, Map.getWithDefault(e#id, 0.0, onHead), e)));
+        let pairs = List.zip(h#enemies, outcomes);
+        let enemies = pairs |> List.filterMap(pair -> match snd(pair) {
+            case Some((_, Fate.Burst)) => None
+            case Some((next, _))       => Some(next)
+            case None                  => Some(fst(pair))
+        });
+        let downs = pairs |> List.filterMap(pair -> snd(pair) |> Option.filter(o -> isAlive(fst(pair)) and snd(o) != Fate.Hurt));
         let kindOf = (id: Int32) -> enemyOf(id, h) |> Option.map(e -> e#kind);
         let hitEvents = hits |> List.filterMap(hit -> kindOf(fst(hit)) |> Option.map(k -> Event.EnemyHit(k, snd(hit))));
-        let fallen = List.zip(h#enemies, enemies) |> List.filter(pair -> isAlive(fst(pair)) and not isAlive(snd(pair))) |> List.map(snd);
-        { horde = { enemies = enemies | h }, events = List.append(hitEvents, fallen |> List.map(e -> Event.EnemyDown(e#kind))), fallen = fallen }
+        let downEvents = downs |> List.map(o -> Event.EnemyDown(fst(o)#kind, if (snd(o) == Fate.Burst) Events.Death.Burst else Events.Death.Fell));
+        { horde = { enemies = enemies | h }, events = List.append(hitEvents, downEvents), fallen = downs |> List.map(fst),
+          burst = downs |> List.filter(o -> snd(o) == Fate.Burst) |> List.map(fst) }
+
+    /// 撃たれた 1 体: 傷を足し、生きていれば押す・倒れたら吹っ飛ぶか弾けるかを決める（もう倒れていた体はそのまま）。
+    def struck(res: Res.Res, shot: Shot, amount: Float64, headDamage: Float64, e: Enemy): (Enemy, Fate) =
+        let d = doc(res);
+        let juice = JuiceDoc.rec(res#juice);
+        let away = Knockback.awayFrom(shot#origin#x, shot#origin#z, e#x, e#z);
+        let next = hurt(d, shot#t, amount, e);
+        let cause = { weapon = shot#weapon, distance = away#distance, headDamage = headDamage, overkill = amount - e#health };
+        let roll = Hash01.at(e#id * 7 + shot#index, 61);
+        if (not isAlive(e)) (next, Fate.Hurt)
+        else if (isAlive(next)) ({ push = Knockback.pushOf(d#flinch, shot#weapon, shot#t, away) | next }, Fate.Hurt)
+        else if (Gibs.bursts(juice#gib, cause, roll)) (next, Fate.Burst)
+        else ({ flight = Knockback.launch(juice#fling, shot#weapon, away, Hash01.at(e#id, 62)) | next }, Fate.Fell)
 
     def hurt(d: EnemiesDoc.Rec, t: Float64, amount: Float64, e: Enemy): Enemy =
         let health = e#health - amount;
@@ -266,16 +306,37 @@ mod Horde {
     def think(res: Res.Res, field: FlowField.FlowField, t: Float64, dt: Float64, p: PlayerBody.PlayerBody, canSpit: Bool, e: Enemy): Thought =
         let r = match e#act {
             case Act.Chase             => chase(res, field, t, dt, p, canSpit, e)
-            case Act.Attack(s, struck) => swing(res, t, dt, p, canSpit, s, struck, e)
+            case Act.Lunge(s)          => lunge(res, t, dt, p, s, e)
+            case Act.Charge(s)         => charge(res, t, dt, p, s, e)
+            case Act.Attack(s, hit)    => swing(res, t, dt, p, canSpit, s, hit, e)
             case Act.Hurt(s)           => still(if (t - s >= Creatures.secondsOf(res#timing, e#kind, Clip.Hit)) { act = Act.Chase | e } else { moving = false | e })
-            case Act.Dying(_)          => still(e)
+            case Act.Dying(_)          => still(flown(res, dt, e))
         };
-        { enemy = animated(t, r#enemy) | r }
+        { enemy = animated(t, pushed(res, t, dt, r#enemy)) | r }
+
+    /// 撃たれて押されている分だけ動かす（倒れた体は押さない。壁は Separation が押し戻す）。
+    def pushed(res: Res.Res, t: Float64, dt: Float64, e: Enemy): Enemy =
+        if (not isAlive(e) or e#push#speed <= 0.0) e
+        else {
+            let (mx, mz) = Knockback.pushStep(doc(res)#flinch, t, dt, e#push);
+            { x = e#x + mx, z = e#z + mz | e }
+        }
+
+    /// 倒れた体を 1 コマ飛ばす（撃たれた向きへの放物線・床を滑る・壁で止まる）。
+    def flown(res: Res.Res, dt: Float64, e: Enemy): Enemy =
+        if (e#flight#speed0 <= 0.0 and e#flight#y <= 0.0 and e#flight#vy <= 0.0) e
+        else {
+            let (at, flight) = Knockback.fly(JuiceDoc.rec(res#juice)#fling, (a, b) -> Collider.isLineClear(res#collision, a, b),
+                Creatures.footprintOf(e#kind), dt, { x = e#x, z = e#z, yaw = e#yaw }, e#flight);
+            { x = at#x, z = at#z, yaw = at#yaw, flight = flight | e }
+        }
 
     /// 今のしている事に合うクリップへ替える。
     def animated(t: Float64, e: Enemy): Enemy =
         let track = match e#act {
             case Act.Chase        => { clip = if (e#moving) Clip.Walk else Clip.Idle, start = 0.0 }
+            case Act.Lunge(_)     => { clip = Clip.Walk, start = 0.0 }
+            case Act.Charge(_)    => { clip = Clip.Idle, start = 0.0 }
             case Act.Attack(s, _) => { clip = Clip.Attack, start = s }
             case Act.Hurt(s)      => { clip = Clip.Hit, start = s }
             case Act.Dying(s)     => { clip = Clip.Die, start = s }
@@ -303,10 +364,12 @@ mod Horde {
         match e#kind {
             case Kind.Melee if ready and dist <= d#melee#attackRange =>
                 still({ act = Act.Attack(t, false), moving = false, yaw = toPlayer | e })
+            case Kind.Melee if ready and dist <= d#melee#lungeRange and canLunge(res, e, p) =>
+                { enemy = { act = Act.Lunge(t), moving = true, yaw = toPlayer | e }, damage = 0.0, spit = None, events = Event.Lunge :: Nil }
             case Kind.Melee if dist <= d#melee#stopDistance => still(turned(d, dt, toPlayer, { moving = false | e }))
             case Kind.Melee => still(advance(res, field, dt, p, d#melee#speed, e))
             case Kind.Ranged if ready and canSpit and dist <= ranged#sightRange and hasSight(res, e, p) =>
-                still({ act = Act.Attack(t, false), moving = false, yaw = toPlayer | e })
+                { enemy = { act = Act.Charge(t), moving = false, yaw = toPlayer | e }, damage = 0.0, spit = None, events = Event.Charge :: Nil }
             case Kind.Ranged if dist > ranged#keepDistance + ranged#approachMargin => still(advance(res, field, dt, p, ranged#speed, e))
             case Kind.Ranged if dist < ranged#keepDistance - ranged#retreatMargin and dist > 0.001 =>
                 let back = ranged#speed * dt / dist;
@@ -328,23 +391,83 @@ mod Horde {
             turned(doc(res), dt, facing(e#x, e#z, gx, gz), { x = e#x + (gx - e#x) / dist * stride, z = e#z + (gz - e#z) / dist * stride, moving = true | e })
         }
 
+    /// 飛びかかれるか: 胸の高さからプレイヤーの胸まで、壁の箱に遮られずに線が引けるか（壁越しに飛びかからない）。
+    def canLunge(res: Res.Res, e: Enemy, p: PlayerBody.PlayerBody): Bool =
+        Collider.isLineClear(res#collision, Vec3.v3(e#x, 1.0, e#z), Vec3.v3(p#x, 1.0, p#z))
+
+    /// 飛びかかる: 速さ × lungeBoost でプレイヤーへまっすぐ寄り、attackRange の内に入れば attack を始める（当たりは振り下ろしと同じ扇で見る）。
+    /// lungeSeconds の内に届かなければ追うへ戻り、cooldown の間は飛びかからない。
+    def lunge(res: Res.Res, t: Float64, dt: Float64, p: PlayerBody.PlayerBody, start: Float64, e: Enemy): Thought =
+        let m = doc(res)#melee;
+        let dist = distance(p#x - e#x, p#z - e#z);
+        let toPlayer = facing(e#x, e#z, p#x, p#z);
+        if (dist <= m#attackRange) still({ act = Act.Attack(t, false), moving = false, yaw = toPlayer | e })
+        else if (t - start >= m#lungeSeconds) still({ act = Act.Chase, readyAt = t + m#cooldown | e })
+        else {
+            let stride = Float64.min(dist - m#attackRange * 0.5, m#speed * m#lungeBoost * dt);
+            still({ x = e#x + (p#x - e#x) / dist * stride, z = e#z + (p#z - e#z) / dist * stride, yaw = toPlayer, moving = true | e })
+        }
+
+    /// 溜める: chargeSeconds の間立ち止まってプレイヤーを向き、溜め終えたら attack のクリップを始める（吐くのは hitTime の後）。
+    def charge(res: Res.Res, t: Float64, dt: Float64, p: PlayerBody.PlayerBody, start: Float64, e: Enemy): Thought =
+        let faced = turned(doc(res), dt, facing(e#x, e#z, p#x, p#z), { moving = false | e });
+        if (t - start >= doc(res)#ranged#chargeSeconds) still({ act = Act.Attack(t, false) | faced }) else still(faced)
+
+    // ── 描く形 ──
+
+    /// 時刻 t の溜めの進み（0..1。溜めていなければ None）。
+    pub def chargeOf(res: Res.Res, t: Float64, e: Enemy): Option[Float64] = match e#act {
+        case Act.Charge(s) => Some(Num.clamp01((t - s) / Float64.max(0.001, doc(res)#ranged#chargeSeconds)))
+        case _             => None
+    }
+
+    /// 口の点（ステージの座標）。
+    pub def mouthOf(e: Enemy): Vec3.Vec3 = Mat4.apply(worldOf(e), Creatures.hitboxOf(e#kind)#mouth)
+
+    /// 縦の軸を、水平の向き (dx, dz) の側へ a（ラジアン）倒す回転。
+    def tiltToward(dx: Float64, dz: Float64, a: Float64): Mat4.Mat4 =
+        let heading = Num.atan2(dx, dz);
+        Mat4.mul(Mat4.rotateY(heading), Mat4.mul(Mat4.rotateX(a), Mat4.rotateY(0.0 - heading)))
+
+    /// 時刻 t に描く体の world の行列: 足元と向きに、吹っ飛ぶ高さ・押された向きへの傾き・飛ぶ向きへの反り・飛びかかる伸び・溜めの膨らみを重ねる。
+    /// 当たり判定の形は足元と向きの worldOf のまま（描く形だけを変える）。
+    pub def drawnWorldOf(res: Res.Res, t: Float64, e: Enemy): Mat4.Mat4 =
+        let d = doc(res);
+        let lift = Mat4.translate(Vec3.v3(e#x, e#flight#y, e#z));
+        let lean = if (isAlive(e)) tiltToward(e#push#dx, e#push#dz, Knockback.leanAt(d#flinch, t, e#push))
+            else Knockback.headingOf(e#flight) |> Option.map(h -> tiltToward(fst(h), snd(h), Knockback.tiltOf(JuiceDoc.rec(res#juice)#fling, e#flight)))
+                    |> Option.getWithDefault(Mat4.identity());
+        Mat4.mul(lift, Mat4.mul(lean, Mat4.mul(Mat4.rotateY(e#yaw), bodyShapeOf(d, t, e))))
+
+    /// 体の局所の伸び縮み（飛びかかる間は前へ伸びて前へ傾き、溜める間は膨らむ）。
+    def bodyShapeOf(d: EnemiesDoc.Rec, t: Float64, e: Enemy): Mat4.Mat4 = match e#act {
+        case Act.Lunge(s) =>
+            let k = Num.sin(Num.pi() * Num.clamp01((t - s) / Float64.max(0.001, d#melee#lungeSeconds)));
+            let st = d#melee#lungeStretch * k;
+            Mat4.mul(Mat4.rotateX(st), Mat4.scale(Vec3.v3(1.0 - st * 0.3, 1.0 - st * 0.4, 1.0 + st)))
+        case Act.Charge(s) =>
+            let k = d#ranged#chargePuff * Num.clamp01((t - s) / Float64.max(0.001, d#ranged#chargeSeconds));
+            Mat4.scale(Vec3.v3(1.0 + k, 1.0 + k * 0.5, 1.0 + k))
+        case _ => Mat4.identity()
+    }
+
     /// 敵の口からプレイヤーの目まで、壁の箱に遮られずに線が引けるか。
     def hasSight(res: Res.Res, e: Enemy, p: PlayerBody.PlayerBody): Bool =
-        Collider.isLineClear(res#collision, Mat4.apply(worldOf(e), Creatures.hitboxOf(e#kind)#mouth), p#eye)
+        Collider.isLineClear(res#collision, mouthOf(e), p#eye)
 
     /// 振る・吐く: 始めてから hitTime を過ぎた最初のコマに 1 回だけ当てる・吐く（コマが長くても飛ばさない）。
     /// クリップが終われば追うへ戻る（次を始められるのは cooldown の後）。
-    def swing(res: Res.Res, t: Float64, dt: Float64, p: PlayerBody.PlayerBody, canSpit: Bool, start: Float64, struck: Bool, e: Enemy): Thought =
+    def swing(res: Res.Res, t: Float64, dt: Float64, p: PlayerBody.PlayerBody, canSpit: Bool, start: Float64, hit: Bool, e: Enemy): Thought =
         let d = doc(res);
         let elapsed = t - start;
         let (hitTime, cooldown) = match e#kind {
             case Kind.Melee  => (d#melee#hitTime, d#melee#cooldown)
             case Kind.Ranged => (d#ranged#hitTime, d#ranged#cooldown)
         };
-        let due = not struck and elapsed >= hitTime;
+        let due = not hit and elapsed >= hitTime;
         let aimed = if (elapsed < hitTime) turned(d, dt, facing(e#x, e#z, p#x, p#z), e) else e;
         let done = elapsed >= Creatures.secondsOf(res#timing, e#kind, Clip.Attack);
-        let next = if (done) { act = Act.Chase, readyAt = t + cooldown | aimed } else { act = Act.Attack(start, struck or due) | aimed };
+        let next = if (done) { act = Act.Chase, readyAt = t + cooldown | aimed } else { act = Act.Attack(start, hit or due) | aimed };
         match e#kind {
             case Kind.Melee =>
                 { enemy = next, damage = if (due and isInSwing(d#melee, aimed, p)) d#melee#damage else 0.0, spit = None,
@@ -365,7 +488,7 @@ mod Horde {
 
     /// 口からプレイヤーの胸へ向けて吐く projectile の点と速さ。
     def spitOf(pr: EnemiesDoc.Projectile, e: Enemy, p: PlayerBody.PlayerBody): { at = Vec3.Vec3, velocity = Vec3.Vec3 } =
-        let mouth = Mat4.apply(worldOf(e), Creatures.hitboxOf(e#kind)#mouth);
+        let mouth = mouthOf(e);
         let chest = Vec3.v3(p#x, p#eye#y - 0.3, p#z);
         { at = mouth, velocity = Vec3.mul(Vec3.normalized(Vec3.sub(chest, mouth)), pr#speed) }
 }

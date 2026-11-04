@@ -33,9 +33,9 @@ SF の施設の迷路を一人称で進み、群れで迫るクリーチャー�
 2. **`src/Game.flix`** — App の組み立て。毎フレーム 入力（`Controls.step`）→ 規則（`World.step`）→ 描く（`View`）。音は `Sounds`（起きた事・足音・敵の叫びを一発の音へ、環境音と近い敵の唸りを鳴り続ける音へ写す。バスとダッキングは mixer）。
 3. **`src/World.flix`** — 遊びの状態と 1 コマの規則。画面は `Screen`（`Title`・`Play`・`Clear`）で、遊んでいる場面の値は `Session`（ポーズもその中）。
    1 コマは 歩く（`Walker`）→ 部屋に入る → 拾う（`Pickups`）→ 撃つか空撃ち（`Arsenal`・`Hitscan`）→ 群れ（`Horde`）→ 体力（`Health`）→ 倒した数とクリア。起きた事は `Events`。
-4. **敵** — `src/Horde.flix`（群れの 1 コマ・追う・振る・吐く・撃たれる）→ `FlowField`（共有する距離の地図）・
-   `Separation`（押し合いと壁）・`Projectiles`（ranged の弾）・`Spawner`（区画ごとの wave・次の wave を始めるか・見えていない遠い印を選ぶ）・`Creatures`（glb・当たり判定の形・姿勢の共有）。
-5. **武器と拾う物** — `src/Arsenal.flix`（連射・弾・持ち替え・拾った武器と弾・空撃ち）・`src/Pickups.flix`（印から置く・拾う規則・浮き方）・`src/PickupModels.flix`（拾う物の形）・`src/Hitscan.flix`（レイの当たり）・`src/FpViewmodel.flix`（腕と銃の glb）。
+4. **敵** — `src/Horde.flix`（群れの 1 コマ・追う・飛びかかる・溜める・振る・吐く・撃たれる・吹っ飛ぶ・弾ける）→ `FlowField`（共有する距離の地図）・
+   `Separation`（押し合いと壁）・`Knockback`（撃たれて押される・倒れて吹っ飛ぶ）・`Gibs`（弾けた肉片 `assets/models/gibs.glb`）・`Projectiles`（ranged の弾）・`Spawner`（区画ごとの wave・次の wave を始めるか・見えていない遠い印を選ぶ）・`Creatures`（glb・当たり判定の形・姿勢の共有）。
+5. **武器と拾う物** — `src/Arsenal.flix`（連射・弾・持ち替え・拾った武器と弾・空撃ち）・`src/Pickups.flix`（印から置く・拾う規則・浮き方）・`src/PickupModels.flix`（拾う物の形）・`src/Hitscan.flix`（レイの当たり）・`src/Tracers.flix`（連射銃の曳光弾）・`src/CameraShake.flix`（描くカメラの揺れと撃った時の目の跳ね）・`src/FpViewmodel.flix`（腕と銃の glb）。
 6. **描く** — `src/View.flix`（入口で画面を選ぶ）→ `src/HudView.flix`（HUD）・`src/MenuView.flix`（タイトル・ポーズ・クリアのメニュー）→ `src/StageView.flix`（3D の場面とビューモデル）→ `src/PostView.flix`（ブルームと後処理）。
    迷路の絵は Blender でベイクしたステージ（`StageModel`。`assets/models/stage.glb` と区画ごとの lightmap）、確かめ用の灰色の箱は `MazeMesh`（look の `bakedStage` を false か、glb が迷路と合わない時）。形と当たり判定は `Maze`・`Collider`、粒は `Particles3d`。
 7. **Doc** — 値は `assets/` の JSON（保存即反映）。読み込みと読み直しは `src/Controls.flix`、描く元の束は `src/Res.flix`。
@@ -45,13 +45,14 @@ SF の施設の迷路を一人称で進み、群れで迫るクリーチャー�
 | Doc | 中身 | 読む mod |
 |---|---|---|
 | `maze.stage.json` | 迷路のマス目・区画・印（start・spawn・pickup。spawn の印は湧く所だけで、何が湧くかは spawns） | `MazeDoc` |
-| `conduit_hive.enemies.json` | 敵の型ごとの体力・速さ・攻撃の距離と時刻・projectile | `EnemiesDoc` |
+| `conduit_hive.enemies.json` | 敵の型ごとの体力・速さ・攻撃の距離と時刻・melee の飛びかかり・ranged の溜め・撃たれた時ののけぞり・projectile | `EnemiesDoc` |
 | `conduit_hive.spawns.json` | 区画ごとの wave（数・型・湧く印の区画・次の wave までの秒と残りの数）・同時に生きている数の上限・湧く間隔・近すぎる印から湧かせない距離 | `SpawnsDoc` |
 | `conduit_hive.pickups.json` | pickup の印の名前ごとの量・拾う距離・浮き方・光・倒れた敵が落とす確率と物 | `PickupsDoc` |
 | `conduit_hive.player.json` | プレイヤーの体力・被弾の赤み・やり直すまで・クリアから結果の画面まで | `PlayerDoc` |
 | `conduit_hive.weapons.json` | 武器ごとの威力・連射・ばらつき・弾と上限・反動 | `WeaponsDoc` |
 | `conduit_hive.viewmodel.json` | 腕と銃の見え方（画角・揺れ・持ち替え） | `FpViewmodelDoc` |
-| `conduit_hive.particles3d.json` | 3D の粒（マズルフラッシュ・火花・体液・projectile の玉） | `Particles3dDoc` |
+| `conduit_hive.particles3d.json`・`conduit_hive.creaturefx.json` | 3D の粒（武器ごとのマズルフラッシュ・火花と煙・撃った瞬間の灯り・曳光弾）と、敵の側の粒（体液・弾けた時の体液と衝撃の輪・projectile の玉・溜めの光）。2 つを 1 つの値に読む | `Particles3dDoc` |
+| `conduit_hive.juice.json` | 撃った・倒した時の手応え（camera shake・撃った時の目の跳ね・hit marker と kill marker・吹っ飛ぶ強さ・弾ける条件と肉片・hit stop） | `JuiceDoc` |
 | `conduit_hive.walk.json`・`conduit_hive.look.json` | 歩く手触り・ステージの絵の切り替えと lightmap の倍率・施設の色と光と霧 | `WalkDoc`・`LookDoc` |
 | `conduit_hive.uitext.json`・`conduit_hive.theme.json`・`player.keys.json` | 画面の文言・色・キー割り当て | `UiTextDoc`・`ThemeDoc`・`KeysDoc` |
 | `conduit_hive.sounds.json` | 音の鳴らし方（変化の数・音ごとの量・薬莢と先台の遅れ・跳弾の割合・敵の唸りと叫び・部屋ごとの環境音の混ぜ方） | `SoundsDoc` |

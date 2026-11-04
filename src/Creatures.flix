@@ -186,8 +186,8 @@ mod Creatures {
             case PoseKey.Once(_, c, f) => at(c, Int32.toFloat64(f) / framesPerSecond(), false)
         }
 
-    /// 描く敵 1 体: 型・ずらしの組・クリップ・足元の world の行列。
-    pub type alias Posed = { kind = Kind, group = Int32, anim = Anim, world = Mat4.Mat4 }
+    /// 描く敵 1 体: 型・ずらしの組・クリップ・体の world の行列・発光の倍率（1 で glb のまま）。
+    pub type alias Posed = { kind = Kind, group = Int32, anim = Anim, world = Mat4.Mat4, glow = Float64 }
 
     /// このコマに作った物: 置いた物と、作った姿勢の数（共有した物は 1 つと数える）。
     pub type alias Drawn = { instances = List[Scene3d.Instance3d], poses = Int32 }
@@ -205,10 +205,17 @@ mod Creatures {
             |> List.toMap;
         let instances = posed |> List.flatMap(b -> Map.get(b#kind, models) |> Option.toList |> List.flatMap(body -> {
             let pose = poseOf(body, timing, shared, blendSeconds, t, b);
-            Model3d.partInstances(b#world, body#model) |> List.map(Scene3d.withPose(pose))
+            Model3d.partInstances(b#world, body#model) |> List.map(i -> glowing(b#glow, Scene3d.withPose(pose, i)))
         }));
         let blended = posed |> List.count(b -> Option.nonEmpty(blendOf(blendSeconds, t, b#anim)));
         { instances = instances, poses = Map.size(shared) + blended }
+
+    /// 置いた物の材質の発光を k 倍にする（1 なら何もしない・材質の無い物もそのまま）。
+    def glowing(k: Float64, i: Scene3d.Instance3d): Scene3d.Instance3d =
+        if (k == 1.0) i
+        else Scene3d.instanceFieldsOf(i)#material
+            |> Option.map(m -> Scene3d.withMaterial(Scene3d.withEmissionIntensity(Scene3d.materialFieldsOf(m)#emissionIntensity * k, m), i))
+            |> Option.getWithDefault(i)
 
     def kindOfKey(key: PoseKey): Kind = match key {
         case PoseKey.Loop(k, _, _) => k

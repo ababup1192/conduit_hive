@@ -1,4 +1,4 @@
-// HudView — 遊んでいる間の HUD（App.withHudView。view の絵のどれよりも手前）: 照準・左下の体力・右下の武器の並びと弾の数・
+// HudView — 遊んでいる間の HUD（App.withHudView。view の絵のどれよりも手前）: 照準と当てた印（hit marker）・倒した印（kill marker）・左下の体力・右下の武器の並びと弾の数・
 // 拾った時の知らせ（照準の下）・被弾の赤み・F3 の診断の行（純粋）。値は View が World から組んだ Hud を受ける。
 mod HudView {
 
@@ -7,6 +7,9 @@ mod HudView {
 
     /// 武器の並びの 1 つ: 武器・持っているか・構えているか。
     pub type alias Slot = { weapon = Weapon, owned = Bool, current = Bool }
+
+    /// 照準の印: 当てた印と倒した印の、出してからの進み（0..1。出ていなければ None）・大きさ（design px）・倒した印の色。
+    pub type alias Marker = { hit = Option[Float64], kill = Option[Float64], hitSize = Float64, killSize = Float64, killColor = Color }
 
     /// 拾った時の知らせ: 文言と、出してからの進み（0..1。1 で消える）。
     pub type alias Notice = { text = String, age = Float64 }
@@ -25,7 +28,8 @@ mod HudView {
         health = Float64,
         hurt = Float64,
         down = Float64,
-        notice = Option[Notice]
+        notice = Option[Notice],
+        marker = Marker
     }
 
     def p(x: Float64, y: Float64): Vec2.Vec2 = { x = x, y = y }
@@ -41,7 +45,7 @@ mod HudView {
         let panels = List.flatten(crosshair(theme#accent, theme#bg) :: healthPanel(ctx, theme#accent, theme#bg, w#health)
                                   :: ammoPanel(ctx, theme#accent, theme#bg, w#ammo) :: slotRow(ctx, theme#accent, theme#bg, w#slots) :: Nil);
         let toast = w#notice |> Option.map(noticeOf(ctx, theme#accent, theme#bg)) |> Option.getWithDefault(Nil);
-        let marks = if (w#askingQuit) Nil else List.flatten(hurtEdges(w#hurt, w#down) :: Render.fadeAll(alpha, panels) :: toast :: Nil);
+        let marks = if (w#askingQuit) Nil else List.flatten(hurtEdges(w#hurt, w#down) :: Render.fadeAll(alpha, panels) :: toast :: markers(theme#accent, theme#bg, w#marker) :: Nil);
         let rows = if (w#showsDiagnostics) ctx#diagnostics |> Option.map(FrameDiagnostics.summaryLines) |> Option.getWithDefault(Nil) else Nil;
         let lines = rows |> List.zipWithIndex |> List.map(e -> {
             let (i, line) = e;
@@ -79,6 +83,34 @@ mod HudView {
             (dirs |> List.map(needle(0.7, shade, 0.7, 0.2, 0)))
                 :: (dirs |> List.map(needle(0.0, ink, 1.0, 0.35, 1)))
                 :: (diamond(1.6, shade, 0.7, 0) :: diamond(0.9, ink, 1.0, 1) :: Nil) :: Nil)
+
+    /// 照準の斜め 4 方向の短い刻み 1 組（真ん中から inner〜outer px・根元の太さ thick・濃さ alpha）。
+    def ticks(color: Color, alpha: Float64, inner: Float64, outer: Float64, thick: Float64, z: Int32): List[Render.PlacedItem] =
+        let c = p(width() / 2.0, height() / 2.0);
+        let s = Num.sqrt(0.5);
+        ((s, s) :: (0.0 - s, s) :: (s, 0.0 - s) :: (0.0 - s, 0.0 - s) :: Nil) |> List.map(dir -> {
+            let (dx, dy) = dir;
+            let at = (along: Float64, side: Float64) -> p(c#x + dx * along - dy * side, c#y + dy * along + dx * side);
+            gradAt((at(inner, 0.0 - thick), color, alpha) :: (at(outer, 0.0 - thick * 0.35), color, alpha * 0.6)
+                       :: (at(outer, thick * 0.35), color, alpha * 0.6) :: (at(inner, thick), color, alpha) :: Nil, z)
+        })
+
+    /// 当てた印（差し色の細い斜めの刻みが外へ逃げながら消える）と、倒した印（倒した色の太い斜めの刻みが大きく出て縮みながら消える）。
+    /// どちらも 1 px 太い暗い影を下に敷く。
+    def markers(ink: Color, shade: Color, m: Marker): List[Render.PlacedItem] =
+        let hit = m#hit |> Option.map(age -> {
+            let inner = 4.0 + 3.0 * age;
+            let a = 1.0 - age;
+            List.append(ticks(shade, a * 0.7, inner, inner + m#hitSize, 1.5, 0), ticks(ink, a, inner, inner + m#hitSize, 0.8, 1))
+        }) |> Option.getWithDefault(Nil);
+        let kill = m#kill |> Option.map(age -> {
+            let pop = 1.0 + 0.45 * (1.0 - age) * (1.0 - age);
+            let inner = 3.5 * pop;
+            let outer = inner + m#killSize * pop;
+            let a = 1.0 - age * age;
+            List.append(ticks(shade, a * 0.8, inner, outer, 2.3, 0), ticks(m#killColor, a, inner, outer, 1.4, 1))
+        }) |> Option.getWithDefault(Nil);
+        List.append(hit, kill)
 
     /// 右下の弾の数の板の大きさと左上。
     def ammoSize(): Vec2.Vec2 = p(44.0, 22.0)

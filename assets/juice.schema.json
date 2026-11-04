@@ -1,0 +1,538 @@
+{
+  "//": "conduit_hive.juice.json の形（Studio の sections 方言）。既定は src/JuiceDoc.flix の defaults() が正。",
+  "version": 1,
+  "sections": {
+    "shake": {
+      "kind": "record",
+      "label": "camera shake（強さ 0..1）",
+      "order": 1,
+      "fields": {
+        "pistol": {
+          "type": "float",
+          "label": "拳銃で撃った時",
+          "order": 1,
+          "default": 0.22,
+          "min": 0,
+          "max": 1
+        },
+        "shotgun": {
+          "type": "float",
+          "label": "散弾銃で撃った時",
+          "order": 2,
+          "default": 0.6,
+          "min": 0,
+          "max": 1
+        },
+        "rifle": {
+          "type": "float",
+          "label": "連射銃で撃った時",
+          "order": 3,
+          "default": 0.12,
+          "min": 0,
+          "max": 1
+        },
+        "kill": {
+          "type": "float",
+          "label": "倒した時",
+          "order": 4,
+          "default": 0.18,
+          "min": 0,
+          "max": 1
+        },
+        "gib": {
+          "type": "float",
+          "label": "弾けた時",
+          "order": 5,
+          "default": 0.45,
+          "min": 0,
+          "max": 1
+        },
+        "hurt": {
+          "type": "float",
+          "label": "被弾した時",
+          "order": 6,
+          "default": 0.35,
+          "min": 0,
+          "max": 1
+        },
+        "maxDeg": {
+          "type": "float",
+          "label": "強さ 1 の揺れの角（度）",
+          "order": 7,
+          "default": 1.6,
+          "min": 0,
+          "max": 20
+        },
+        "frequency": {
+          "type": "float",
+          "label": "揺れの速さ（回/秒）",
+          "order": 8,
+          "default": 17.0,
+          "min": 0,
+          "max": 200
+        },
+        "halfLife": {
+          "type": "float",
+          "label": "強さが半分に減るまで（秒）",
+          "order": 9,
+          "default": 0.08,
+          "min": 0,
+          "max": 10
+        }
+      }
+    },
+    "kick": {
+      "kind": "record",
+      "label": "撃った時に目が後ろへ下がる跳ね（m）",
+      "order": 2,
+      "fields": {
+        "pistol": {
+          "type": "float",
+          "label": "拳銃",
+          "order": 1,
+          "default": 0.025,
+          "min": 0,
+          "max": 1
+        },
+        "shotgun": {
+          "type": "float",
+          "label": "散弾銃",
+          "order": 2,
+          "default": 0.07,
+          "min": 0,
+          "max": 1
+        },
+        "rifle": {
+          "type": "float",
+          "label": "連射銃",
+          "order": 3,
+          "default": 0.012,
+          "min": 0,
+          "max": 1
+        },
+        "recover": {
+          "type": "float",
+          "label": "戻るまで（秒）",
+          "order": 4,
+          "default": 0.14,
+          "min": 0,
+          "max": 10
+        }
+      }
+    },
+    "marker": {
+      "kind": "record",
+      "label": "照準の印（当てた・倒した）",
+      "order": 3,
+      "fields": {
+        "hitSeconds": {
+          "type": "float",
+          "label": "当てた印を出す長さ（秒）",
+          "order": 1,
+          "default": 0.16,
+          "min": 0,
+          "max": 10
+        },
+        "killSeconds": {
+          "type": "float",
+          "label": "倒した印を出す長さ（秒）",
+          "order": 2,
+          "default": 0.42,
+          "min": 0,
+          "max": 10
+        },
+        "hitSize": {
+          "type": "float",
+          "label": "当てた印の大きさ（px）",
+          "order": 3,
+          "default": 6.0,
+          "min": 0,
+          "max": 20
+        },
+        "killSize": {
+          "type": "float",
+          "label": "倒した印の大きさ（px）",
+          "order": 4,
+          "default": 9.0,
+          "min": 0,
+          "max": 20
+        },
+        "killColor": {
+          "type": "color",
+          "label": "倒した印の色",
+          "order": 5,
+          "default": "#ff7a2a"
+        }
+      }
+    },
+    "fling": {
+      "kind": "record",
+      "label": "倒した敵が吹っ飛ぶ",
+      "order": 4,
+      "fields": {
+        "pistol": {
+          "type": "float",
+          "label": "拳銃の横の速さ（m/秒）",
+          "order": 1,
+          "default": 2.4,
+          "min": 0,
+          "max": 20
+        },
+        "shotgun": {
+          "type": "float",
+          "label": "散弾銃の横の速さ（m/秒）",
+          "order": 2,
+          "default": 4.2,
+          "min": 0,
+          "max": 20
+        },
+        "rifle": {
+          "type": "float",
+          "label": "連射銃の横の速さ（m/秒）",
+          "order": 3,
+          "default": 1.8,
+          "min": 0,
+          "max": 20
+        },
+        "closeRange": {
+          "type": "float",
+          "label": "近い時に強める距離（m）",
+          "order": 4,
+          "default": 5.0,
+          "min": 0,
+          "max": 20
+        },
+        "closeBoost": {
+          "type": "float",
+          "label": "0 m での倍率",
+          "order": 5,
+          "default": 2.2,
+          "min": 0,
+          "max": 20
+        },
+        "lift": {
+          "type": "float",
+          "label": "上への速さ（m/秒）",
+          "order": 6,
+          "default": 3.2,
+          "min": 0,
+          "max": 20
+        },
+        "gravity": {
+          "type": "float",
+          "label": "下へ引く強さ（m/秒²）",
+          "order": 7,
+          "default": 14.0,
+          "min": 0,
+          "max": 200
+        },
+        "friction": {
+          "type": "float",
+          "label": "床を滑る時の減り方（m/秒²）",
+          "order": 8,
+          "default": 9.0,
+          "min": 0,
+          "max": 20
+        },
+        "spin": {
+          "type": "float",
+          "label": "回る速さ（度/秒）",
+          "order": 9,
+          "default": 140.0,
+          "min": 0,
+          "max": 2000
+        },
+        "tilt": {
+          "type": "float",
+          "label": "飛んでいる間に反る角（度）",
+          "order": 10,
+          "default": 28.0,
+          "min": 0,
+          "max": 200
+        }
+      }
+    },
+    "gib": {
+      "kind": "record",
+      "label": "弾ける（gib）条件と肉片の数",
+      "order": 5,
+      "fields": {
+        "shotgunRange": {
+          "type": "float",
+          "label": "散弾銃で弾ける距離（m）",
+          "order": 1,
+          "default": 4.5,
+          "min": 0,
+          "max": 20
+        },
+        "shotgunChance": {
+          "type": "float",
+          "label": "散弾銃の近距離で弾ける確率",
+          "order": 2,
+          "default": 0.8,
+          "min": 0,
+          "max": 1
+        },
+        "headDamage": {
+          "type": "float",
+          "label": "頭への 1 発の威力がこれ以上で弾ける",
+          "order": 3,
+          "default": 45.0,
+          "min": 0,
+          "max": 200
+        },
+        "headChance": {
+          "type": "float",
+          "label": "頭への強い一撃で弾ける確率",
+          "order": 4,
+          "default": 0.35,
+          "min": 0,
+          "max": 1
+        },
+        "overkill": {
+          "type": "float",
+          "label": "体力を超えた分がこれ以上で弾ける",
+          "order": 5,
+          "default": 90.0,
+          "min": 0,
+          "max": 200
+        },
+        "overkillChance": {
+          "type": "float",
+          "label": "余剰ダメージで弾ける確率",
+          "order": 6,
+          "default": 0.6,
+          "min": 0,
+          "max": 1
+        },
+        "countMin": {
+          "type": "int",
+          "label": "肉片の数（少ない時）",
+          "order": 7,
+          "default": 8,
+          "min": 0,
+          "max": 200
+        },
+        "countMax": {
+          "type": "int",
+          "label": "肉片の数（多い時）",
+          "order": 8,
+          "default": 12,
+          "min": 0,
+          "max": 200
+        }
+      }
+    },
+    "gibPieces": {
+      "kind": "record",
+      "label": "肉片の飛び方と残り方",
+      "order": 6,
+      "fields": {
+        "scale": {
+          "type": "float",
+          "label": "肉片の大きさの倍率（glb の大きさに掛ける）",
+          "default": 1.5,
+          "min": 0.1,
+          "max": 5,
+          "order": 1
+        },
+        "glow": {
+          "type": "float",
+          "label": "発光の筋の明るさの倍率（glb の強さに掛ける）",
+          "default": 4.0,
+          "min": 0,
+          "max": 10,
+          "order": 2
+        },
+        "speed": {
+          "type": "float",
+          "label": "撃たれた向きへの速さ（m/秒）",
+          "order": 3,
+          "default": 5.5,
+          "min": 0,
+          "max": 20
+        },
+        "scatter": {
+          "type": "float",
+          "label": "まわりへ散る速さ（m/秒）",
+          "order": 4,
+          "default": 3.5,
+          "min": 0,
+          "max": 20
+        },
+        "lift": {
+          "type": "float",
+          "label": "上への速さ（m/秒）",
+          "order": 5,
+          "default": 5.5,
+          "min": 0,
+          "max": 20
+        },
+        "spin": {
+          "type": "float",
+          "label": "回る速さ（度/秒）",
+          "order": 6,
+          "default": 720.0,
+          "min": 0,
+          "max": 2000
+        },
+        "gravity": {
+          "type": "float",
+          "label": "下へ引く強さ（m/秒²）",
+          "order": 7,
+          "default": 14.0,
+          "min": 0,
+          "max": 200
+        },
+        "bounce": {
+          "type": "float",
+          "label": "床で跳ねた時に残る縦の速さの割合",
+          "order": 8,
+          "default": 0.35,
+          "min": 0,
+          "max": 1
+        },
+        "friction": {
+          "type": "float",
+          "label": "床を滑る時の減り方（m/秒²）",
+          "order": 9,
+          "default": 0.55,
+          "min": 0,
+          "max": 10
+        },
+        "life": {
+          "type": "float",
+          "label": "残る長さ（秒）",
+          "order": 10,
+          "default": 3.5,
+          "min": 0,
+          "max": 20
+        },
+        "fade": {
+          "type": "float",
+          "label": "終わりに縮んで消える長さ（秒）",
+          "order": 11,
+          "default": 0.5,
+          "min": 0,
+          "max": 10
+        },
+        "limit": {
+          "type": "int",
+          "label": "同時に残す数の上限（古い物から消す）",
+          "order": 12,
+          "default": 36,
+          "min": 0,
+          "max": 200
+        }
+      }
+    },
+    "gibLight": {
+      "kind": "record",
+      "label": "弾けた瞬間の光",
+      "order": 7,
+      "fields": {
+        "lightColor": {
+          "type": "color",
+          "label": "弾けた瞬間の光の色",
+          "order": 1,
+          "default": "#ff8a3c"
+        },
+        "lightIntensity": {
+          "type": "float",
+          "label": "弾けた瞬間の光の強さ",
+          "order": 2,
+          "default": 2.0,
+          "min": 0,
+          "max": 20
+        },
+        "lightRange": {
+          "type": "float",
+          "label": "弾けた瞬間の光の届く距離（m）",
+          "order": 3,
+          "default": 4.0,
+          "min": 0,
+          "max": 20
+        },
+        "lightSeconds": {
+          "type": "float",
+          "label": "弾けた瞬間の光の長さ（秒）",
+          "order": 4,
+          "default": 0.12,
+          "min": 0,
+          "max": 10
+        },
+        "lights": {
+          "type": "int",
+          "label": "同時に点ける光の数",
+          "order": 5,
+          "default": 2,
+          "min": 0,
+          "max": 200
+        }
+      }
+    },
+    "hitStop": {
+      "kind": "record",
+      "label": "hit stop",
+      "order": 8,
+      "fields": {
+        "multiKill": {
+          "type": "int",
+          "label": "1 コマにこの数以上倒すと hit stop",
+          "order": 1,
+          "default": 3,
+          "min": 0,
+          "max": 200
+        },
+        "freeze": {
+          "type": "float",
+          "label": "止める長さ（実秒）",
+          "order": 2,
+          "default": 0.045,
+          "min": 0,
+          "max": 10
+        },
+        "slow": {
+          "type": "float",
+          "label": "遅く流す長さ（実秒）",
+          "order": 3,
+          "default": 0.1,
+          "min": 0,
+          "max": 10
+        },
+        "slowScale": {
+          "type": "float",
+          "label": "遅く流す速さ（倍）",
+          "order": 4,
+          "default": 0.3,
+          "min": 0,
+          "max": 1
+        },
+        "ramp": {
+          "type": "float",
+          "label": "等速へ戻す長さ（実秒）",
+          "order": 5,
+          "default": 0.08,
+          "min": 0,
+          "max": 10
+        },
+        "lastFreeze": {
+          "type": "float",
+          "label": "最後の 1 体: 止める長さ（実秒）",
+          "order": 6,
+          "default": 0.09,
+          "min": 0,
+          "max": 10
+        },
+        "lastSlow": {
+          "type": "float",
+          "label": "最後の 1 体: 遅く流す長さ（実秒）",
+          "order": 7,
+          "default": 0.3,
+          "min": 0,
+          "max": 10
+        }
+      }
+    }
+  }
+}

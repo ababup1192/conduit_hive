@@ -22,7 +22,13 @@
 //
 // ── 撃つ ──
 // 引き金を引いて撃てる時（Arsenal.canFire）、照準（反動で跳ね上がった分を含む）からのレイを敵と的の列へ当て（Hitscan）、
-// 壁に当たった所に火花・敵に当たった所に体液の飛沫・銃口にマズルフラッシュの粒を出す（Particles3d）。弾は飛ばない。
+// 壁に当たった所に火花と煙・敵に当たった所に体液の飛沫・銃口に武器ごとのマズルフラッシュの粒を出す（Particles3d）。弾は飛ばない
+// （連射銃の曳光弾は当たった所まで飛ぶ絵だけ。Tracers）。撃つと描くカメラが揺れ（CameraShake）、照準に当てた印と倒した印が出る（marks）。
+//
+// ── 倒す ──
+// 倒れた敵は撃たれた向きへ吹っ飛ぶか、条件に当たれば弾けて肉片と体液と衝撃の輪と短い光になる（Horde.applyDamage・Gibs）。
+// 1 コマに multiKill 体以上倒した時と、群れの最後の 1 体（生きている敵も湧くのを待つ敵もいない）を倒した時は hit stop
+// （遊びの時計を止めて遅く流す。paceOf が Clock.withSlow で宣言し、App が時計に掛ける）。
 //
 // ── 敵と体力 ──
 // 部屋（区画の種類が Room）に入ると、その入口を checkpoint に控え、まだ入っていない区画なら wave を始める（Horde.enter。通路も wave を持てる）。
@@ -31,7 +37,7 @@
 // 倒れた敵は時々弾や回復を落とす（Pickups.dropsOf）。紹介の動画の自動の操縦の間だけ、最後の部屋の wave を TourDoc の finalWaves までにする。
 mod World {
 
-    use fge::{Camera3d, Clock, Hash01, Num, Vec3}
+    use fge::{Camera3d, Clock, Hash01, Num, TimeScale, Vec3}
     use Events.Event
 
     /// このフレームの入力: 歩き方（Walker.Drive）・引き金・持ち替え。
@@ -81,6 +87,12 @@ mod World {
     /// 拾った時の知らせ: 種類・量・拾った時刻。
     pub type alias Notice = { kind = Pickups.Kind, amount = Int32, at = Float64 }
 
+    /// 照準の印: 最後に敵へ当てた時刻と、最後に倒した時刻（遊びの時計の秒）。
+    pub type alias Marks = { hitAt = Float64, killAt = Float64 }
+
+    /// hit stop: 合図の時刻（遊びの時計）と、群れの最後の 1 体を倒した時か（長く止める）。
+    pub type alias HitStop = { at = Clock.Time[PlayClock.Play], last = Bool }
+
     /// クリアの記録: かかった時間（秒）・倒した数・最後に立っていた所と向き（ラジアン。結果の画面の背景がそこから見回す）・クリアした時刻。
     pub type alias Tally = { seconds = Float64, kills = Int32, x = Float64, z = Float64, yaw = Float64, endedAt = Float64 }
 
@@ -93,7 +105,7 @@ mod World {
     /// 敵の群れ・体力・やり直す所・最後にいた区画（壁の中の None は数えない）・このコマに起きた事・
     /// ポーズ・拾った物の番号・倒れた敵が落とした物・拾った時の知らせ・倒した数・始めた時刻・クリアした時刻・
     /// 紹介の動画の自動の操縦（`start tour` の時だけ Some。キーとマウスの代わりに歩いて撃ち、体力と弾を TourDoc の下限より下げない）・
-    /// 後の時刻に起きる事（時刻と起きる事。撃った後の薬莢と先台）。
+    /// 後の時刻に起きる事（時刻と起きる事。撃った後の薬莢と先台）・連射銃の曳光弾・弾けた肉片・描くカメラの揺れ・照準の印・hit stop。
     pub type alias SessionRec = {
         walker = Walker.Walker,
         look = Look,
@@ -114,7 +126,12 @@ mod World {
         startedAt = Float64,
         clearedAt = Option[Float64],
         pilot = Option[Pilot.State],
-        pending = List[{ at = Float64, event = Event }]
+        pending = List[{ at = Float64, event = Event }],
+        tracers = List[Tracers.Tracer],
+        gibs = Gibs.State,
+        shake = CameraShake.Shake,
+        marks = Marks,
+        hitStop = HitStop
     }
 
     /// 歩いている間の中身。作るのは World の中だけ。読む口は Session を受ける関数・書く口は mapSession。
@@ -158,7 +175,10 @@ mod World {
           horde = Horde.empty(), health = Health.full(PlayerDoc.rec(res#player)),
           checkpoint = { x = s#x, z = s#z, yawDeg = s#yaw, zone = None, arsenal = Arsenal.initial(res#weapons), kills = 0, taken = Set.empty(), waves = Map.empty() },
           lastZone = None, events = Nil,
-          pause = Pause.Running, taken = Set.empty(), drops = Nil, notice = None, kills = 0, startedAt = t, clearedAt = None, pilot = None, pending = Nil }
+          pause = Pause.Running, taken = Set.empty(), drops = Nil, notice = None, kills = 0, startedAt = t, clearedAt = None, pilot = None, pending = Nil,
+          tracers = Nil, gibs = Gibs.empty(), shake = CameraShake.none(), marks = noMarks(), hitStop = { at = Clock.never(), last = false } }
+
+    def noMarks(): Marks = { hitAt = -1000.0, killAt = -1000.0 }
 
     /// 遊びから始める状態（迷路の start の印に立ち、始めた時刻は 0 秒）。
     pub def initial(res: Res.Res): World =
@@ -173,6 +193,9 @@ mod World {
 
     /// 遊んでいる場面に自動の操縦を付ける（紹介の動画の `start tour`）。
     pub def withPilot(w: World): World = mapSession(s -> { pilot = Some(Pilot.start()), look = Look.Captured | s }, w)
+
+    /// 自動の操縦が狙っている敵の番号（付いていない・狙っていなければ None。測りが様子を書く）。
+    pub def pilotTargetOf(w: World): Option[Int32] = sessionOf(w) |> Option.flatMap(s -> rec(s)#pilot) |> Option.flatMap(p -> p#target)
 
     /// 自動の操縦が向かっている点の名前（付いていない・歩き終えたら空）。
     pub def pilotPoint(res: Res.Res, w: World): String =
@@ -269,6 +292,15 @@ mod World {
     /// 今の 3D の粒。
     pub def particlesOf(s: Session): List[Particles3d.Particle] = rec(s)#particles
 
+    /// 飛んでいる曳光弾。
+    pub def tracersOf(s: Session): List[Tracers.Tracer] = rec(s)#tracers
+
+    /// 弾けた肉片と、最近弾けた所。
+    pub def gibsOf(s: Session): Gibs.State = rec(s)#gibs
+
+    /// 照準の印の時刻。
+    pub def marksOf(s: Session): Marks = rec(s)#marks
+
     /// 今の見回しの遅れ（度）。
     pub def swayOf(s: Session): { x = Float64, y = Float64 } = rec(s)#sway
 
@@ -296,8 +328,11 @@ mod World {
     /// 倒した数。
     pub def killsOf(s: Session): Int32 = rec(s)#kills
 
-    /// 時刻 t の照準のカメラ。
-    pub def cameraOf(res: Res.Res, t: Float64, s: Session): Camera3d.Camera3d = aimOf(res, t, rec(s))
+    /// 時刻 t の描くカメラ（照準のカメラに、揺れと撃った時に目が後ろへ下がる跳ねを足す）。
+    pub def cameraOf(res: Res.Res, t: Float64, s: Session): Camera3d.Camera3d = viewOf(res, t, rec(s))
+
+    /// 時刻 t の照準のカメラ（撃つレイと同じ物。揺れも跳ねも無し）。
+    pub def aimCameraOf(res: Res.Res, t: Float64, s: Session): Camera3d.Camera3d = aimOf(res, t, rec(s))
 
     /// F3 の診断を出しているか。
     pub def showsDiagnosticsIn(s: Session): Bool = rec(s)#diagnosticsView == DiagnosticsView.Shown
@@ -315,11 +350,19 @@ mod World {
     pub def seconds(w: World): Float64 = Clock.secondsOf(Clock.nowOf(w#play))
 
     /// 遊びの時計の進み方: 終了の確認の窓が出ている間とポーズの間は止める（App.addClock が毎フレーム 1 回だけ進める）。
-    pub def paceOf(w: World): Clock.Pace[PlayClock.Play, PlayClock.Halt] =
-        Clock.paceOf(
+    /// 遊んでいる間は、最後の hit stop の合図から JuiceDoc の hitStop の形で止めて遅く流す。
+    pub def paceOf(res: Res.Res, w: World): Clock.Pace[PlayClock.Play, PlayClock.Halt] =
+        let pace = Clock.paceOf(
             if (w#quit == Quit.Asking) Clock.Run.Paused(PlayClock.Halt.AskingQuit)
             else if (isPaused(w)) Clock.Run.Paused(PlayClock.Halt.Paused)
-            else Clock.Run.Running)
+            else Clock.Run.Running);
+        sessionOf(w) |> Option.map(s -> Clock.withSlow(rec(s)#hitStop#at, hitStopPlan(JuiceDoc.rec(res#juice)#hitStop, rec(s)#hitStop#last), pace))
+            |> Option.getWithDefault(pace)
+
+    /// hit stop の形（last = 群れの最後の 1 体）: freeze 秒止め、slow 秒を slowScale 倍で流し、ramp 秒で等速へ戻す（秒は実時間）。
+    def hitStopPlan(h: JuiceDoc.HitStop, last: Bool): TimeScale.Plan =
+        TimeScale.freezeThenSlow({ freeze = if (last) h#lastFreeze else h#freeze, freezeScale = 0.0,
+                                   slow = if (last) h#lastSlow else h#slow, slowScale = h#slowScale, ramp = h#ramp })
 
     /// 入力から次の状態を作る（秒は遊びの時計がこのコマに進んだ分）。終了の確認の窓・ポーズの間は歩かず撃たない（起きた事も無い）。
     /// クリアしてから clearSeconds が過ぎたコマに、クリアの画面へ移る。
@@ -367,12 +410,15 @@ mod World {
         let dt = Num.clamp(0.0, 0.05, Clock.dtOf(clock));
         let pd = PlayerDoc.rec(res#player);
         if (Health.isRespawnDue(pd, t, s#health)) respawn(res, s)
-        else if (Health.isDown(s#health)) { particles = Particles3d.step(t, s#particles) | s }
+        else if (Health.isDown(s#health)) { particles = Particles3d.step(t, s#particles), gibs = Gibs.step(JuiceDoc.rec(res#juice)#gib, lineOfSightIn(res), t, dt, s#gibs),
+                                              tracers = Tracers.step(Particles3dDoc.rec(res#particles)#tracer, t, s#tracers) | s }
         else {
             let vm = FpViewmodelDoc.rec(res#viewmodel);
             let equipped = Arsenal.equip(vm, t, input#choice, s#arsenal);
             let moved = { walker = Walker.step(res#collision, WalkDoc.rec(res#walk), input#drive, clock, s#walker),
                           sway = swayAfter(vm, input#drive, dt, s#sway), arsenal = equipped, particles = Particles3d.step(t, s#particles),
+                          gibs = Gibs.step(JuiceDoc.rec(res#juice)#gib, lineOfSightIn(res), t, dt, s#gibs),
+                          tracers = Tracers.step(Particles3dDoc.rec(res#particles)#tracer, t, s#tracers),
                           drops = Pickups.keepDrops(t, PickupsDoc.rec(res#pickups)#dropLimit, s#drops),
                           events = List.append(s#events, switched(s#arsenal, equipped)) | s };
             let picked = pickUp(res, t, enterZone(res, t, moved));
@@ -382,8 +428,21 @@ mod World {
                 if (wants and Arsenal.canFire(res#weapons, t, a)) shoot(res, t, dt, picked)
                 else if (wants and Arsenal.isReady(t, a) and Arsenal.isEmpty(res#weapons, a)) dryFire(res, t, picked)
                 else picked;
-            tally(res, t, stepHorde(res, t, dt, fired))
+            hitStopped(res, clock, tally(res, t, stepHorde(res, t, dt, fired)))
         }
+
+    /// 線の見通し（壁と立てた物の箱に遮られないか）。肉片と倒れた体が壁を抜けないかを見る。
+    def lineOfSightIn(res: Res.Res): (Vec3.Vec3, Vec3.Vec3) -> Bool = (a, b) -> Collider.isLineClear(res#collision, a, b)
+
+    /// このコマに倒した数が multiKill 以上か、群れの最後の 1 体（生きている敵も湧くのを待つ敵もいない）を倒したら、今の時刻に hit stop の合図を置く。
+    def hitStopped(res: Res.Res, clock: Clock.Clock[PlayClock.Play], s: SessionRec): SessionRec =
+        let downs = s#events |> List.count(e -> match e {
+            case Event.EnemyDown(_, _) => true
+            case _                     => false
+        });
+        let last = downs > 0 and Horde.aliveCount(s#horde) == 0 and Horde.queuedCount(s#horde) == 0;
+        if (last or downs >= Int32.max(1, JuiceDoc.rec(res#juice)#hitStop#multiKill)) { hitStop = { at = Clock.nowOf(clock), last = last } | s }
+        else s
 
     /// 持ち替えた事（替えた先が今と違えば 1 つ）。
     def switched(before: Arsenal.Arsenal, after: Arsenal.Arsenal): List[Event] =
@@ -413,7 +472,7 @@ mod World {
     /// 倒した数を数え、最後の部屋を空にした最初のコマにクリアの時刻を控える。
     def tally(res: Res.Res, t: Float64, s: SessionRec): SessionRec =
         let downs = s#events |> List.count(e -> match e {
-            case Event.EnemyDown(_) => true
+            case Event.EnemyDown(_, _) => true
             case _                  => false
         });
         let cleared = Option.isEmpty(s#clearedAt) and isFinalRoomClear(res, s#horde);
@@ -458,9 +517,12 @@ mod World {
         let splashes = outcome#splashes |> List.flatMap(sp ->
             Particles3d.emit(res#particles, Particles3d.Kind.Ichor, Particles3d.Space.World, sp#point, sp#normal, t, sp#seed * 16));
         let health = Health.hurt(t, outcome#damage, s#health);
-        let hurtEvents = if (outcome#damage > 0.0 and not Health.isDown(s#health)) Event.PlayerHurt(outcome#damage) :: Nil else Nil;
+        let hurts = outcome#damage > 0.0 and not Health.isDown(s#health);
+        let hurtEvents = if (hurts) Event.PlayerHurt(outcome#damage) :: Nil else Nil;
         let downEvents = if (Health.isDown(health) and not Health.isDown(s#health)) Event.PlayerDown :: Nil else Nil;
-        { horde = outcome#horde, health = health, particles = List.append(splashes, s#particles),
+        let jd = JuiceDoc.rec(res#juice);
+        { horde = outcome#horde, health = health, particles = Particles3d.added(res#particles, splashes, s#particles),
+          shake = if (hurts) CameraShake.add(jd#shake, t, jd#shake#hurt, s#shake) else s#shake,
           events = List.flatten(s#events :: outcome#events :: hurtEvents :: downEvents :: Nil) | s }
 
     /// やり直す: やり直す所に立ち、体力を満たし、敵と落とした物を消して、wave の進みを部屋に入った時に終えていた区画だけへ戻す
@@ -471,7 +533,8 @@ mod World {
         let walker = Walker.settle(res#collision, WalkDoc.rec(res#walk), Walker.standing(c#x, 0.0, c#z, c#yawDeg));
         { walker = walker, health = Health.full(PlayerDoc.rec(res#player)), horde = Horde.restore(c#waves, s#horde),
           arsenal = c#arsenal, kills = c#kills, taken = c#taken, drops = Nil, notice = None,
-          particles = Nil, lastZone = None, events = Event.Respawned :: Nil, pending = Nil | s }
+          particles = Nil, lastZone = None, events = Event.Respawned :: Nil, pending = Nil, tracers = Nil, gibs = Gibs.empty(), shake = CameraShake.none(),
+          marks = noMarks() | s }
 
     /// 見回しの遅れ: このコマに回した角を足し、上限で切り、swayFollow 秒ほどで 0 へ戻す。
     def swayAfter(vm: FpViewmodelDoc.Rec, d: Walker.Drive, dt: Float64, sway: { x = Float64, y = Float64 }): { x = Float64, y = Float64 } =
@@ -479,30 +542,65 @@ mod World {
         let clampMax = v -> Num.clamp(0.0 - vm#swayMax, vm#swayMax, v);
         { x = clampMax(sway#x + d#turnDeg + d#turnRate * dt) * keep, y = clampMax(sway#y + d#lookDeg) * keep }
 
-    /// 時刻 t に構えている武器で 1 回撃つ: 照準から粒を飛ばし、敵に当たれば傷を付け、当たった所に火花か体液・銃口にマズルフラッシュを出す。
+    /// 時刻 t に構えている武器で 1 回撃つ: 照準から粒を飛ばし、敵に当たれば傷を付け、当たった所に火花と煙か体液・銃口にマズルフラッシュを出す。
+    /// 連射銃は曳光弾を飛ばし、描くカメラを揺らし、照準の印の時刻を置く。倒れた敵のうち弾けた敵は肉片と体液と衝撃の輪になる。
     def shoot(res: Res.Res, t: Float64, dt: Float64, s: SessionRec): SessionRec =
         let a = s#arsenal;
         let stats = Arsenal.statsOf(res#weapons, a);
-        let impacts = Hitscan.fire(List.append(Horde.targetsOf(s#horde), res#hitTargets), aimOf(res, t, s), stats, a#shots);
+        let aim = aimOf(res, t, s);
+        let impacts = Hitscan.fire(List.append(Horde.targetsOf(s#horde), res#hitTargets), aim, stats, a#shots);
         let pdoc = Particles3dDoc.rec(res#particles);
         // WhyNot: 粒の真ん中を当たった点・銃口の点に置かない — 面を向いたビルボードの半分が壁や銃身に埋まる。粒の半分の大きさだけ手前へ出す。
         let sparks = impacts |> List.zipWithIndex |> List.flatMap(e -> {
             let (i, hit) = e;
-            let kind = impactKindOf(hit#struck);
             let lifted = Vec3.add(hit#point, Vec3.mul(hit#normal, pdoc#spark#size * 0.5));
-            Particles3d.emit(res#particles, kind, Particles3d.Space.World, lifted, hit#normal, t, a#shots * 64 + i)
+            let seed = a#shots * 64 + i;
+            if (isEnemy(hit#struck)) Particles3d.emit(res#particles, Particles3d.Kind.Ichor, Particles3d.Space.World, lifted, hit#normal, t, seed)
+            else List.append(Particles3d.emit(res#particles, Particles3d.Kind.Spark, Particles3d.Space.World, lifted, hit#normal, t, seed),
+                             Particles3d.emit(res#particles, Particles3d.Kind.Smoke, Particles3d.Space.World, lifted, hit#normal, t, seed + 32))
         });
-        let ahead = pdoc#muzzle#size * 0.5;
-        let flash = Particles3d.emit(res#particles, Particles3d.Kind.Muzzle, Particles3d.Space.Muzzle, Vec3.v3(0.0, 0.0, ahead), Vec3.v3(0.0, 0.0, 1.0), t, a#shots);
-        let damaged = Horde.applyDamage(res, t, stats#damage, impacts, s#horde);
+        let ahead = Particles3d.muzzleOf(res#particles, a#current)#size * 0.5;
+        let flash = Particles3d.emit(res#particles, Particles3d.Kind.Muzzle(a#current), Particles3d.Space.Muzzle, Vec3.v3(0.0, 0.0, ahead), Vec3.v3(0.0, 0.0, 1.0), t, a#shots);
+        let damaged = Horde.applyDamage(res, { t = t, damage = stats#damage, weapon = a#current, origin = aim#eye, index = a#shots }, impacts, s#horde);
         let fallen = damaged#fallen |> List.map(e -> { id = e#id, x = e#x, z = e#z, zone = Maze.zoneAt(res#maze, e#x, e#z) |> Option.getWithDefault(e#home) });
+        let burst = burstOf(res, t, aim#eye, a#shots, damaged#burst, s#gibs);
         let sd = SoundsDoc.rec(res#sounds);
         let ricochet = if (List.exists(hit -> not isEnemy(hit#struck), impacts) and Hash01.at(a#shots, 71) < sd#ricochetChance) Event.Ricochet :: Nil else Nil;
+        let jd = JuiceDoc.rec(res#juice);
+        let shaken = s#shake |> CameraShake.add(jd#shake, t, JuiceDoc.ofWeapon(a#current, jd#shake#fire)
+            + jd#shake#kill * Int32.toFloat64(List.length(damaged#fallen)) + jd#shake#gib * Int32.toFloat64(List.length(damaged#burst)));
+        let tracers = if (Tracers.isDue(pdoc#tracer, a#current, a#shots)) Tracers.add(pdoc#tracer, tracerOf(aim, stats#range, impacts, t), s#tracers) else s#tracers;
         { arsenal = Arsenal.fire(res#weapons, t, dt, a), horde = damaged#horde,
           drops = List.append(s#drops, Pickups.dropsOf(res#pickups, t, fallen)),
-          particles = List.append(flash, List.append(sparks, s#particles)),
+          particles = Particles3d.added(res#particles, List.flatten(flash :: sparks :: burst#particles :: Nil), s#particles),
+          gibs = burst#gibs, shake = shaken, tracers = tracers, marks = marksAfter(t, impacts, damaged#fallen, s#marks),
           pending = List.append(s#pending, afterShot(sd, t, a#current)),
           events = List.flatten(s#events :: (Event.Fired(a#current) :: Nil) :: ricochet :: damaged#events :: Nil) | s }
+
+    /// 照準の印: 敵に当てたら当てた時刻・倒したら倒した時刻を置く。
+    def marksAfter(t: Float64, impacts: List[Hitscan.Impact], fallen: List[Horde.Enemy], m: Marks): Marks =
+        { hitAt = if (List.exists(hit -> isEnemy(hit#struck), impacts)) t else m#hitAt, killAt = if (List.isEmpty(fallen)) m#killAt else t }
+
+    /// 弾けた敵ごとに、肉片（体の真ん中から撃たれた向きへ）・体液・衝撃の輪を出す（種は敵の番号と撃った回数）。
+    def burstOf(res: Res.Res, t: Float64, eye: Vec3.Vec3, shot: Int32, burst: List[Horde.Enemy], g: Gibs.State): { gibs = Gibs.State, particles = List[Particles3d.Particle] } =
+        let gd = JuiceDoc.rec(res#juice)#gib;
+        burst |> List.foldLeft((acc, e) -> {
+            let away = Knockback.awayFrom(eye#x, eye#z, e#x, e#z);
+            let center = Vec3.v3(e#x, 1.1, e#z);
+            let seed = e#id * 13 + shot;
+            let dir = Vec3.v3(away#dx, 0.35, away#dz);
+            let gore = Particles3d.emit(res#particles, Particles3d.Kind.Gore, Particles3d.Space.World, center, dir, t, seed * 16);
+            let ring = Particles3d.emit(res#particles, Particles3d.Kind.Ring, Particles3d.Space.World, center, Vec3.v3(0.0, 1.0, 0.0), t, seed * 16 + 1);
+            { gibs = Gibs.burst(gd, res#gibArt, t, seed, center, away#dx, away#dz, acc#gibs), particles = List.flatten(gore :: ring :: acc#particles :: Nil) }
+        }, { gibs = g, particles = Nil })
+
+    /// 曳光弾 1 本: 銃口のあたり（目から前へ 0.8 m・右へ 0.12 m・下へ 0.13 m）から、最初に当たった所（当たらなければ照準の先の届く距離）まで。
+    // WhyNot: 銃口の点を腕と銃の glb から取らない — 銃口は描く側の物で World は知らない。曳光弾は 1 コマに 2 m 余り進むので数 cm の違いは見えない。
+    pub def tracerOf(aim: Camera3d.Camera3d, range: Float64, impacts: List[Hitscan.Impact], t: Float64): Tracers.Tracer =
+        let forward = Camera3d.forward(aim);
+        let start = Vec3.add(aim#eye, Vec3.add(Vec3.mul(forward, 0.8), Vec3.add(Vec3.mul(Camera3d.right(aim), 0.12), Vec3.mul(Camera3d.up(aim), -0.13))));
+        let target = List.head(impacts) |> Option.map(hit -> hit#point) |> Option.getWithDefault(Vec3.add(aim#eye, Vec3.mul(forward, range)));
+        { origin = start, target = target, born = t }
 
     /// 撃った後に遅れて起きる事: 薬莢が床に落ちる（武器ごとの秒の後）・散弾銃は先台を引く。
     def afterShot(sd: SoundsDoc.Rec, t: Float64, w: WeaponsDoc.Weapon): List[{ at = Float64, event = Event }] = match w {
@@ -517,18 +615,32 @@ mod World {
         case _                          => false
     }
 
-    /// 当たった物の粒: 敵は体液の飛沫・ほかは火花。
-    def impactKindOf(struck: Hitscan.Struck): Particles3d.Kind = match struck {
-        case Hitscan.Struck.Enemy(_, _) => Particles3d.Kind.Ichor
-        case _                          => Particles3d.Kind.Spark
-    }
+    /// 時刻 t の描くカメラ: 照準のカメラに揺れの角を足し、撃った時の跳ねで目を後ろへ下げる。
+    def viewOf(res: Res.Res, t: Float64, s: SessionRec): Camera3d.Camera3d =
+        let aim = aimOf(res, t, s);
+        let jd = JuiceDoc.rec(res#juice);
+        let (yaw, pitch) = CameraShake.offsetAt(jd#shake, t, s#shake);
+        let back = s#arsenal#last |> Option.map(shot -> CameraShake.kickAt(jd#kick, shot#weapon, t, shot#at)) |> Option.getWithDefault(0.0);
+        { eye = CameraShake.pulledBack(aim#eye, Camera3d.forward(aim), back), yaw = aim#yaw + yaw, pitch = aim#pitch + pitch | aim }
 
-    /// 時刻 t の照準のカメラ: 目の位置・向きに、反動で跳ね上がった角を足す（撃つレイと描く場面が同じ物を使う）。
+    /// 時刻 t の照準のカメラ: 目の位置・向きに、反動で跳ね上がった角を足す（撃つレイと、描くカメラの元）。
     def aimOf(res: Res.Res, t: Float64, s: SessionRec): Camera3d.Camera3d =
         let walk = WalkDoc.rec(res#walk);
         let punch = Arsenal.punchAt(res#weapons, FpViewmodelDoc.rec(res#viewmodel), t, s#arsenal);
         { eye = Walker.eyeOf(walk, s#walker), yaw = s#walker#yaw, pitch = s#walker#pitch - punch * Num.pi() / 180.0,
           fovY = walk#fovY * Num.pi() / 180.0, near = 0.05, far = LookDoc.rec(res#look)#fogFar }
+
+    /// 撃った後の見た目の物: 3D の粒・肉片・曳光弾・照準の印（描き出しの場面が組む）。
+    pub type alias Effects = { particles = List[Particles3d.Particle], gibs = Gibs.State, tracers = List[Tracers.Tracer], marks = Marks }
+
+    /// 撃った後の見た目の物を読み替える（描き出しの場面が、少し前に弾けた・撃った見た目を置く）。
+    pub def mapEffects(f: Effects -> Effects, w: World): World = mapSession(s -> {
+        let e = f({ particles = s#particles, gibs = s#gibs, tracers = s#tracers, marks = s#marks });
+        { particles = e#particles, gibs = e#gibs, tracers = e#tracers, marks = e#marks | s }
+    }, w)
+
+    /// 武器の状態を読み替える（描き出しの場面が構える武器を替える）。
+    pub def mapArsenal(f: Arsenal.Arsenal -> Arsenal.Arsenal, w: World): World = mapSession(s -> { arsenal = f(s#arsenal) | s }, w)
 
     /// 敵の群れを差し替える（描き出しの場面・測り・テストが敵を並べる）。
     pub def withHorde(h: Horde.Horde, w: World): World = mapSession(s -> { horde = h | s }, w)

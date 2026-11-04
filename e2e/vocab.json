@@ -27,6 +27,9 @@
     {"name": "shot:wall", "doc": "ギャラリーの場面（gallery/wall.png）", "args": {}},
     {"name": "shot:horde", "doc": "ギャラリーの場面（gallery/horde.png）", "args": {}},
     {"name": "shot:fight", "doc": "ギャラリーの場面（gallery/fight.png）", "args": {}},
+    {"name": "shot:gib", "doc": "ギャラリーの場面（gallery/gib.png）", "args": {}},
+    {"name": "shot:fling", "doc": "ギャラリーの場面（gallery/fling.png）", "args": {}},
+    {"name": "shot:tracer", "doc": "ギャラリーの場面（gallery/tracer.png）", "args": {}},
     {"name": "shot:title", "doc": "ギャラリーの場面（gallery/title.png）", "args": {}},
     {"name": "shot:pickups", "doc": "ギャラリーの場面（gallery/pickups.png）", "args": {}},
     {"name": "shot:clear", "doc": "ギャラリーの場面（gallery/clear.png）", "args": {}}

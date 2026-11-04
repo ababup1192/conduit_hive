@@ -5,6 +5,12 @@
 mod Events {
     use Creatures.Kind
 
+    /// 敵の倒れ方。Fell = 撃たれた向きへ吹っ飛んで倒れた・Burst = 弾けて肉片になった。
+    pub enum Death with Eq, ToString {
+        case Fell
+        case Burst
+    }
+
     /// 起きた事。
     pub enum Event with Eq, ToString {
         // 撃った（構えていた武器）。
@@ -17,10 +23,14 @@ mod Events {
         case Ricochet
         // 弾が敵に当たった（型・当たった所）。
         case EnemyHit(Kind, Hitscan.Part)
-        // 敵が倒れた。
-        case EnemyDown(Kind)
+        // 敵が倒れた（型・倒れ方）。
+        case EnemyDown(Kind, Death)
         // melee の振り下ろしが当たる時刻を迎えた（当たったかは PlayerHurt）。
         case Swing
+        // melee が飛びかかり始めた。
+        case Lunge
+        // ranged が吐く前の溜めを始めた。
+        case Charge
         // ranged が projectile を吐いた。
         case Spit
         // projectile が壁で弾けた。

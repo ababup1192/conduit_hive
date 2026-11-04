@@ -64,6 +64,11 @@
       "looping": false
     },
     {
+      "name": "enemy_charge",
+      "path": "assets/sfx/enemy_charge.wav",
+      "looping": false
+    },
+    {
       "name": "enemy_down_1",
       "path": "assets/sfx/enemy_down_1.wav",
       "looping": false
@@ -131,6 +136,16 @@
     {
       "name": "enemy_swing_2",
       "path": "assets/sfx/enemy_swing_2.wav",
+      "looping": false
+    },
+    {
+      "name": "gib_1",
+      "path": "assets/sfx/gib_1.wav",
+      "looping": false
+    },
+    {
+      "name": "gib_2",
+      "path": "assets/sfx/gib_2.wav",
       "looping": false
     },
     {
@@ -374,8 +389,15 @@
       {
         "id": "particles3d",
         "pattern": "assets/conduit_hive.particles3d.json",
-        "title": "3D の粒（マズルフラッシュ・火花・撃った瞬間の灯り）",
+        "title": "3D の粒（武器ごとのマズルフラッシュ・火花と煙・撃った瞬間の灯り・曳光弾）",
         "schema": "assets/particles3d.schema.json",
+        "role": "material"
+      },
+      {
+        "id": "creaturefx",
+        "pattern": "assets/conduit_hive.creaturefx.json",
+        "title": "敵の粒（体液・弾けた時の体液と輪・projectile の光・溜めの光）",
+        "schema": "assets/creaturefx.schema.json",
         "role": "material"
       },
       {
@@ -425,6 +447,13 @@
         "pattern": "assets/conduit_hive.sounds.json",
         "title": "音の鳴らし方（変化・音ごとの量・薬莢と跳弾・敵の唸りと叫び・部屋ごとの環境音）",
         "schema": "assets/sounds.schema.json",
+        "role": "tuning"
+      },
+      {
+        "id": "juice",
+        "pattern": "assets/conduit_hive.juice.json",
+        "title": "撃った・倒した時の手応え（揺れ・照準の印・吹っ飛ぶ・弾ける・hit stop）",
+        "schema": "assets/juice.schema.json",
         "role": "tuning"
       },
       {

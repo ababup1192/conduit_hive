@@ -80,6 +80,10 @@ mod Arsenal {
         let low = a#owned |> Set.toList |> List.filter(w -> not WeaponsDoc.statsOf(w, doc)#infinite and ammoIn(w, a) < n);
         { ammo = low |> List.foldLeft((ammo, w) -> Map.insert(w, WeaponsDoc.statsOf(w, doc)#maxAmmo, ammo), a#ammo) | a }
 
+    /// 武器 w を持って構えている状態（弾は上限まで・持ち替えは済み）。描き出しの場面が使う。
+    pub def readied(doc: WeaponsDoc.Doc, w: Weapon, a: Arsenal): Arsenal =
+        { owned = Set.insert(w, a#owned), current = w, hands = Hands.Ready, ammo = Map.insert(w, WeaponsDoc.statsOf(w, doc)#maxAmmo, a#ammo) | a }
+
     /// 武器 w に撃てる弾があるか（持っていない武器は偽）。
     pub def isUsable(doc: WeaponsDoc.Doc, w: Weapon, a: Arsenal): Bool = owns(w, a) and isLoaded(doc, w, a)
 

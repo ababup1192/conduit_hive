@@ -121,7 +121,7 @@ mod TestFlow {
     @Test
     def testPauseStopsThePlayClock(): Unit \ Assert =
         let paused = World.pause(World.initial(res()));
-        Assert.assertEq(expected = 0.0, Clock.secondsOf(Clock.nowOf(Clock.advance(World.paceOf(paused), 1.0, paused#play))))
+        Assert.assertEq(expected = 0.0, Clock.secondsOf(Clock.nowOf(Clock.advance(World.paceOf(res(), paused), 1.0, paused#play))))
 
     /// 今の時計が 5 秒の所から遊び直すと、かかった時間はそこから数える（クリアの時間にタイトルにいた 5 秒を足さない）。
     @Test

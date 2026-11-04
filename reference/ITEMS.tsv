@@ -2,8 +2,11 @@ clear	dynamic=108	static=0
 corridor	dynamic=112	static=0
 fight	dynamic=112	static=0
 fire	dynamic=112	static=0
+fling	dynamic=43	static=0
+gib	dynamic=51	static=0
 hall	dynamic=112	static=0
 horde	dynamic=112	static=0
 pickups	dynamic=112	static=0
 title	dynamic=247	static=0
+tracer	dynamic=36	static=0
 wall	dynamic=112	static=0

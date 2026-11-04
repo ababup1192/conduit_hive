@@ -1,0 +1,56 @@
+{
+  "version": 1,
+  "title": "敵の粒",
+  "note": "敵に当たった所と projectile が弾けた所の体液の飛沫（ichor）・敵が弾けた時の体液（gore）と衝撃の輪（ring。grow = 寿命の終わりの大きさの倍率で広がる）・ranged が吐く projectile の光る玉と点光源（spit）・ranged の溜めの口の光（charge）。形は conduit_hive.particles3d.json の粒と同じ（count・life・speed・spread・size・grow・aspect・gravity・color・intensity）。読むのは src/Particles3dDoc.flix で、particles3d.json と一緒に読む。",
+  "ichor": {
+    "count": 16,
+    "life": 0.55,
+    "lifeJitter": 0.5,
+    "speed": 4.5,
+    "spread": 65.0,
+    "size": 0.06,
+    "grow": 0.5,
+    "aspect": 1.0,
+    "gravity": 9.8,
+    "color": "#ff7a2a",
+    "intensity": 2.5
+  },
+  "gore": {
+    "count": 30,
+    "life": 0.8,
+    "lifeJitter": 0.5,
+    "speed": 7.0,
+    "spread": 180.0,
+    "size": 0.05,
+    "grow": 0.5,
+    "aspect": 1.0,
+    "gravity": 9.8,
+    "color": "#ff6a20",
+    "intensity": 2.8
+  },
+  "ring": {
+    "count": 1,
+    "life": 0.15,
+    "lifeJitter": 0.0,
+    "speed": 0.0,
+    "spread": 0.0,
+    "size": 0.3,
+    "grow": 5.0,
+    "aspect": 1.0,
+    "gravity": 0.0,
+    "color": "#d8602a",
+    "intensity": 0.9
+  },
+  "spit": {
+    "size": 0.32,
+    "color": "#ff8a3c",
+    "intensity": 5.0,
+    "lightIntensity": 2.5,
+    "lightRange": 4.0
+  },
+  "charge": {
+    "size": 0.42,
+    "color": "#ff8a3c",
+    "intensity": 5.0
+  }
+}

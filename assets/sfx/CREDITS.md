@@ -37,18 +37,18 @@ Freesound（https://freesound.org）の **CC0 1.0（パブリックドメイン�
 | `ricochet__fs30932.ogg` | https://freesound.org/people/aust_paul/sounds/30932/ | aust_paul | CC0 1.0 | bullet ricochet.wav | ricochet_2（金属に当たる 2（跳弾）・0.01 秒目から 0.50 秒ぶん） |
 | `metal_hits__fs116645.ogg` | https://freesound.org/people/Woodingp/sounds/116645/ | Woodingp | CC0 1.0 | bullets hit EDIT.aif | ricochet_3（金属に当たる 3・3.41 秒目から 0.30 秒ぶん）<br>enemy_down_1（倒れる 1（金属板の打撃を -14 dB 重ねる）・6.71 秒目から 1.30 秒ぶん）<br>enemy_down_2（倒れる 2（高さを 0.86 倍・金属板の打撃を -16 dB 重ねる）・3.73 秒目から 1.45 秒ぶん） |
 | `growl_a__fs442115.ogg` | https://freesound.org/people/Darsycho/sounds/442115/ | Darsycho | CC0 1.0 | troll idle noises.wav | enemy_growl_1（唸り 1・3.83 秒目から 2.77 秒ぶん）<br>enemy_growl_2（唸り 2・6.86 秒目から 1.65 秒ぶん）<br>enemy_growl_3（唸り 3・14.09 秒目から 2.36 秒ぶん） |
-| `growl_b__fs20208.ogg` | https://freesound.org/people/ubecareful/sounds/20208/ | ubecareful | CC0 1.0 | growl1.wav | 使っていない（候補として落とした予備） |
+| `growl_b__fs20208.ogg` | https://freesound.org/people/ubecareful/sounds/20208/ | ubecareful | CC0 1.0 | growl1.wav | enemy_charge（吐く前の溜め（喉の唸り。高さを 1.25 倍）・0.87 秒目から 0.75 秒ぶん） |
 | `scream_a__fs391552.ogg` | https://freesound.org/people/gpag1/sounds/391552/ | gpag1 | CC0 1.0 | Monster screams.wav | enemy_scream_1（叫び 1・17.45 秒目から 2.60 秒ぶん）<br>enemy_scream_2（叫び 2・64.20 秒目から 2.40 秒ぶん） |
 | `scream_b__fs398908.ogg` | https://freesound.org/people/quadraslayer/sounds/398908/ | quadraslayer | CC0 1.0 | Monster Roar 2.wav | enemy_scream_3（咆哮（叫び 3）・1.45 秒目から 2.90 秒ぶん） |
 | `swing_a__fs60013.ogg` | https://freesound.org/people/qubodup/sounds/60013/ | qubodup | CC0 1.0 | Whoosh | enemy_swing_1（振り下ろし 1・0.00 秒目から 0.43 秒ぶん） |
 | `swing_b__fs72191.ogg` | https://freesound.org/people/snowflakes/sounds/72191/ | snowflakes | CC0 1.0 | whip03.wav | enemy_swing_2（振り下ろし 2・0.00 秒目から 0.42 秒ぶん） |
-| `flesh_a__fs423301.ogg` | https://freesound.org/people/u1769092/sounds/423301/ | u1769092 | CC0 1.0 | VisceralBulletImpacts.wav | enemy_hit_1（被弾 1・0.11 秒目から 0.30 秒ぶん）<br>enemy_hit_2（被弾 2・0.82 秒目から 0.30 秒ぶん） |
-| `flesh_b__fs511194.ogg` | https://freesound.org/people/Pablobd/sounds/511194/ | Pablobd | CC0 1.0 | Headshot.wav | enemy_hit_3（被弾 3・0.03 秒目から 0.60 秒ぶん） |
+| `flesh_a__fs423301.ogg` | https://freesound.org/people/u1769092/sounds/423301/ | u1769092 | CC0 1.0 | VisceralBulletImpacts.wav | enemy_hit_1（被弾 1・0.11 秒目から 0.30 秒ぶん）<br>enemy_hit_2（被弾 2・0.82 秒目から 0.30 秒ぶん）<br>gib_2（弾ける 2（高さを 0.75 倍・肉の音を -4 dB 重ねる）・0.11 秒目から 0.65 秒ぶん） |
+| `flesh_b__fs511194.ogg` | https://freesound.org/people/Pablobd/sounds/511194/ | Pablobd | CC0 1.0 | Headshot.wav | enemy_hit_3（被弾 3・0.03 秒目から 0.60 秒ぶん）<br>gib_1（弾ける 1（高さを 0.8 倍・肉の音を -4 dB 重ねる）・0.03 秒目から 0.60 秒ぶん） |
 | `body_fall__fs504626.ogg` | https://freesound.org/people/leonelmail/sounds/504626/ | leonelmail | CC0 1.0 | BODY FALL - V HVY - DIRT | enemy_down_1（倒れる 1（金属板の打撃を -14 dB 重ねる）・0.30 秒目から 1.30 秒ぶん）<br>enemy_down_2（倒れる 2（高さを 0.86 倍・金属板の打撃を -16 dB 重ねる）・0.30 秒目から 1.45 秒ぶん） |
 | `spit_a__fs237386.ogg` | https://freesound.org/people/squareal/sounds/237386/ | squareal | CC0 1.0 | Spitting Blood 01.wav | 使っていない（候補として落とした予備） |
 | `spit_b__fs751338.ogg` | https://freesound.org/people/qubodup/sounds/751338/ | qubodup | CC0 1.0 | Slime Attack 1 | enemy_spit（吐く（高さを 0.85 倍）・0.00 秒目から 0.52 秒ぶん） |
-| `splat_a__fs445109.ogg` | https://freesound.org/people/Breviceps/sounds/445109/ | Breviceps | CC0 1.0 | Mud Splat | spit_burst_1（塊が弾ける 1・0.00 秒目から 0.36 秒ぶん） |
-| `splat_b__fs445968.ogg` | https://freesound.org/people/Breviceps/sounds/445968/ | Breviceps | CC0 1.0 | So slimy! | spit_burst_2（塊が弾ける 2・1.38 秒目から 0.40 秒ぶん） |
+| `splat_a__fs445109.ogg` | https://freesound.org/people/Breviceps/sounds/445109/ | Breviceps | CC0 1.0 | Mud Splat | spit_burst_1（塊が弾ける 1・0.00 秒目から 0.36 秒ぶん）<br>gib_1（弾ける 1（高さを 0.8 倍・肉の音を -4 dB 重ねる）・0.00 秒目から 0.60 秒ぶん） |
+| `splat_b__fs445968.ogg` | https://freesound.org/people/Breviceps/sounds/445968/ | Breviceps | CC0 1.0 | So slimy! | spit_burst_2（塊が弾ける 2・1.38 秒目から 0.40 秒ぶん）<br>gib_2（弾ける 2（高さを 0.75 倍・肉の音を -4 dB 重ねる）・1.38 秒目から 0.65 秒ぶん） |
 | `grunt_a__fs547209.ogg` | https://freesound.org/people/MrFossy/sounds/547209/ | MrFossy | CC0 1.0 | Voice_AdultMale_PainGrunts_09.wav | player_hurt_1（うめき 1・0.00 秒目から 0.32 秒ぶん）<br>player_hurt_3（うめき 3（高さを 0.9 倍）・0.00 秒目から 0.36 秒ぶん） |
 | `grunt_b__fs257709.ogg` | https://freesound.org/people/vmgraw/sounds/257709/ | vmgraw | CC0 1.0 | GRUNT 2.wav | player_hurt_2（うめき 2・0.20 秒目から 0.56 秒ぶん） |
 | `death_voice__fs577033.ogg` | https://freesound.org/people/Blankened/sounds/577033/ | Blankened | CC0 1.0 | MaleDeathSound12.wav | player_down（倒れる声・0.00 秒目から 1.74 秒ぶん） |

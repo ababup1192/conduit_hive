@@ -4,14 +4,14 @@
   "sections": {
     "muzzle": {
       "kind": "record",
-      "label": "マズルフラッシュ",
+      "label": "マズルフラッシュ（拳銃）",
       "order": 1,
       "fields": {
         "count": {
           "type": "int",
           "label": "1 回に出す数",
           "order": 1,
-          "default": 4,
+          "default": 5,
           "min": 0,
           "max": 64
         },
@@ -19,7 +19,7 @@
           "type": "float",
           "label": "寿命（秒）",
           "order": 2,
-          "default": 0.06,
+          "default": 0.05,
           "min": 0.01,
           "max": 3
         },
@@ -35,7 +35,7 @@
           "type": "float",
           "label": "飛び出す速さ（m/秒）",
           "order": 4,
-          "default": 0.6,
+          "default": 0.5,
           "min": 0,
           "max": 30
         },
@@ -43,7 +43,7 @@
           "type": "float",
           "label": "向きの広がり（度）",
           "order": 5,
-          "default": 25.0,
+          "default": 15.0,
           "min": 0,
           "max": 180
         },
@@ -51,14 +51,30 @@
           "type": "float",
           "label": "大きさ（m）",
           "order": 6,
-          "default": 0.07,
+          "default": 0.11,
           "min": 0.005,
           "max": 1
+        },
+        "grow": {
+          "type": "float",
+          "label": "寿命の終わりの大きさの倍率（1 未満で縮む・1 を超えて広がる）",
+          "default": 0.6,
+          "min": 0,
+          "max": 10,
+          "order": 7
+        },
+        "aspect": {
+          "type": "float",
+          "label": "横の長さの倍率（1 で丸）",
+          "default": 1.0,
+          "min": 0.1,
+          "max": 6,
+          "order": 8
         },
         "gravity": {
           "type": "float",
           "label": "下へ引く強さ（m/秒²）",
-          "order": 7,
+          "order": 9,
           "default": 0.0,
           "min": 0,
           "max": 30
@@ -66,14 +82,200 @@
         "color": {
           "type": "color",
           "label": "色",
-          "order": 8,
-          "default": "#ffd9a0"
+          "order": 10,
+          "default": "#ffd090"
         },
         "intensity": {
           "type": "float",
           "label": "明るさの倍率（線形。1 を超えるとブルームが掛かる）",
+          "order": 11,
+          "default": 4.5,
+          "min": 0,
+          "max": 40
+        }
+      }
+    },
+    "muzzleShotgun": {
+      "kind": "record",
+      "label": "マズルフラッシュ（散弾銃）",
+      "order": 2,
+      "fields": {
+        "count": {
+          "type": "int",
+          "label": "1 回に出す数",
+          "order": 1,
+          "default": 9,
+          "min": 0,
+          "max": 64
+        },
+        "life": {
+          "type": "float",
+          "label": "寿命（秒）",
+          "order": 2,
+          "default": 0.08,
+          "min": 0.01,
+          "max": 3
+        },
+        "lifeJitter": {
+          "type": "float",
+          "label": "寿命の散らし（0 で全部同じ）",
+          "order": 3,
+          "default": 0.3,
+          "min": 0,
+          "max": 1
+        },
+        "speed": {
+          "type": "float",
+          "label": "飛び出す速さ（m/秒）",
+          "order": 4,
+          "default": 2.2,
+          "min": 0,
+          "max": 30
+        },
+        "spread": {
+          "type": "float",
+          "label": "向きの広がり（度）",
+          "order": 5,
+          "default": 30.0,
+          "min": 0,
+          "max": 180
+        },
+        "size": {
+          "type": "float",
+          "label": "大きさ（m）",
+          "order": 6,
+          "default": 0.2,
+          "min": 0.005,
+          "max": 1
+        },
+        "grow": {
+          "type": "float",
+          "label": "寿命の終わりの大きさの倍率（1 未満で縮む・1 を超えて広がる）",
+          "default": 1.3,
+          "min": 0,
+          "max": 10,
+          "order": 7
+        },
+        "aspect": {
+          "type": "float",
+          "label": "横の長さの倍率（1 で丸）",
+          "default": 2.4,
+          "min": 0.1,
+          "max": 6,
+          "order": 8
+        },
+        "gravity": {
+          "type": "float",
+          "label": "下へ引く強さ（m/秒²）",
           "order": 9,
-          "default": 6.0,
+          "default": 0.0,
+          "min": 0,
+          "max": 30
+        },
+        "color": {
+          "type": "color",
+          "label": "色",
+          "order": 10,
+          "default": "#ffa860"
+        },
+        "intensity": {
+          "type": "float",
+          "label": "明るさの倍率（線形。1 を超えるとブルームが掛かる）",
+          "order": 11,
+          "default": 3.5,
+          "min": 0,
+          "max": 40
+        }
+      }
+    },
+    "muzzleRifle": {
+      "kind": "record",
+      "label": "マズルフラッシュ（連射銃）",
+      "order": 3,
+      "fields": {
+        "count": {
+          "type": "int",
+          "label": "1 回に出す数",
+          "order": 1,
+          "default": 3,
+          "min": 0,
+          "max": 64
+        },
+        "life": {
+          "type": "float",
+          "label": "寿命（秒）",
+          "order": 2,
+          "default": 0.035,
+          "min": 0.01,
+          "max": 3
+        },
+        "lifeJitter": {
+          "type": "float",
+          "label": "寿命の散らし（0 で全部同じ）",
+          "order": 3,
+          "default": 0.3,
+          "min": 0,
+          "max": 1
+        },
+        "speed": {
+          "type": "float",
+          "label": "飛び出す速さ（m/秒）",
+          "order": 4,
+          "default": 1.0,
+          "min": 0,
+          "max": 30
+        },
+        "spread": {
+          "type": "float",
+          "label": "向きの広がり（度）",
+          "order": 5,
+          "default": 12.0,
+          "min": 0,
+          "max": 180
+        },
+        "size": {
+          "type": "float",
+          "label": "大きさ（m）",
+          "order": 6,
+          "default": 0.1,
+          "min": 0.005,
+          "max": 1
+        },
+        "grow": {
+          "type": "float",
+          "label": "寿命の終わりの大きさの倍率（1 未満で縮む・1 を超えて広がる）",
+          "default": 0.5,
+          "min": 0,
+          "max": 10,
+          "order": 7
+        },
+        "aspect": {
+          "type": "float",
+          "label": "横の長さの倍率（1 で丸）",
+          "default": 1.3,
+          "min": 0.1,
+          "max": 6,
+          "order": 8
+        },
+        "gravity": {
+          "type": "float",
+          "label": "下へ引く強さ（m/秒²）",
+          "order": 9,
+          "default": 0.0,
+          "min": 0,
+          "max": 30
+        },
+        "color": {
+          "type": "color",
+          "label": "色",
+          "order": 10,
+          "default": "#ffcf90"
+        },
+        "intensity": {
+          "type": "float",
+          "label": "明るさの倍率（線形。1 を超えるとブルームが掛かる）",
+          "order": 11,
+          "default": 4.0,
           "min": 0,
           "max": 40
         }
@@ -82,13 +284,13 @@
     "spark": {
       "kind": "record",
       "label": "当たった所の火花",
-      "order": 2,
+      "order": 4,
       "fields": {
         "count": {
           "type": "int",
           "label": "1 回に出す数",
           "order": 1,
-          "default": 10,
+          "default": 18,
           "min": 0,
           "max": 64
         },
@@ -96,7 +298,7 @@
           "type": "float",
           "label": "寿命（秒）",
           "order": 2,
-          "default": 0.35,
+          "default": 0.4,
           "min": 0.01,
           "max": 3
         },
@@ -112,7 +314,7 @@
           "type": "float",
           "label": "飛び出す速さ（m/秒）",
           "order": 4,
-          "default": 6.0,
+          "default": 7.5,
           "min": 0,
           "max": 30
         },
@@ -120,7 +322,7 @@
           "type": "float",
           "label": "向きの広がり（度）",
           "order": 5,
-          "default": 70.0,
+          "default": 75.0,
           "min": 0,
           "max": 180
         },
@@ -128,14 +330,30 @@
           "type": "float",
           "label": "大きさ（m）",
           "order": 6,
-          "default": 0.09,
+          "default": 0.07,
           "min": 0.005,
           "max": 1
+        },
+        "grow": {
+          "type": "float",
+          "label": "寿命の終わりの大きさの倍率（1 未満で縮む・1 を超えて広がる）",
+          "default": 0.5,
+          "min": 0,
+          "max": 10,
+          "order": 7
+        },
+        "aspect": {
+          "type": "float",
+          "label": "横の長さの倍率（1 で丸）",
+          "default": 1.0,
+          "min": 0.1,
+          "max": 6,
+          "order": 8
         },
         "gravity": {
           "type": "float",
           "label": "下へ引く強さ（m/秒²）",
-          "order": 7,
+          "order": 9,
           "default": 9.8,
           "min": 0,
           "max": 30
@@ -143,14 +361,107 @@
         "color": {
           "type": "color",
           "label": "色",
-          "order": 8,
+          "order": 10,
           "default": "#ffc070"
         },
         "intensity": {
           "type": "float",
           "label": "明るさの倍率（線形。1 を超えるとブルームが掛かる）",
+          "order": 11,
+          "default": 3.5,
+          "min": 0,
+          "max": 40
+        }
+      }
+    },
+    "smoke": {
+      "kind": "record",
+      "label": "壁に当たった所の煙",
+      "order": 5,
+      "fields": {
+        "count": {
+          "type": "int",
+          "label": "1 回に出す数",
+          "order": 1,
+          "default": 3,
+          "min": 0,
+          "max": 64
+        },
+        "life": {
+          "type": "float",
+          "label": "寿命（秒）",
+          "order": 2,
+          "default": 0.7,
+          "min": 0.01,
+          "max": 3
+        },
+        "lifeJitter": {
+          "type": "float",
+          "label": "寿命の散らし（0 で全部同じ）",
+          "order": 3,
+          "default": 0.4,
+          "min": 0,
+          "max": 1
+        },
+        "speed": {
+          "type": "float",
+          "label": "飛び出す速さ（m/秒）",
+          "order": 4,
+          "default": 0.6,
+          "min": 0,
+          "max": 30
+        },
+        "spread": {
+          "type": "float",
+          "label": "向きの広がり（度）",
+          "order": 5,
+          "default": 50.0,
+          "min": 0,
+          "max": 180
+        },
+        "size": {
+          "type": "float",
+          "label": "大きさ（m）",
+          "order": 6,
+          "default": 0.16,
+          "min": 0.005,
+          "max": 1
+        },
+        "grow": {
+          "type": "float",
+          "label": "寿命の終わりの大きさの倍率（1 未満で縮む・1 を超えて広がる）",
+          "default": 2.2,
+          "min": 0,
+          "max": 10,
+          "order": 7
+        },
+        "aspect": {
+          "type": "float",
+          "label": "横の長さの倍率（1 で丸）",
+          "default": 1.0,
+          "min": 0.1,
+          "max": 6,
+          "order": 8
+        },
+        "gravity": {
+          "type": "float",
+          "label": "下へ引く強さ（m/秒²）",
           "order": 9,
-          "default": 3.0,
+          "default": -1.2,
+          "min": 0,
+          "max": 30
+        },
+        "color": {
+          "type": "color",
+          "label": "色",
+          "order": 10,
+          "default": "#4a4f57"
+        },
+        "intensity": {
+          "type": "float",
+          "label": "明るさの倍率（線形。1 を超えるとブルームが掛かる）",
+          "order": 11,
+          "default": 0.6,
           "min": 0,
           "max": 40
         }
@@ -159,7 +470,7 @@
     "light": {
       "kind": "record",
       "label": "撃った瞬間の灯り",
-      "order": 3,
+      "order": 6,
       "fields": {
         "color": {
           "type": "color",
@@ -171,7 +482,7 @@
           "type": "float",
           "label": "強さ（線形）",
           "order": 2,
-          "default": 4.0,
+          "default": 1.6,
           "min": 0,
           "max": 40
         },
@@ -179,7 +490,7 @@
           "type": "float",
           "label": "届く距離（m）",
           "order": 3,
-          "default": 6.0,
+          "default": 5.0,
           "min": 0.5,
           "max": 30
         },
@@ -193,127 +504,83 @@
         }
       }
     },
-    "ichor": {
+    "tracer": {
       "kind": "record",
-      "label": "敵の体液の飛沫",
-      "order": 4,
+      "label": "連射銃の曳光弾",
+      "order": 7,
       "fields": {
-        "count": {
+        "every": {
           "type": "int",
-          "label": "1 回に出す数",
+          "label": "何発に 1 発",
           "order": 1,
-          "default": 12,
-          "min": 0,
-          "max": 64
-        },
-        "life": {
-          "type": "float",
-          "label": "寿命（秒）",
-          "order": 2,
-          "default": 0.5,
-          "min": 0.01,
-          "max": 3
-        },
-        "lifeJitter": {
-          "type": "float",
-          "label": "寿命の散らし（0 で全部同じ）",
-          "order": 3,
-          "default": 0.5,
-          "min": 0,
-          "max": 1
+          "default": 1,
+          "min": 1,
+          "max": 20
         },
         "speed": {
           "type": "float",
-          "label": "飛び出す速さ（m/秒）",
+          "label": "飛ぶ速さ（m/秒）",
+          "order": 2,
+          "default": 110.0,
+          "min": 1,
+          "max": 1000
+        },
+        "length": {
+          "type": "float",
+          "label": "光る線の長さ（m）",
+          "order": 3,
+          "default": 3.5,
+          "min": 0.1,
+          "max": 30
+        },
+        "width": {
+          "type": "float",
+          "label": "光る線の太さ（m）",
           "order": 4,
-          "default": 4.0,
-          "min": 0,
-          "max": 30
-        },
-        "spread": {
-          "type": "float",
-          "label": "向きの広がり（度）",
-          "order": 5,
-          "default": 60.0,
-          "min": 0,
-          "max": 180
-        },
-        "size": {
-          "type": "float",
-          "label": "大きさ（m）",
-          "order": 6,
-          "default": 0.08,
-          "min": 0.005,
-          "max": 1
-        },
-        "gravity": {
-          "type": "float",
-          "label": "下へ引く強さ（m/秒²）",
-          "order": 7,
-          "default": 9.8,
-          "min": 0,
-          "max": 30
+          "default": 0.022,
+          "min": 0.002,
+          "max": 0.5
         },
         "color": {
           "type": "color",
           "label": "色",
-          "order": 8,
-          "default": "#ff7a2a"
+          "order": 5,
+          "default": "#ffb060"
         },
         "intensity": {
           "type": "float",
-          "label": "明るさの倍率（線形。1 を超えるとブルームが掛かる）",
-          "order": 9,
-          "default": 2.5,
+          "label": "明るさの倍率",
+          "order": 6,
+          "default": 2.0,
           "min": 0,
-          "max": 40
+          "max": 20
+        },
+        "alpha": {
+          "type": "float",
+          "label": "濃さ",
+          "order": 7,
+          "default": 0.85,
+          "min": 0,
+          "max": 1
+        },
+        "limit": {
+          "type": "int",
+          "label": "同時に飛ぶ数の上限",
+          "order": 8,
+          "default": 8,
+          "min": 0,
+          "max": 64
         }
       }
     },
-    "spit": {
-      "kind": "record",
-      "label": "projectile の光る玉",
-      "order": 5,
-      "fields": {
-        "size": {
-          "type": "float",
-          "label": "大きさ（m）",
-          "order": 1,
-          "default": 0.32,
-          "min": 0.02,
-          "max": 2
-        },
-        "color": {
-          "type": "color",
-          "label": "色",
-          "order": 2,
-          "default": "#ff8a3c"
-        },
-        "intensity": {
-          "type": "float",
-          "label": "明るさの倍率（線形）",
-          "order": 3,
-          "default": 5.0,
-          "min": 0,
-          "max": 40
-        },
-        "lightIntensity": {
-          "type": "float",
-          "label": "点光源の強さ",
-          "order": 4,
-          "default": 2.5,
-          "min": 0,
-          "max": 20
-        },
-        "lightRange": {
-          "type": "float",
-          "label": "点光源の届く距離（m）",
-          "order": 5,
-          "default": 4.0,
-          "min": 0.5,
-          "max": 20
-        }
-      }
+    "limit": {
+      "kind": "field",
+      "type": "int",
+      "label": "同時に出ている粒の上限（古い物から消す）",
+      "order": 8,
+      "default": 320,
+      "min": 0,
+      "max": 4000
     }
   }
 }

@@ -36,6 +36,7 @@
     "enemy_hit": { "count": 3 },
     "enemy_down": { "count": 2 },
     "spit_burst": { "count": 2 },
+    "gib": { "count": 2 },
     "player_hurt": { "count": 3 },
     "step_metal": { "count": 4 }
   },
@@ -48,6 +49,8 @@
     "shotgun_pump": { "volume": 0.8 },
     "enemy_scream": { "volume": 0.7 },
     "enemy_hit": { "volume": 0.8 },
+    "gib": { "volume": 0.9 },
+    "enemy_charge": { "volume": 0.6 },
     "step_metal": { "volume": 0.5 },
     "alarm": { "volume": 0.5 },
     "amb_machine": { "volume": 1.0 },

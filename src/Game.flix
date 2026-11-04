@@ -19,7 +19,7 @@ mod Game {
         })
             // 照準・体力・武器の並び・弾の数・拾った知らせ・F3 の診断の行（view の絵のどれよりも手前）。
             |> App.withHudView(Resources.view(View.hudFrame))
-            |> Resources.addClock({ clockOf = w -> w#play, withClock = (c, w) -> { play = c | w }, paceOf = (_, w) -> World.paceOf(w) })
+            |> Resources.addClock({ clockOf = w -> w#play, withClock = (c, w) -> { play = c | w }, paceOf = (r, w) -> World.paceOf(r, w) })
             |> App.withDocTable(Controls.docTable())
             // このコマに起きた事の音（Sounds が World の events と前後の歩数・敵の攻撃を写す）・環境音と近い敵の唸り・バスと音ごとの量とダッキング。
             |> App.withAudio(ws -> Resources.read((r, w) -> Sounds.events(r, ws#before#world, w), ws#after))

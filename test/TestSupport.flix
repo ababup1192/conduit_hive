@@ -14,10 +14,10 @@ mod TestSupport {
     pub def docsWith(maze: MazeDoc.Doc): Res.Docs =
         ({ uiText = UiTextDoc.defaults(), keys = KeysDoc.defaults(), theme = ThemeDoc.defaults(),
                     walk = WalkDoc.defaults(), look = LookDoc.defaults(), maze = maze,
-                    weapons = WeaponsDoc.defaults(), viewmodel = FpViewmodelDoc.defaults(), particles = Particles3dDoc.defaults(),
+                    weapons = WeaponsDoc.defaults(), viewmodel = FpViewmodelDoc.defaults(), particles = Particles3dDoc.defaults(), juice = JuiceDoc.defaults(),
                     player = PlayerDoc.defaults(), enemies = EnemiesDoc.defaults(), spawns = noWaves(), pickups = PickupsDoc.defaults(), tour = TourDoc.defaults(),
                     sounds = SoundsDoc.defaults(), mixer = AudioMixer.defaults(),
-                    stage = None, viewmodels = Map.empty(), creatures = Map.empty(), pickupModels = Map.empty() })
+                    stage = None, viewmodels = Map.empty(), creatures = Map.empty(), pickupModels = Map.empty(), gibs = None })
 
     /// wave の無い spawns の Doc（既定の wave は最後の部屋 H のもので、小さな迷路に H は無い。湧かせるテストは Res.withSpawns で wave を書く）。
     def noWaves(): SpawnsDoc.Doc = SpawnsDoc.Doc.Doc({ waves = Nil | SpawnsDoc.rec(SpawnsDoc.defaults()) })

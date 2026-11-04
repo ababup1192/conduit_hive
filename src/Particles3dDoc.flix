@@ -1,4 +1,5 @@
-// Particles3dDoc — conduit_hive.particles3d.json（3D の粒: マズルフラッシュ・当たった所の火花・撃った瞬間の灯り・敵の体液・projectile の光）の宣言ドキュメント層。
+// Particles3dDoc — conduit_hive.particles3d.json（3D の粒: 武器ごとのマズルフラッシュ・当たった所の火花と煙・撃った瞬間の灯り・敵の体液・
+// 弾けた時の体液と衝撃の輪・projectile の光・ranged の溜めの光・連射銃の曳光弾）の宣言ドキュメント層。
 // engine の fx.json（2D の FxDoc）とは別の物。出し方・動かし方・消し方はコード（Particles3d）で、ここは数と色だけ。
 // 長さは m・角度は度・時間は秒・速さは 1 秒あたり。
 // fail-open — 読めない・壊れているときは defaults() へ落とし、欄が無ければその欄だけ既定。
@@ -15,8 +16,10 @@ mod Particles3dDoc {
         // 飛び出す速さ（m/秒。粒ごとに半分からこの値まで）・向きの広がり（度。出す向きから外れる角の最大）。
         speed = Float64,
         spread = Float64,
-        // 大きさ（m。消える前に半分まで縮む）・下へ引く強さ（m/秒²）。
+        // 大きさ（m）・寿命の終わりの大きさの倍率（1 未満で縮み・1 を超えて広がる）・横の長さの倍率（1 で丸・2 で横に 2 倍）・下へ引く強さ（m/秒²。負で上る）。
         size = Float64,
+        grow = Float64,
+        aspect = Float64,
         gravity = Float64,
         // 色（光を当てずにこの色で光る）と、その明るさの線形の倍率（1 を超えるとブルームが掛かる）。
         color = Color,
@@ -29,7 +32,19 @@ mod Particles3dDoc {
     /// ranged が吐く projectile の見え方: 光る玉の大きさ（m）・色・明るさの線形の倍率と、玉に付ける点光源の強さと届く距離。
     pub type alias Glow = { size = Float64, color = Color, intensity = Float64, lightIntensity = Float64, lightRange = Float64 }
 
-    pub type alias Rec = { version = Int32, muzzle = Burst, spark = Burst, light = Flash, ichor = Burst, spit = Glow }
+    /// 武器ごとのマズルフラッシュ（JSON では muzzle が拳銃・muzzleShotgun・muzzleRifle）。
+    pub type alias Muzzles = { pistol = Burst, shotgun = Burst, rifle = Burst }
+
+    /// ranged の溜めの光: 口に出す光る玉の大きさ（m。溜め切った時）・色・明るさの線形の倍率。
+    pub type alias Charge = { size = Float64, color = Color, intensity = Float64 }
+
+    /// 連射銃の曳光弾: 何発に 1 発か・飛ぶ速さ（m/秒）・光る線の長さと太さ（m）・色・明るさの線形の倍率・濃さ（0..1）・同時に飛ぶ数の上限。
+    pub type alias Tracer = { every = Int32, speed = Float64, length = Float64, width = Float64, color = Color, intensity = Float64,
+                              alpha = Float64, limit = Int32 }
+
+    /// limit = 同時に出ている粒の上限（越えたら古い物から消す）。
+    pub type alias Rec = { version = Int32, muzzle = Muzzles, spark = Burst, smoke = Burst, light = Flash, ichor = Burst, gore = Burst,
+                           ring = Burst, spit = Glow, charge = Charge, tracer = Tracer, limit = Int32 }
     pub enum Doc(Rec)
     pub def rec(d: Doc): Rec = match d { case Doc.Doc(r) => r }
 
@@ -40,15 +55,31 @@ mod Particles3dDoc {
     /// コード側の既定値（assets/conduit_hive.particles3d.json と同じ値から出発する）。
     pub def defaults(): Doc =
         Doc.Doc({ version = 1,
-                  muzzle = { count = 4, life = 0.06, lifeJitter = 0.3, speed = 0.6, spread = 25.0, size = 0.07, gravity = 0.0, color = hx("#ffd9a0"), intensity = 6.0 },
-                  spark  = { count = 10, life = 0.35, lifeJitter = 0.5, speed = 6.0, spread = 70.0, size = 0.09, gravity = 9.8, color = hx("#ffc070"), intensity = 3.0 },
-                  light  = { color = hx("#ffc890"), intensity = 4.0, range = 6.0, life = 0.05 },
-                  ichor  = { count = 12, life = 0.5, lifeJitter = 0.5, speed = 4.0, spread = 60.0, size = 0.08, gravity = 9.8, color = hx("#ff7a2a"), intensity = 2.5 },
-                  spit   = { size = 0.32, color = hx("#ff8a3c"), intensity = 5.0, lightIntensity = 2.5, lightRange = 4.0 } })
+                  muzzle = { pistol  = { count = 5, life = 0.05, lifeJitter = 0.3, speed = 0.5, spread = 15.0, size = 0.11, grow = 0.6, aspect = 1.0, gravity = 0.0, color = hx("#ffd090"), intensity = 4.5 },
+                             shotgun = { count = 9, life = 0.08, lifeJitter = 0.3, speed = 2.2, spread = 30.0, size = 0.2, grow = 1.3, aspect = 2.4, gravity = 0.0, color = hx("#ffa860"), intensity = 3.5 },
+                             rifle   = { count = 3, life = 0.035, lifeJitter = 0.3, speed = 1.0, spread = 12.0, size = 0.1, grow = 0.5, aspect = 1.3, gravity = 0.0, color = hx("#ffcf90"), intensity = 4.0 } },
+                  spark  = { count = 18, life = 0.4, lifeJitter = 0.5, speed = 7.5, spread = 75.0, size = 0.07, grow = 0.5, aspect = 1.0, gravity = 9.8, color = hx("#ffc070"), intensity = 3.5 },
+                  smoke  = { count = 3, life = 0.7, lifeJitter = 0.4, speed = 0.6, spread = 50.0, size = 0.16, grow = 2.2, aspect = 1.0, gravity = -1.2, color = hx("#4a4f57"), intensity = 0.6 },
+                  light  = { color = hx("#ffc890"), intensity = 1.6, range = 5.0, life = 0.05 },
+                  ichor  = { count = 16, life = 0.55, lifeJitter = 0.5, speed = 4.5, spread = 65.0, size = 0.06, grow = 0.5, aspect = 1.0, gravity = 9.8, color = hx("#ff7a2a"), intensity = 2.5 },
+                  gore   = { count = 30, life = 0.8, lifeJitter = 0.5, speed = 7.0, spread = 180.0, size = 0.05, grow = 0.5, aspect = 1.0, gravity = 9.8, color = hx("#ff6a20"), intensity = 2.8 },
+                  ring   = { count = 1, life = 0.15, lifeJitter = 0.0, speed = 0.0, spread = 0.0, size = 0.3, grow = 5.0, aspect = 1.0, gravity = 0.0, color = hx("#d8602a"), intensity = 0.9 },
+                  spit   = { size = 0.32, color = hx("#ff8a3c"), intensity = 5.0, lightIntensity = 2.5, lightRange = 4.0 },
+                  charge = { size = 0.42, color = hx("#ff8a3c"), intensity = 5.0 },
+                  tracer = { every = 1, speed = 110.0, length = 3.5, width = 0.022, color = hx("#ffb060"), intensity = 2.0, alpha = 0.85, limit = 8 },
+                  limit = 320 })
 
     pub def fromJson(text: String): Option[Doc] = DocJson.decodeObject(fromRoot, text)
 
-    pub def load(p: String): Doc \ Fs.FileRead = DocJson.loadOr(fromJson, defaults(), p)
+    /// 敵の側の粒（体液・弾けた時の体液と輪・projectile の光・溜めの光）の Doc。形は同じで、path() と一緒に読む。
+    pub def creaturePath(): String = "assets/conduit_hive.creaturefx.json"
+
+    /// 武器の粒の Doc（p）と敵の粒の Doc（creaturePath）を 1 つの値に読む（読めない方はその欄だけ既定）。
+    // WhyNot: 1 つの JSON に戻さない — 13 の塊が Studio の 13 枚のタブになり、武器の手触りと敵の見え方を直す時が違う。
+    pub def load(p: String): Doc \ Fs.FileRead = fromRoot(Map.union(rootOf(p), rootOf(creaturePath())))
+
+    def rootOf(p: String): Map[String, Json] \ Fs.FileRead =
+        DocJson.readJson(p) |> Result.toOption |> Option.flatMap(JsonCodec.expectObject) |> Option.getWithDefault(Map.empty())
 
     def colorOr(fallback: Color, key: String, obj: Map[String, Json]): Color =
         Map.get(key, obj)
@@ -64,6 +95,7 @@ mod Particles3dDoc {
         let f = (k, d) -> JsonCodec.floatOr(k, d, o);
         { count = JsonCodec.intOr("count", fallback#count, o), life = f("life", fallback#life), lifeJitter = f("lifeJitter", fallback#lifeJitter),
           speed = f("speed", fallback#speed), spread = f("spread", fallback#spread), size = f("size", fallback#size),
+          grow = f("grow", fallback#grow), aspect = f("aspect", fallback#aspect),
           gravity = f("gravity", fallback#gravity), color = colorOr(fallback#color, "color", o), intensity = f("intensity", fallback#intensity) }
 
     def flashOr(fallback: Flash, key: String, root: Map[String, Json]): Flash =
@@ -78,9 +110,24 @@ mod Particles3dDoc {
         { size = f("size", fallback#size), color = colorOr(fallback#color, "color", o), intensity = f("intensity", fallback#intensity),
           lightIntensity = f("lightIntensity", fallback#lightIntensity), lightRange = f("lightRange", fallback#lightRange) }
 
+    def chargeOr(fallback: Charge, key: String, root: Map[String, Json]): Charge =
+        let o = objectOf(key, root);
+        { size = JsonCodec.floatOr("size", fallback#size, o), color = colorOr(fallback#color, "color", o), intensity = JsonCodec.floatOr("intensity", fallback#intensity, o) }
+
+    def tracerOr(fallback: Tracer, key: String, root: Map[String, Json]): Tracer =
+        let o = objectOf(key, root);
+        let f = (k, d) -> JsonCodec.floatOr(k, d, o);
+        { every = JsonCodec.intOr("every", fallback#every, o), speed = f("speed", fallback#speed), length = f("length", fallback#length),
+          width = f("width", fallback#width), color = colorOr(fallback#color, "color", o), intensity = f("intensity", fallback#intensity),
+          alpha = f("alpha", fallback#alpha), limit = JsonCodec.intOr("limit", fallback#limit, o) }
+
     def fromRoot(root: Map[String, Json]): Doc =
         let d = rec(defaults());
         Doc.Doc({ version = JsonCodec.intOr("version", d#version, root),
-                  muzzle = burstOr(d#muzzle, "muzzle", root), spark = burstOr(d#spark, "spark", root), light = flashOr(d#light, "light", root),
-                  ichor = burstOr(d#ichor, "ichor", root), spit = glowOr(d#spit, "spit", root) })
+                  muzzle = { pistol = burstOr(d#muzzle#pistol, "muzzle", root), shotgun = burstOr(d#muzzle#shotgun, "muzzleShotgun", root),
+                             rifle = burstOr(d#muzzle#rifle, "muzzleRifle", root) },
+                  spark = burstOr(d#spark, "spark", root), smoke = burstOr(d#smoke, "smoke", root), light = flashOr(d#light, "light", root),
+                  ichor = burstOr(d#ichor, "ichor", root), gore = burstOr(d#gore, "gore", root), ring = burstOr(d#ring, "ring", root),
+                  spit = glowOr(d#spit, "spit", root), charge = chargeOr(d#charge, "charge", root), tracer = tracerOr(d#tracer, "tracer", root),
+                  limit = JsonCodec.intOr("limit", d#limit, root) })
 }

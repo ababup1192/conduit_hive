@@ -45,7 +45,11 @@ mod TestHorde {
     def impactOn(part: Hitscan.Part): List[Hitscan.Impact] =
         { struck = Hitscan.Struck.Enemy(0, part), point = Vec3.zero(), normal = Vec3.zero() } :: Nil
 
-    def damaged(t: Float64, amount: Float64, part: Hitscan.Part, h: Horde.Horde): Horde.Horde = Horde.applyDamage(res(), t, amount, impactOn(part), h)#horde
+    /// 時刻 t に、東の端の目（x = 22 m）から拳銃で 1 粒の威力 damage を撃った 1 回。
+    def pistolShot(t: Float64, damage: Float64): Horde.Shot =
+        { t = t, damage = damage, weapon = WeaponsDoc.Weapon.Pistol, origin = Vec3.v3(22.0, walk()#eyeHeight, 10.0), index = 0 }
+
+    def damaged(t: Float64, amount: Float64, part: Hitscan.Part, h: Horde.Horde): Horde.Horde = Horde.applyDamage(res(), pistolShot(t, amount), impactOn(part), h)#horde
 
     def actOf(h: Horde.Horde): Option[Horde.Act] = Horde.enemyOf(0, h) |> Option.map(e -> e#act)
 
@@ -80,7 +84,8 @@ mod TestHorde {
         let crowd = Horde.spawnNow(res(), at(18.0, 9.2) :: at(18.0, 10.0) :: at(18.0, 10.8) :: at(17.2, 9.6) :: at(17.2, 10.4) :: Nil, Horde.empty());
         let shotgun = WeaponsDoc.statsOf(WeaponsDoc.Weapon.Shotgun, WeaponsDoc.defaults());
         let impacts = Hitscan.fire(List.append(Horde.targetsOf(crowd), res()#hitTargets), westCamera(22.0, 1.4), shotgun, 0);
-        Assert.assertEq(expected = true, Horde.aliveCount(Horde.applyDamage(res(), 0.0, shotgun#damage, impacts, crowd)#horde) <= 3)
+        let shot = { t = 0.0, damage = shotgun#damage, weapon = WeaponsDoc.Weapon.Shotgun, origin = Vec3.v3(22.0, 1.4, 10.0), index = 0 };
+        Assert.assertEq(expected = true, Horde.aliveCount(Horde.applyDamage(res(), shot, impacts, crowd)#horde) <= 3)
 
     // ── ダメージと倒れる ──
 
@@ -94,11 +99,11 @@ mod TestHorde {
     def testBodyShotStaggers(): Unit \ Assert =
         Assert.assertEq(expected = Some(Horde.Act.Hurt(1.0)), actOf(damaged(1.0, pistol()#damage, Hitscan.Part.Body, meleeAt12())))
 
-    /// 頭は威力 × headMultiplier: 体力 ÷ 倍率の威力の弾 1 粒で倒れる。
+    /// 頭は威力 × headMultiplier: 頭に威力 10 の弾 1 粒で、体力が 10 × 倍率だけ減る（倒れない・弾けない強さ）。
     @Test
     def testHeadShotMultipliesTheDamage(): Unit \ Assert =
-        Assert.assertEq(expected = Some(Horde.Act.Dying(1.0)),
-            actOf(damaged(1.0, doc()#melee#health / doc()#headMultiplier, Hitscan.Part.Head, meleeAt12())))
+        Assert.assertEq(expected = Some(doc()#melee#health - 10.0 * doc()#headMultiplier),
+            healthOf(damaged(1.0, 10.0, Hitscan.Part.Head, meleeAt12())))
 
     /// よろけてから staggerCooldown の内にもう 1 発当たっても、よろけは始め直さない（連射で一歩も進めない、にならない）。
     @Test
@@ -150,9 +155,9 @@ mod TestHorde {
     /// 時刻 0 に部屋 A に入り、刻み 0.1 秒で frames コマ進めた群れ。
     def runFor(r: Res.Res, frames: Int32): Horde.Horde = Horde.simulate(r, 0.0, 0.1, frames, westEnd(), Horde.enter('A', 0.0, Horde.empty()))#horde
 
-    /// 時刻 t に、番号 ids の敵に体力より強い弾を 1 粒ずつ当てた群れ。
+    /// 時刻 t に、番号 ids の敵に体力より強い弾（60。melee と ranged の体力より強く、弾ける余剰ダメージより弱い）を 1 粒ずつ当てた群れ。
     def shotDown(r: Res.Res, t: Float64, ids: List[Int32], h: Horde.Horde): Horde.Horde =
-        Horde.applyDamage(r, t, 1000.0, ids |> List.map(id -> { struck = Hitscan.Struck.Enemy(id, Hitscan.Part.Body), point = Vec3.zero(), normal = Vec3.zero() }), h)#horde
+        Horde.applyDamage(r, pistolShot(t, 60.0), ids |> List.map(id -> { struck = Hitscan.Struck.Enemy(id, Hitscan.Part.Body), point = Vec3.zero(), normal = Vec3.zero() }), h)#horde
 
     /// 上限より 10 体多い wave 1 つに入って 10 秒（上限まで湧くのは maxAlive × spawnInterval = 7.5 秒）。
     def capped(): (Res.Res, Horde.Horde) =
@@ -312,10 +317,10 @@ mod TestHorde {
     def rangedActAfterOneFrame(player: PlayerBody.PlayerBody): Option[Horde.Act] =
         Horde.step(res(), 0.1, 0.1, player, oneAt(res(), Kind.Ranged, 10.0, 10.0, east()))#horde |> actOf
 
-    /// 同じ部屋（12 m 先）で見通しがあれば 1 コマ目に吐き始める。
+    /// 同じ部屋（12 m 先）で見通しがあれば 1 コマ目に吐く前の溜めを始める。
     @Test
-    def testRangedAttacksWithLineOfSight(): Unit \ Assert =
-        Assert.assertEq(expected = Some(Horde.Act.Attack(0.1, false)), rangedActAfterOneFrame(playerAt(22.0, 10.0)))
+    def testRangedChargesWithLineOfSight(): Unit \ Assert =
+        Assert.assertEq(expected = Some(Horde.Act.Charge(0.1)), rangedActAfterOneFrame(playerAt(22.0, 10.0)))
 
     /// 間に壁がある通路 B（20 m 先）なら吐き始めない（追うまま）。
     @Test
@@ -349,7 +354,7 @@ mod TestHorde {
 
     /// die のクリップを時刻 start に始めた体（world は使わない）。
     def corpse(k: Kind, start: Float64): Creatures.Posed =
-        { kind = k, group = 0, anim = { now = { clip = Creatures.Clip.Die, start = start }, before = None, switchedAt = -1000.0 }, world = Mat4.identity() }
+        { kind = k, group = 0, anim = { now = { clip = Creatures.Clip.Die, start = start }, before = None, switchedAt = -1000.0 }, world = Mat4.identity(), glow = 1.0 }
 
     /// die を過ぎた（最後のコマで止まった）2 体は、倒れた時刻が違っても同じ姿勢を共有する。
     @Test

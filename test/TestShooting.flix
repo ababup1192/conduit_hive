@@ -107,14 +107,14 @@ mod TestShooting {
 
     // ── 撃った 1 コマ ──
 
-    /// 引き金を引いた 1 コマで 1 回撃ち、銃口にマズルフラッシュの粒・柱に火花の粒が Doc の数だけ出る（拳銃は 1 粒）。
+    /// 引き金を引いた 1 コマで 1 回撃ち、銃口に拳銃のマズルフラッシュの粒・柱に火花と煙の粒が Doc の数だけ出る（拳銃は 1 粒）。
     @Test
     def testFiringStepEmitsFlashAndSparks(): Unit \ Assert =
         let res = resWith(twoRooms());
         let pdoc = Particles3dDoc.rec(res#particles);
         let input = { trigger = { pressed = true, held = true } | World.walking(Walker.idle()) };
         let after = World.step(res, input, { play = clockOf(1.0 / 60.0) | World.initial(res) });
-        Assert.assertEq(expected = Some((1, pdoc#muzzle#count + pdoc#spark#count)),
+        Assert.assertEq(expected = Some((1, pdoc#muzzle#pistol#count + pdoc#spark#count + pdoc#smoke#count)),
             forM (a <- arsenalIn(after); ps <- particlesIn(after)) yield (a#shots, List.length(ps)))
 
     // ── 粒の寿命 ──

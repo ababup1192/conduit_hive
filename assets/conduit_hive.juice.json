@@ -1,0 +1,81 @@
+{
+  "version": 1,
+  "title": "撃った・倒した時の手応え",
+  "note": "camera shake（shake: 武器ごとと出来事ごとの強さ 0..1・足して 1 で止める・maxDeg = 強さ 1 の揺れの角・frequency = 揺れの速さ（回/秒）・halfLife = 強さが半分に減るまで）・撃った時に目が後ろへ下がる跳ね（kick: 武器ごとの m・recover = 戻るまで）・照準の印（marker: 当てた印と倒した印を出す秒と大きさ（design px）と倒した印の色）・倒した敵が撃たれた向きへ吹っ飛ぶ強さ（fling: 武器ごとの横の速さ（m/秒）・closeRange より近いと最大 closeBoost 倍・lift = 上への速さ（近い時は倍率の平方根を掛ける）・friction = 床を滑る時の減り方（m/秒²）・spin = 横に回る速さ（度/秒）・tilt = 飛んでいる間に後ろへ反る角）・弾ける条件と肉片（gib・gibPieces・gibLight: 散弾銃の近距離 shotgunRange・1 発で頭に受けた威力 headDamage 以上・体力を超えた分 overkill 以上のどれかで、それぞれの確率で弾ける。肉片は countMin〜countMax 個・scale と glow = glb の大きさと発光の筋の明るさの倍率・limit を越えたら古い物から消す・gibLight は弾けた瞬間の点光源）・hit stop（hitStop: 1 コマに multiKill 体以上倒した時は freeze 秒止めて slow 秒を slowScale 倍で流し ramp 秒で戻す・群れの最後の 1 体は lastFreeze と lastSlow）。吹っ飛ぶ・弾ける・揺らす規則はコード（src/Knockback.flix・Gibs.flix・CameraShake.flix・World.flix）。",
+  "shake": {
+    "pistol": 0.22,
+    "shotgun": 0.6,
+    "rifle": 0.12,
+    "kill": 0.18,
+    "gib": 0.45,
+    "hurt": 0.35,
+    "maxDeg": 1.6,
+    "frequency": 17.0,
+    "halfLife": 0.08
+  },
+  "kick": {
+    "pistol": 0.025,
+    "shotgun": 0.07,
+    "rifle": 0.012,
+    "recover": 0.14
+  },
+  "marker": {
+    "hitSeconds": 0.16,
+    "killSeconds": 0.42,
+    "hitSize": 6.0,
+    "killSize": 9.0,
+    "killColor": "#ff7a2a"
+  },
+  "fling": {
+    "pistol": 2.4,
+    "shotgun": 4.2,
+    "rifle": 1.8,
+    "closeRange": 5.0,
+    "closeBoost": 2.2,
+    "lift": 3.2,
+    "gravity": 14.0,
+    "friction": 9.0,
+    "spin": 140.0,
+    "tilt": 28.0
+  },
+  "gib": {
+    "shotgunRange": 4.5,
+    "shotgunChance": 0.8,
+    "headDamage": 45.0,
+    "headChance": 0.35,
+    "overkill": 90.0,
+    "overkillChance": 0.6,
+    "countMin": 8,
+    "countMax": 12
+  },
+  "gibPieces": {
+    "scale": 1.5,
+    "glow": 4.0,
+    "speed": 5.5,
+    "scatter": 3.5,
+    "lift": 5.5,
+    "spin": 720.0,
+    "gravity": 14.0,
+    "bounce": 0.35,
+    "friction": 0.55,
+    "life": 3.5,
+    "fade": 0.5,
+    "limit": 36
+  },
+  "gibLight": {
+    "lightColor": "#ff8a3c",
+    "lightIntensity": 2.0,
+    "lightRange": 4.0,
+    "lightSeconds": 0.12,
+    "lights": 2
+  },
+  "hitStop": {
+    "multiKill": 3,
+    "freeze": 0.045,
+    "slow": 0.1,
+    "slowScale": 0.3,
+    "ramp": 0.08,
+    "lastFreeze": 0.09,
+    "lastSlow": 0.3
+  }
+}

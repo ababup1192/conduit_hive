@@ -68,7 +68,13 @@ mod View {
           ammo = Arsenal.ammoOf(res#weapons, a),
           slots = WeaponsDoc.all() |> List.map(wp -> { weapon = wp, owned = Set.memberOf(wp, a#owned), current = wp == a#current }),
           health = Health.fraction(pd, health), hurt = Health.flash(pd, t, health), down = Health.downProgress(pd, t, health),
-          notice = World.noticeOf(s) |> Option.flatMap(noticeIn(res, t)) }
+          notice = World.noticeOf(s) |> Option.flatMap(noticeIn(res, t)), marker = markerIn(res, t, World.marksOf(s)) }
+
+    /// 照準の印（JuiceDoc の marker の長さの間だけ出す）。
+    def markerIn(res: Res.Res, t: Float64, m: World.Marks): HudView.Marker =
+        let md = JuiceDoc.rec(res#juice)#marker;
+        let progress = (at: Float64, seconds: Float64) -> { let age = (t - at) / Float64.max(0.01, seconds); if (age < 0.0 or age >= 1.0) None else Some(age) };
+        { hit = progress(m#hitAt, md#hitSeconds), kill = progress(m#killAt, md#killSeconds), hitSize = md#hitSize, killSize = md#killSize, killColor = md#killColor }
 
     /// 拾った時の知らせ（出す長さを過ぎたら None）。文言は UiTextDoc の notice*（{n} は量）。
     def noticeIn(res: Res.Res, t: Float64, n: World.Notice): Option[HudView.Notice] =
@@ -103,19 +109,27 @@ mod View {
         let seen = (x: Float64, y: Float64, z: Float64, radius: Float64) ->
             Maze.zoneAt(res#maze, x, z) |> Option.exists(id -> Set.memberOf(id, drawn)) and Frustum.intersectsSphere(frustum, Vec3.v3(x, y, z), radius);
         let shots = horde#projectiles |> List.filter(p -> seen(p#at#x, p#at#y, p#at#z, 1.0));
+        let enemies = horde#enemies |> List.filter(e -> seen(e#x, 1.0, e#z, creatureReach()));
         let taken = World.takenOf(s);
         let lying = List.append(res#pickupPoints |> List.filter(p -> not Set.memberOf(p#id, taken)), World.dropsOf(s) |> List.map(d -> d#point));
         let items = pickupsIn(res, t, camera, drawn, lying);
         let props = if (Set.memberOf(res#maze#finalZone, drawn)) res#propArt else Nil;
         { t = t, camera = camera, look = LookDoc.rec(res#look),
           zones = drawn |> Set.toList |> List.filterMap(id -> Map.get(id, res#art)),
-          billboards = List.append(
-              shots |> List.filterMap(p -> Particles3d.spitBillboard(res#particles, Particles3d.textureName(), Res.particleRegion(res, Particles3d.Kind.Spark), p#at)),
-              Particles3d.billboards(res#particles, Particles3d.textureName(), Res.particleRegion(res), Particles3d.Space.World, Mat4.identity(), t, particles)),
-          flash = viewmodel |> Option.toList |> List.flatMap(h -> flashLights(res, a, t, StageView.fromEye(camera, fst(h)))),
-          creatures = creaturesIn(res, t, horde#enemies |> List.filter(e -> seen(e#x, 1.0, e#z, creatureReach()))),
+          billboards = List.flatten(
+              (shots |> List.filterMap(p -> Particles3d.spitBillboard(res#particles, Particles3d.textureName(), Res.particleRegion(res, Particles3d.Kind.Spark), p#at)))
+              :: chargeGlowsOf(res, t, enemies)
+              :: (Tracers.headsOf(Particles3dDoc.rec(res#particles)#tracer, t, World.tracersOf(s))
+                    |> List.filterMap(at -> Particles3d.tracerHead(res#particles, Particles3d.textureName(), Res.particleRegion(res, Particles3d.Kind.Spark), at)))
+              :: Particles3d.billboards(res#particles, Particles3d.textureName(), Res.particleRegion(res), Particles3d.Space.World, Mat4.identity(), t, particles) :: Nil),
+          flash = List.append(viewmodel |> Option.toList |> List.flatMap(h -> flashLights(res, a, t, StageView.fromEye(camera, fst(h)))),
+                              Gibs.lightsOf(JuiceDoc.rec(res#juice)#gib, t, World.gibsOf(s))),
+          creatures = creaturesIn(res, t, enemies),
           pickups = List.append(items#instances, props),
-          textures = List.flatten(res#stageTextures :: (res#creatures |> Map.valuesOf |> List.flatMap(b -> b#model#textures)) :: res#pickupArt#textures :: Nil),
+          effects = List.append(Gibs.instancesOf(JuiceDoc.rec(res#juice)#gib, res#gibArt, t, World.gibsOf(s)),
+                                Tracers.instancesOf(Particles3dDoc.rec(res#particles)#tracer, res#tracerArt, t, World.tracersOf(s))),
+          textures = List.flatten(res#stageTextures :: (res#creatures |> Map.valuesOf |> List.flatMap(b -> b#model#textures)) :: res#pickupArt#textures
+                                  :: res#gibArt#textures :: Nil),
           glows = List.append(shots |> List.map(p -> Particles3d.spitLight(res#particles, p#at)), items#lights),
           viewmodel = viewmodel |> Option.map(snd) }
 
@@ -125,7 +139,7 @@ mod View {
         let items = pickupsIn(res, t, camera, drawn, res#pickupPoints);
         { t = t, camera = camera, look = LookDoc.rec(res#look),
           zones = drawn |> Set.toList |> List.filterMap(id -> Map.get(id, res#art)),
-          billboards = Nil, flash = Nil, creatures = Nil, pickups = items#instances, textures = List.append(res#stageTextures, res#pickupArt#textures),
+          billboards = Nil, flash = Nil, creatures = Nil, pickups = items#instances, effects = Nil, textures = List.append(res#stageTextures, res#pickupArt#textures),
           glows = items#lights, viewmodel = None }
 
     /// 見回しの速さ（度/秒）・目の傾き（度。負で少し見上げる）・タイトルの見回しの始めの向き（度。最後の部屋の長い向き）。
@@ -173,10 +187,18 @@ mod View {
     // WhyNot: Doc へ出さない — 調整する値ではなく glb の形（背丈約 2 m・爪の先が前へ約 1.14 m）から決まる大きさ。
     def creatureReach(): Float64 = 1.7
 
-    /// 敵の置いた物（同じクリップの姿勢は共有する。Creatures.drawnOf）。
+    /// 敵の置いた物（同じクリップの姿勢は共有する。Creatures.drawnOf）。体は押された傾き・吹っ飛ぶ高さと反り・飛びかかる伸び・溜めの膨らみを重ねた形で、
+    /// 溜めている ranged は発光を chargeGlow 倍まで強める。
     def creaturesIn(res: Res.Res, t: Float64, enemies: List[Horde.Enemy]): List[Scene3d.Instance3d] =
-        let posed = enemies |> List.map(e -> { kind = e#kind, group = e#id, anim = e#anim, world = Horde.worldOf(e) });
+        let glowMax = EnemiesDoc.rec(res#enemies)#ranged#chargeGlow;
+        let posed = enemies |> List.map(e -> { kind = e#kind, group = e#id, anim = e#anim, world = Horde.drawnWorldOf(res, t, e),
+                                               glow = Horde.chargeOf(res, t, e) |> Option.map(k -> 1.0 + (glowMax - 1.0) * k) |> Option.getWithDefault(1.0) });
         Creatures.drawnOf(res#creatures, res#timing, EnemiesDoc.rec(res#enemies)#blendSeconds, t, posed)#instances
+
+    /// 溜めている ranged の口の光る玉（溜めの進みで大きく明るくなる）。
+    def chargeGlowsOf(res: Res.Res, t: Float64, enemies: List[Horde.Enemy]): List[Scene3d.Billboard3d] =
+        enemies |> List.filterMap(e -> Horde.chargeOf(res, t, e) |> Option.flatMap(k ->
+            Particles3d.chargeBillboard(res#particles, Particles3d.textureName(), Res.particleRegion(res, Particles3d.Kind.Spark), Horde.mouthOf(e), k)))
 
     /// 手前の腕と銃: 今の銃口（目の座標）と、場面に入れる物。構えている武器の glb が読めていなければ None。
     def viewmodelIn(res: Res.Res, a: Arsenal.Arsenal, particles: List[Particles3d.Particle], motion: FpViewmodel.Motion, t: Float64): Option[(Vec3.Vec3, StageView.Viewmodel)] =

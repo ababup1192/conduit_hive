@@ -1,9 +1,9 @@
-// Res — 描く元の束: Doc と、Doc から作る物（迷路の形・見える区画の組・当たり判定・弾の的・区画ごとの絵・粒の絵・spawn の点・拾う物）と、
-// 読み込んだステージ・腕と銃・敵・拾う武器の glb。読むだけで、Doc の読み直しの時だけ替わる。
+// Res — 描く元の束: Doc と、Doc から作る物（迷路の形・見える区画の組・当たり判定・弾の的・区画ごとの絵・粒の絵・曳光弾の形・spawn の点・拾う物）と、
+// 読み込んだステージ・腕と銃・敵・拾う武器・肉片の glb。読むだけで、Doc の読み直しの時だけ替わる。
 // 遊びの状態は World が持ち、App の w は Resources.With[Res, World] の組（Game）。
 // Res は World を使わない（使う向きは World → Res だけ。lint/rules.flix の module-cycle）。
 mod Res {
-    use fge::{AudioMixer, CollisionShape3d, CollisionWorld3d, PxSpriteAtlas, Rect2, Scene3d, Texture3d}
+    use fge::{AudioMixer, CollisionShape3d, CollisionWorld3d, Model3d, PxSpriteAtlas, Rect2, Scene3d, Texture3d}
 
     /// 起動時と描き出しが同じ形で読む Doc の束と、ステージ・腕と銃・敵・拾う武器の glb（Controls.loadDocs）。
     pub type alias Docs = {
@@ -16,6 +16,7 @@ mod Res {
         weapons = WeaponsDoc.Doc,
         viewmodel = FpViewmodelDoc.Doc,
         particles = Particles3dDoc.Doc,
+        juice = JuiceDoc.Doc,
         player = PlayerDoc.Doc,
         enemies = EnemiesDoc.Doc,
         spawns = SpawnsDoc.Doc,
@@ -28,7 +29,9 @@ mod Res {
         stage = Option[StageModel.Stage],
         viewmodels = FpViewmodel.Viewmodels,
         creatures = Creatures.Bodies,
-        pickupModels = PickupModels.Models
+        pickupModels = PickupModels.Models,
+        // 弾けた時の肉片（読めなければ None・肉片を出さない）。
+        gibs = Option[Model3d.Model3d]
     }
 
     /// 描く元の束。
@@ -42,6 +45,7 @@ mod Res {
         weapons = WeaponsDoc.Doc,
         viewmodel = FpViewmodelDoc.Doc,
         particles = Particles3dDoc.Doc,
+        juice = JuiceDoc.Doc,
         player = PlayerDoc.Doc,
         enemies = EnemiesDoc.Doc,
         spawns = SpawnsDoc.Doc,
@@ -79,19 +83,23 @@ mod Res {
         propArt = List[Scene3d.Instance3d],
         stageTextures = List[Texture3d.Texture3d],
         // 3D の粒のビルボードの絵（コードで塗った 1 枚。読み込みで 1 回だけ作る）。
-        particleTexture = PxSpriteAtlas.Baked
+        particleTexture = PxSpriteAtlas.Baked,
+        // 弾けた時の肉片の形と、曳光弾の線の形と材質（粒の Doc を読み直した時に作り直す）。
+        gibArt = Gibs.Art,
+        tracerArt = Tracers.Art
     }
 
     /// Doc の束から描く元を組む。
     pub def build(docs: Docs): Res =
         let stage = stageOf(docs#maze, docs#look, docs#stage);
         withPlans({ uiText = docs#uiText, keys = docs#keys, theme = docs#theme, walk = docs#walk, look = docs#look, mazeDoc = docs#maze,
-          weapons = docs#weapons, viewmodel = docs#viewmodel, particles = docs#particles, player = docs#player, enemies = docs#enemies,
+          weapons = docs#weapons, viewmodel = docs#viewmodel, particles = docs#particles, juice = docs#juice, player = docs#player, enemies = docs#enemies,
           spawns = docs#spawns, pickups = docs#pickups, tour = docs#tour,
           sounds = docs#sounds, mixerDoc = docs#mixer, mixer = SoundsDoc.mixerOf(docs#mixer, docs#sounds), stage = docs#stage, viewmodels = docs#viewmodels, creatures = docs#creatures, timing = Creatures.timingOf(docs#creatures),
           spawnPoints = stage#spawnPoints, wavePlans = Map.empty(), tourWavePlans = Map.empty(), pickupPoints = Pickups.pointsOf(stage#maze, docs#pickups),
           pickupArt = PickupModels.build(LookDoc.rec(docs#look), docs#pickups, docs#pickupModels), maze = stage#maze, collision = stage#collision, openCells = stage#openCells, props = stage#props, hitTargets = stage#hitTargets,
-          art = stage#art, propArt = stage#propArt, stageTextures = stage#textures, particleTexture = Particles3d.textureOf() })
+          art = stage#art, propArt = stage#propArt, stageTextures = stage#textures, particleTexture = Particles3d.textureOf(),
+          gibArt = Gibs.artOf(docs#gibs), tracerArt = Tracers.artOf(Particles3dDoc.rec(docs#particles)#tracer) })
 
     /// 迷路と見た目から作る物。
     type alias Stage = {
@@ -159,7 +167,10 @@ mod Res {
 
     pub def withViewmodel(viewmodel: FpViewmodelDoc.Doc, res: Res): Res = { viewmodel = viewmodel | res }
 
-    pub def withParticles(particles: Particles3dDoc.Doc, res: Res): Res = { particles = particles | res }
+    pub def withParticles(particles: Particles3dDoc.Doc, res: Res): Res =
+        { particles = particles, tracerArt = Tracers.artOf(Particles3dDoc.rec(particles)#tracer) | res }
+
+    pub def withJuice(juice: JuiceDoc.Doc, res: Res): Res = { juice = juice | res }
 
     pub def withPlayer(player: PlayerDoc.Doc, res: Res): Res = { player = player | res }
 

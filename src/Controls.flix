@@ -113,10 +113,10 @@ mod Controls {
         { uiText = UiTextDoc.load(UiTextDoc.path()), keys = KeysDoc.load(KeysDoc.path()), theme = ThemeDoc.load(ThemeDoc.path()),
           walk = WalkDoc.load(WalkDoc.path()), look = LookDoc.load(LookDoc.path()), maze = MazeDoc.load(MazeDoc.path()),
           weapons = WeaponsDoc.load(WeaponsDoc.path()), viewmodel = FpViewmodelDoc.load(FpViewmodelDoc.path()),
-          particles = Particles3dDoc.load(Particles3dDoc.path()), player = PlayerDoc.load(PlayerDoc.path()), enemies = EnemiesDoc.load(EnemiesDoc.path()),
+          particles = Particles3dDoc.load(Particles3dDoc.path()), juice = JuiceDoc.load(JuiceDoc.path()), player = PlayerDoc.load(PlayerDoc.path()), enemies = EnemiesDoc.load(EnemiesDoc.path()),
           spawns = SpawnsDoc.load(SpawnsDoc.path()), pickups = PickupsDoc.load(PickupsDoc.path()), tour = TourDoc.load(TourDoc.path()),
           sounds = SoundsDoc.load(SoundsDoc.path()), mixer = AudioMixerDoc.load(AudioMixer.defaults(), mixerPath()), stage = StageModel.load(),
-          viewmodels = FpViewmodel.load(), creatures = Creatures.load(), pickupModels = PickupModels.load() }
+          viewmodels = FpViewmodel.load(), creatures = Creatures.load(), pickupModels = PickupModels.load(), gibs = Gibs.load() }
 
     def restartPlay(res: Res.Res, w: World.World): World.World =
         if (Option.isEmpty(World.sessionOf(w))) w else World.restart(res, w)
@@ -132,6 +132,8 @@ mod Controls {
     def reloadViewmodel(res: Res.Res): Res.Res \ Fs.FileRead = Res.withViewmodel(FpViewmodelDoc.load(FpViewmodelDoc.path()), res)
 
     def reloadParticles(res: Res.Res): Res.Res \ Fs.FileRead = Res.withParticles(Particles3dDoc.load(Particles3dDoc.path()), res)
+
+    def reloadJuice(res: Res.Res): Res.Res \ Fs.FileRead = Res.withJuice(JuiceDoc.load(JuiceDoc.path()), res)
 
     def reloadPlayer(res: Res.Res): Res.Res \ Fs.FileRead = Res.withPlayer(PlayerDoc.load(PlayerDoc.path()), res)
 
@@ -168,6 +170,8 @@ mod Controls {
             :: Resources.reloadRow("weapons", WeaponsDoc.path(), reloadWeapons, unchanged)
             :: Resources.reloadRow("viewmodel", FpViewmodelDoc.path(), reloadViewmodel, unchanged)
             :: Resources.reloadRow("particles3d", Particles3dDoc.path(), reloadParticles, unchanged)
+            :: Resources.reloadRow("creaturefx", Particles3dDoc.creaturePath(), reloadParticles, unchanged)
+            :: Resources.reloadRow("juice", JuiceDoc.path(), reloadJuice, unchanged)
             :: Resources.reloadRow("player", PlayerDoc.path(), reloadPlayer, unchanged)
             :: Resources.reloadRow("enemies", EnemiesDoc.path(), reloadEnemies, unchanged)
             :: Resources.reloadRow("spawns", SpawnsDoc.path(), reloadSpawns, unchanged)

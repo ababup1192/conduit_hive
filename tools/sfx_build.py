@@ -110,6 +110,12 @@ SHOTS = [
     shot("enemy_spit", layer("spit_b", 0.000, 0, "highpass=f=80," + pitch(0.85)), 0.52, -14.0, gate_db=40, use="吐く（高さを 0.85 倍）"),
     shot("spit_burst_1", layer("splat_a", 0.000, 0, "highpass=f=80"), 0.36, -12.0, gate_db=30, use="塊が弾ける 1"),
     shot("spit_burst_2", layer("splat_b", 1.378, 0, "highpass=f=80"), 0.40, -12.0, gate_db=30, use="塊が弾ける 2"),
+    shot("enemy_charge", layer("growl_b", 0.866, 0, "highpass=f=80," + pitch(1.25)), 0.75, -14.0, gate_db=40, use="吐く前の溜め（喉の唸り。高さを 1.25 倍）"),
+    # 弾ける: 塊が弾ける音を低くし、被弾の肉の音を薄く重ねる
+    shot("gib_1", [layer("splat_a", 0.000, 0, "highpass=f=50," + pitch(0.8)),
+                   layer("flesh_b", 0.030, -4, "highpass=f=70")], 0.60, -12.0, gate_db=30, use="弾ける 1（高さを 0.8 倍・肉の音を -4 dB 重ねる）"),
+    shot("gib_2", [layer("splat_b", 1.378, 0, "highpass=f=50," + pitch(0.75)),
+                   layer("flesh_a", 0.114, -4, "highpass=f=70")], 0.65, -12.0, gate_db=30, use="弾ける 2（高さを 0.75 倍・肉の音を -4 dB 重ねる）"),
     # ── 自分 ──
     shot("player_hurt_1", layer("grunt_a", 0.000, 0, VOICE_HP), 0.32, -20.0, gate_db=40, use="うめき 1"),
     shot("player_hurt_2", layer("grunt_b", 0.200, 0, VOICE_HP), 0.56, -20.0, gate_db=40, use="うめき 2"),
