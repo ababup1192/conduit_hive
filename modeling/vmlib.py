@@ -260,6 +260,22 @@ def tri_count(objs):
     return sum(len(p.vertices) - 2 for o in objs for p in o.data.polygons)
 
 
+def volume_centroid(o):
+    """閉じた形の重心（三角形ごとの四面体の符号つき体積で重みをつける）。体積がほぼ 0 なら頂点の平均。"""
+    me = o.data
+    me.calc_loop_triangles()
+    vs = me.vertices
+    vol, acc = 0.0, Vector((0, 0, 0))
+    for t in me.loop_triangles:
+        a, b, c = (vs[i].co for i in t.vertices)
+        v = a.dot(b.cross(c)) / 6.0
+        vol += v
+        acc += v * (a + b + c) / 4.0
+    if abs(vol) < 1e-12:
+        return sum((v.co for v in vs), Vector()) / len(vs)
+    return acc / vol
+
+
 # ── 骨と重み ──
 class Rig:
     def __init__(self, name):
