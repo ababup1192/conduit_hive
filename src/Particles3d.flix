@@ -9,6 +9,7 @@ mod Particles3d {
     pub enum Kind with Eq, ToString {
         case Muzzle
         case Spark
+        case Ichor
     }
 
     /// 粒の置き場。World = ステージの座標・Muzzle = 銃口の局所の座標（原点が銃口・+Z が銃身の向き）。
@@ -29,6 +30,7 @@ mod Particles3d {
     def burstOf(doc: Particles3dDoc.Doc, kind: Kind): Particles3dDoc.Burst = match kind {
         case Kind.Muzzle => Particles3dDoc.rec(doc)#muzzle
         case Kind.Spark  => Particles3dDoc.rec(doc)#spark
+        case Kind.Ichor  => Particles3dDoc.rec(doc)#ichor
     }
 
     /// dir と直角な 2 本の向き（長さ 1）。
@@ -55,10 +57,24 @@ mod Particles3d {
         })
 
     /// 粒の色に明るさの倍率を掛けた色（描き手は色を線形の量へ戻すので、戻した後で intensity 倍になる画面の値で渡す）。
-    def glowOf(b: Particles3dDoc.Burst): Color =
-        let k = Float64.max(0.0, b#intensity);
-        let lift = c -> Texture3d.linearToSrgb(Texture3d.srgbToLinear(c) * k);
-        Color.rgb(lift(b#color#r), lift(b#color#g), lift(b#color#b))
+    def glowOf(b: Particles3dDoc.Burst): Color = brightened(b#color, b#intensity)
+
+    def brightened(c: Color, intensity: Float64): Color =
+        let k = Float64.max(0.0, intensity);
+        let lift = v -> Texture3d.linearToSrgb(Texture3d.srgbToLinear(v) * k);
+        Color.rgb(lift(c#r), lift(c#g), lift(c#b))
+
+    /// projectile の光る玉（点 at が玉の真ん中・光を当てない）。region = 粒の絵のコマ（無ければ描かない）。
+    pub def spitBillboard(doc: Particles3dDoc.Doc, texture: String, area: Option[Rect2.Rect2], at: Vec3.Vec3): Option[Scene3d.Billboard3d] =
+        let g = Particles3dDoc.rec(doc)#spit;
+        area |> Option.map(rect ->
+            Scene3d.billboard(texture, rect, at, { x = g#size, y = g#size })
+                |> Scene3d.withAnchor(center()) |> Scene3d.withBillboardTint(brightened(g#color, g#intensity)) |> Scene3d.unlit)
+
+    /// projectile の玉に付ける点光源。
+    pub def spitLight(doc: Particles3dDoc.Doc, at: Vec3.Vec3): Scene3d.PointLight =
+        let g = Particles3dDoc.rec(doc)#spit;
+        { position = at, color = g#color, intensity = g#lightIntensity, range = g#lightRange }
 
     /// 時刻 t にまだ見えているか（出した時刻から寿命の間）。
     def isAlive(t: Float64, p: Particle): Bool = t >= p#born and t - p#born < p#life
@@ -98,6 +114,7 @@ mod Particles3d {
     pub def regionOf(t: PxSpriteAtlas.Baked, kind: Kind): Option[Rect2.Rect2] = match kind {
         case Kind.Muzzle => PxSpriteAtlas.regionOf(t, "muzzle", "a")
         case Kind.Spark  => PxSpriteAtlas.regionOf(t, "spark", "a")
+        case Kind.Ichor  => PxSpriteAtlas.regionOf(t, "spark", "a")
     }
 
     /// 粒の絵 1 枚（左にマズルフラッシュ・右上に火花）。色は白から灰の濃淡だけで、粒の色は描く時に掛ける。

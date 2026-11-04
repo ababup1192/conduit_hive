@@ -8,7 +8,9 @@
     {"name": "z", "kind": "num", "doc": "足元の z（m）"},
     {"name": "zone", "kind": "text", "doc": "今いる区画の文字（壁の中は -）"},
     {"name": "quit", "kind": "text", "doc": "終了の確認（Playing・Asking・Confirmed）"},
-    {"name": "shots", "kind": "num", "doc": "撃った回数の合計"}
+    {"name": "shots", "kind": "num", "doc": "撃った回数の合計"},
+    {"name": "health", "kind": "num", "doc": "プレイヤーの体力"},
+    {"name": "enemies", "kind": "num", "doc": "倒れていない敵の数"}
   ],
   "drives": [],
   "starts": [
@@ -17,7 +19,9 @@
     {"name": "shot:corridor", "doc": "ギャラリーの場面（gallery/corridor.png）", "args": {}},
     {"name": "shot:hall", "doc": "ギャラリーの場面（gallery/hall.png）", "args": {}},
     {"name": "shot:fire", "doc": "ギャラリーの場面（gallery/fire.png）", "args": {}},
-    {"name": "shot:wall", "doc": "ギャラリーの場面（gallery/wall.png）", "args": {}}
+    {"name": "shot:wall", "doc": "ギャラリーの場面（gallery/wall.png）", "args": {}},
+    {"name": "shot:horde", "doc": "ギャラリーの場面（gallery/horde.png）", "args": {}},
+    {"name": "shot:fight", "doc": "ギャラリーの場面（gallery/fight.png）", "args": {}}
   ],
   "keys": ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "Digit0", "Digit1", "Digit2", "Digit3", "Digit4", "Digit5", "Digit6", "Digit7", "Digit8", "Digit9", "Up", "Down", "Left", "Right", "Enter", "Space", "Escape", "Tab", "Backspace", "Insert", "Delete", "PageUp", "PageDown", "Home", "End", "CapsLock", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12", "Apostrophe", "Comma", "Minus", "Period", "Slash", "Semicolon", "Equal", "LeftBracket", "Backslash", "RightBracket", "GraveAccent", "LeftShift", "LeftCtrl", "LeftAlt", "LeftSuper", "RightShift", "RightCtrl", "RightAlt", "RightSuper", "Menu", "Numpad0", "Numpad1", "Numpad2", "Numpad3", "Numpad4", "Numpad5", "Numpad6", "Numpad7", "Numpad8", "Numpad9", "NumpadDecimal", "NumpadDivide", "NumpadMultiply", "NumpadSubtract", "NumpadAdd", "NumpadEnter", "NumpadEqual"],
   "ready": false,

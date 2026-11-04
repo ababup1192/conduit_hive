@@ -36,7 +36,9 @@ mod E2e {
               { name = "z", doc = "足元の z（m）", read = Flow.Probe.Num(Resources.read((_, w) -> World.walkerOf(w)#z)) } ::
               { name = "zone", doc = "今いる区画の文字（壁の中は -）", read = Flow.Probe.Text(Resources.read((res, w) -> zoneName(res, w))) } ::
               { name = "quit", doc = "終了の確認（Playing・Asking・Confirmed）", read = Flow.Probe.Text(Resources.read((_, w) -> "${w#quit}")) } ::
-              { name = "shots", doc = "撃った回数の合計", read = Flow.Probe.Num(Resources.read((_, w) -> Int32.toFloat64(World.arsenalOf(w)#shots))) } :: Nil
+              { name = "shots", doc = "撃った回数の合計", read = Flow.Probe.Num(Resources.read((_, w) -> Int32.toFloat64(World.arsenalOf(w)#shots))) } ::
+              { name = "health", doc = "プレイヤーの体力", read = Flow.Probe.Num(Resources.read((_, w) -> World.healthOf(w)#points)) } ::
+              { name = "enemies", doc = "倒れていない敵の数", read = Flow.Probe.Num(Resources.read((_, w) -> Int32.toFloat64(Horde.aliveCount(World.hordeOf(w))))) } :: Nil
           | Flow.emptyTable() }
 
     def zoneName(res: Res.Res, w: World.World): String =

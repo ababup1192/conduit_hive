@@ -92,7 +92,7 @@
           "type": "float",
           "label": "威力（1 粒）",
           "order": 1,
-          "default": 12.0,
+          "default": 20.0,
           "min": 0,
           "max": 500
         },
@@ -108,7 +108,7 @@
           "type": "float",
           "label": "ばらつき（度）",
           "order": 3,
-          "default": 7.0,
+          "default": 10.0,
           "min": 0,
           "max": 30
         },

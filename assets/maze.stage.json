@@ -1,7 +1,7 @@
 {
   "version": 1,
   "title": "迷路（マス目）",
-  "note": "1 文字 = 1 マス（cellSize m 四方）。'#' は壁、ほかの文字は床で、その文字が区画（部屋と通路の塊）の名前。区画の名前・種類（room = 部屋で天井に灯りを吊る / corridor = 通路）・天井の高さは zones の行（行の無い文字は通路・wallHeight）。marks は x = 列・y = 行（左上が 0, 0）の印で、kind = start（歩き始める所・yaw は向きの度で 0 が上の行の向き・90 が右）/ spawn（敵が湧く所）/ pickup（name が拾う物の種類の名前）。印は種類の名前だけを持ち、湧く数と拾う物の量は別の Doc が正。finalZone は最後の広い部屋の文字。",
+  "note": "1 文字 = 1 マス（cellSize m 四方）。'#' は壁、ほかの文字は床で、その文字が区画（部屋と通路の塊）の名前。区画の名前・種類（room = 部屋で天井に灯りを吊る / corridor = 通路）・天井の高さは zones の行（行の無い文字は通路・wallHeight）。marks は x = 列・y = 行（左上が 0, 0）の印で、kind = start（歩き始める所・yaw は向きの度で 0 が上の行の向き・90 が右）/ spawn（敵が湧く所・name は群れの種類の名前で、数と型は conduit_hive.spawns.json の groups が正）/ pickup（name が拾う物の種類の名前）。印は種類の名前だけを持ち、湧く数と拾う物の量は別の Doc が正。finalZone は最後の広い部屋の文字。",
   "cellSize": 4.0,
   "wallHeight": 4.0,
   "finalZone": "H",
@@ -191,121 +191,121 @@
     },
     {
       "kind": "spawn",
-      "name": "spawn",
+      "name": "pack",
       "x": 17,
       "y": 31
     },
     {
       "kind": "spawn",
-      "name": "spawn",
+      "name": "pack",
       "x": 16,
       "y": 35
     },
     {
       "kind": "spawn",
-      "name": "spawn",
+      "name": "pack",
       "x": 31,
       "y": 32
     },
     {
       "kind": "spawn",
-      "name": "spawn",
+      "name": "pack",
       "x": 33,
       "y": 36
     },
     {
       "kind": "spawn",
-      "name": "spawn",
+      "name": "mixed",
       "x": 3,
       "y": 17
     },
     {
       "kind": "spawn",
-      "name": "spawn",
+      "name": "mixed",
       "x": 7,
       "y": 21
     },
     {
       "kind": "spawn",
-      "name": "spawn",
+      "name": "mixed",
       "x": 20,
       "y": 17
     },
     {
       "kind": "spawn",
-      "name": "spawn",
+      "name": "mixed",
       "x": 15,
       "y": 22
     },
     {
       "kind": "spawn",
-      "name": "spawn",
+      "name": "mixed",
       "x": 32,
       "y": 18
     },
     {
       "kind": "spawn",
-      "name": "spawn",
+      "name": "mixed",
       "x": 28,
       "y": 22
     },
     {
       "kind": "spawn",
-      "name": "spawn",
+      "name": "mixed",
       "x": 3,
       "y": 4
     },
     {
       "kind": "spawn",
-      "name": "spawn",
+      "name": "mixed",
       "x": 8,
       "y": 7
     },
     {
       "kind": "spawn",
-      "name": "spawn",
+      "name": "hive",
       "x": 20,
       "y": 3
     },
     {
       "kind": "spawn",
-      "name": "spawn",
+      "name": "hive",
       "x": 26,
       "y": 2
     },
     {
       "kind": "spawn",
-      "name": "spawn",
+      "name": "hive",
       "x": 33,
       "y": 3
     },
     {
       "kind": "spawn",
-      "name": "spawn",
+      "name": "hive",
       "x": 36,
       "y": 6
     },
     {
       "kind": "spawn",
-      "name": "spawn",
+      "name": "hive",
       "x": 22,
       "y": 9
     },
     {
       "kind": "spawn",
-      "name": "spawn",
+      "name": "hive",
       "x": 30,
       "y": 10
     },
     {
       "kind": "spawn",
-      "name": "spawn",
+      "name": "hive",
       "x": 36,
       "y": 10
     },
     {
       "kind": "spawn",
-      "name": "spawn",
+      "name": "hive",
       "x": 17,
       "y": 6
     },

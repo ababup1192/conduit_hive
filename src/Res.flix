@@ -1,11 +1,11 @@
-// Res — 描く元の束: Doc と、Doc から作る物（迷路の形・見える区画の組・当たり判定・弾の的・灰色の箱の絵・粒の絵）と、
-// 読み込んだ腕と銃の glb。読むだけで、Doc の読み直しの時だけ替わる。
+// Res — 描く元の束: Doc と、Doc から作る物（迷路の形・見える区画の組・当たり判定・弾の的・灰色の箱の絵・粒の絵・spawn の点）と、
+// 読み込んだ腕と銃・敵の glb。読むだけで、Doc の読み直しの時だけ替わる。
 // 遊びの状態は World が持ち、App の w は Resources.With[Res, World] の組（Game）。
 // Res は World を使わない（使う向きは World → Res だけ。lint/rules.flix の module-cycle）。
 mod Res {
     use fge::{CollisionShape3d, CollisionWorld3d, PxSpriteAtlas, Rect2}
 
-    /// 起動時と描き出しが同じ形で読む Doc の束と、腕と銃の glb（Controls.loadDocs）。
+    /// 起動時と描き出しが同じ形で読む Doc の束と、腕と銃・敵の glb（Controls.loadDocs）。
     pub type alias Docs = {
         sample = SampleDoc.Doc,
         keys = KeysDoc.Doc,
@@ -16,7 +16,10 @@ mod Res {
         weapons = WeaponsDoc.Doc,
         hands = HandsDoc.Doc,
         particles = Particles3dDoc.Doc,
-        rigs = Arms.Rigs
+        enemies = EnemiesDoc.Doc,
+        spawns = SpawnsDoc.Doc,
+        rigs = Arms.Rigs,
+        creatures = Creatures.Rigs
     }
 
     /// 描く元の束。
@@ -30,7 +33,14 @@ mod Res {
         weapons = WeaponsDoc.Doc,
         hands = HandsDoc.Doc,
         particles = Particles3dDoc.Doc,
+        enemies = EnemiesDoc.Doc,
+        spawns = SpawnsDoc.Doc,
         rigs = Arms.Rigs,
+        // 敵の体と、そのクリップの長さ（glb が読めない型は既定の長さ）。
+        creatures = Creatures.Rigs,
+        timing = Creatures.Timing,
+        // 迷路の spawn の印を spawns.json の群れで引いた点。
+        spawnPoints = List[Spawner.Point],
         // 迷路の形と見える区画の組（見える距離は霧のかかり切る距離）。
         maze = Maze.Maze,
         collision = CollisionWorld3d.CollisionWorld3d,
@@ -47,7 +57,8 @@ mod Res {
     pub def build(docs: Docs): Res =
         withStage(docs#maze, docs#look,
             { sample = docs#sample, keys = docs#keys, theme = docs#theme, walk = docs#walk, look = docs#look, mazeDoc = docs#maze,
-              weapons = docs#weapons, hands = docs#hands, particles = docs#particles, rigs = docs#rigs,
+              weapons = docs#weapons, hands = docs#hands, particles = docs#particles, enemies = docs#enemies, spawns = docs#spawns,
+              rigs = docs#rigs, creatures = docs#creatures, timing = Creatures.timingOf(docs#creatures), spawnPoints = Nil,
               maze = Maze.build(0.0, MazeDoc.defaults()), collision = CollisionWorld3d.empty(), props = Nil, hitTargets = Nil, art = Map.empty(),
               particleTexture = Particles3d.textureOf() })
 
@@ -59,7 +70,7 @@ mod Res {
         let art = MazeMesh.build(LookDoc.rec(look), maze)
             |> Map.adjust(z -> { instances = List.append(z#instances, Props.artOf(LookDoc.rec(look), props)) | z }, maze#finalZone);
         { mazeDoc = mazeDoc, look = look, maze = maze, collision = Collider.worldOf(maze, props), props = props,
-          hitTargets = Hitscan.targetsOf(maze, props), art = art | res }
+          hitTargets = Hitscan.targetsOf(maze, props), art = art, spawnPoints = Spawner.pointsOf(maze, res#spawns) | res }
 
     /// 粒の種類の絵のコマ。
     pub def particleRegion(res: Res, kind: Particles3d.Kind): Option[Rect2.Rect2] = Particles3d.regionOf(res#particleTexture, kind)
@@ -83,4 +94,8 @@ mod Res {
     pub def withHands(hands: HandsDoc.Doc, res: Res): Res = { hands = hands | res }
 
     pub def withParticles(particles: Particles3dDoc.Doc, res: Res): Res = { particles = particles | res }
+
+    pub def withEnemies(enemies: EnemiesDoc.Doc, res: Res): Res = { enemies = enemies | res }
+
+    pub def withSpawns(spawns: SpawnsDoc.Doc, res: Res): Res = { spawns = spawns, spawnPoints = Spawner.pointsOf(res#maze, spawns) | res }
 }

@@ -192,6 +192,128 @@
           "max": 0.5
         }
       }
+    },
+    "ichor": {
+      "kind": "record",
+      "label": "敵の体液の飛沫",
+      "order": 4,
+      "fields": {
+        "count": {
+          "type": "int",
+          "label": "1 回に出す数",
+          "order": 1,
+          "default": 12,
+          "min": 0,
+          "max": 64
+        },
+        "life": {
+          "type": "float",
+          "label": "寿命（秒）",
+          "order": 2,
+          "default": 0.5,
+          "min": 0.01,
+          "max": 3
+        },
+        "lifeJitter": {
+          "type": "float",
+          "label": "寿命の散らし（0 で全部同じ）",
+          "order": 3,
+          "default": 0.5,
+          "min": 0,
+          "max": 1
+        },
+        "speed": {
+          "type": "float",
+          "label": "飛び出す速さ（m/秒）",
+          "order": 4,
+          "default": 4.0,
+          "min": 0,
+          "max": 30
+        },
+        "spread": {
+          "type": "float",
+          "label": "向きの広がり（度）",
+          "order": 5,
+          "default": 60.0,
+          "min": 0,
+          "max": 180
+        },
+        "size": {
+          "type": "float",
+          "label": "大きさ（m）",
+          "order": 6,
+          "default": 0.08,
+          "min": 0.005,
+          "max": 1
+        },
+        "gravity": {
+          "type": "float",
+          "label": "下へ引く強さ（m/秒²）",
+          "order": 7,
+          "default": 9.8,
+          "min": 0,
+          "max": 30
+        },
+        "color": {
+          "type": "color",
+          "label": "色",
+          "order": 8,
+          "default": "#ff7a2a"
+        },
+        "intensity": {
+          "type": "float",
+          "label": "明るさの倍率（線形。1 を超えるとブルームが掛かる）",
+          "order": 9,
+          "default": 2.5,
+          "min": 0,
+          "max": 40
+        }
+      }
+    },
+    "spit": {
+      "kind": "record",
+      "label": "projectile の光る玉",
+      "order": 5,
+      "fields": {
+        "size": {
+          "type": "float",
+          "label": "大きさ（m）",
+          "order": 1,
+          "default": 0.32,
+          "min": 0.02,
+          "max": 2
+        },
+        "color": {
+          "type": "color",
+          "label": "色",
+          "order": 2,
+          "default": "#ff8a3c"
+        },
+        "intensity": {
+          "type": "float",
+          "label": "明るさの倍率（線形）",
+          "order": 3,
+          "default": 5.0,
+          "min": 0,
+          "max": 40
+        },
+        "lightIntensity": {
+          "type": "float",
+          "label": "点光源の強さ",
+          "order": 4,
+          "default": 2.5,
+          "min": 0,
+          "max": 20
+        },
+        "lightRange": {
+          "type": "float",
+          "label": "点光源の届く距離（m）",
+          "order": 5,
+          "default": 4.0,
+          "min": 0.5,
+          "max": 20
+        }
+      }
     }
   }
 }

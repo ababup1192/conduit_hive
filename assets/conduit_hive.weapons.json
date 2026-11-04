@@ -15,9 +15,9 @@
     "owned": true
   },
   "shotgun": {
-    "damage": 12.0,
+    "damage": 20.0,
     "interval": 0.9,
-    "spread": 7.0,
+    "spread": 10.0,
     "pellets": 9,
     "recoil": 6.0,
     "range": 30.0,

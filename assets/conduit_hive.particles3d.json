@@ -1,7 +1,7 @@
 {
   "version": 1,
   "title": "3D の粒",
-  "note": "マズルフラッシュ（muzzle。銃口に付いて動く）・当たった所の火花（spark）・撃った瞬間だけ点ける灯り（light。ステージと腕の両方の場面に 1 本ずつ）。engine の fx.json（2D）とは別の物。出し方・動かし方・消し方はコード（src/Particles3d.flix）。",
+  "note": "マズルフラッシュ（muzzle。銃口に付いて動く）・当たった所の火花（spark）・撃った瞬間だけ点ける灯り（light。ステージと腕の両方の場面に 1 本ずつ）・敵に当たった所と projectile が弾けた所の体液の飛沫（ichor）・ranged が吐く projectile の光る玉と点光源（spit）。engine の fx.json（2D）とは別の物。出し方・動かし方・消し方はコード（src/Particles3d.flix）。",
   "muzzle": {
     "count": 4,
     "life": 0.06,
@@ -29,5 +29,23 @@
     "intensity": 4.0,
     "range": 6.0,
     "life": 0.05
+  },
+  "ichor": {
+    "count": 12,
+    "life": 0.5,
+    "lifeJitter": 0.5,
+    "speed": 4.0,
+    "spread": 60.0,
+    "size": 0.08,
+    "gravity": 9.8,
+    "color": "#ff7a2a",
+    "intensity": 2.5
+  },
+  "spit": {
+    "size": 0.32,
+    "color": "#ff8a3c",
+    "intensity": 5.0,
+    "lightIntensity": 2.5,
+    "lightRange": 4.0
   }
 }

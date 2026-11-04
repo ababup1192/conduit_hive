@@ -3,10 +3,10 @@
 // ── 画面の層（奥から手前へ）──
 // 場面（Layer.Scene）: 一人称の迷路と手前の腕と銃（StageView。Pass の中で 3D の場面とブルームを組み、後処理の面 1 枚で画面へ）。
 // 終了の確認の窓（Layer.Prompt）: 場面のどれよりも手前に出る。押せる物の当たりは絵と同じ木に ZStack.hit で積む。
-// HUD（照準・弾の数・F3 の診断の行）は App.withHudView に繋ぐ hudFrame（view の絵のどれよりも手前。本格的な HUD は後の段）。
+// HUD（照準・体力・弾の数・被弾の赤み・F3 の診断の行）は App.withHudView に繋ぐ hudFrame（view の絵のどれよりも手前）。
 mod View {
 
-    use fge::{App, Bezier, Color, FrameDiagnostics, Mat4, Num, Render, Scene3d, SortingLayer, TextDraw, Vec2, Vec3, ZStack}
+    use fge::{App, Bezier, Camera3d, Color, FrameDiagnostics, Frustum, Mat4, Num, Render, Scene3d, SortingLayer, TextDraw, Vec2, Vec3, ZStack}
     use ZOrder.Layer
 
     /// 描くのに要る値。部品は World でなくこれを読む（lint/rules.flix の view-no-world）。
@@ -25,7 +25,11 @@ mod View {
         looking = Bool,
         showsDiagnostics = Bool,
         // 構えている武器の残りの弾（無限なら None）。
-        ammo = Option[Int32]
+        ammo = Option[Int32],
+        // 体力の残りの割合（0..1）・被弾の赤みの強さ（0..1）・倒れてからやり直すまでの進み（0..1。倒れていなければ 0）。
+        health = Float64,
+        hurt = Float64,
+        down = Float64
     }
 
     /// 描く元と World から描くのに要る値だけを写す（View の中で World を読むのは入口の frame・passPlan・hudFrame とここだけ）。
@@ -34,10 +38,14 @@ mod View {
 
     /// HUD の入口（Game の App.withHudView と描き出しが呼ぶ）。
     pub def hudFrame(ctx: App.ViewCtx, res: Res.Res, w: World.World): List[Render.PlacedItem] =
+        let d = EnemiesDoc.rec(res#enemies);
+        let t = World.seconds(w);
+        let health = World.healthOf(w);
         hud(ctx, { theme = res#theme, askingQuit = World.isAskingQuit(w), looking = World.isLooking(w),
-                   showsDiagnostics = World.showsDiagnostics(w), ammo = Arsenal.ammoOf(res#weapons, World.arsenalOf(w)) })
+                   showsDiagnostics = World.showsDiagnostics(w), ammo = Arsenal.ammoOf(res#weapons, World.arsenalOf(w)),
+                   health = Health.fraction(d, health), hurt = Health.flash(d, t, health), down = Health.downProgress(d, t, health) })
 
-    /// 一人称の場面の値: 照準のカメラ・今いる区画から見える区画の絵・火花・手前の腕と銃・撃った瞬間の灯り。
+    /// 一人称の場面の値: 照準のカメラ・今いる区画から見える区画の絵・その区画の敵と projectile・粒・手前の腕と銃・撃った瞬間の灯り。
     pub def stageIn(res: Res.Res, w: World.World): StageView.In =
         let body = World.walkerOf(w);
         let t = World.seconds(w);
@@ -47,11 +55,29 @@ mod View {
         let drawn = Maze.visibleFrom(res#maze, body#x, body#z);
         let motion = { phase = Walker.stridePhase(WalkDoc.rec(res#walk), body), sway = World.swayOf(w) };
         let hands = handsIn(res, a, particles, motion, t);
+        let horde = World.hordeOf(w);
+        let seen = (x: Float64, y: Float64, z: Float64, radius: Float64) ->
+            Maze.zoneAt(res#maze, x, z) |> Option.exists(id -> Set.memberOf(id, drawn)) and
+            Frustum.intersectsSphere(Camera3d.frustum(camera, World.width() / World.height()), Vec3.v3(x, y, z), radius);
+        let shots = horde#projectiles |> List.filter(p -> seen(p#at#x, p#at#y, p#at#z, 1.0));
         { t = t, camera = camera, look = LookDoc.rec(res#look),
           zones = drawn |> Set.toList |> List.filterMap(id -> Map.get(id, res#art)),
-          billboards = Particles3d.billboards(res#particles, Particles3d.textureName(), Res.particleRegion(res), Particles3d.Space.World, Mat4.identity(), t, particles),
+          billboards = List.append(
+              shots |> List.filterMap(p -> Particles3d.spitBillboard(res#particles, Particles3d.textureName(), Res.particleRegion(res, Particles3d.Kind.Spark), p#at)),
+              Particles3d.billboards(res#particles, Particles3d.textureName(), Res.particleRegion(res), Particles3d.Space.World, Mat4.identity(), t, particles)),
           flash = hands |> Option.toList |> List.flatMap(h -> flashLights(res, a, t, StageView.fromEye(camera, fst(h)))),
+          creatures = creaturesIn(res, t, horde#enemies |> List.filter(e -> seen(e#x, 1.0, e#z, creatureReach()))),
+          creatureTextures = res#creatures |> Map.valuesOf |> List.flatMap(r -> r#model#textures),
+          glows = shots |> List.map(p -> Particles3d.spitLight(res#particles, p#at)),
           hands = hands |> Option.map(snd) }
+
+    /// 敵を囲む球の半径（足元から 1 m の高さが真ん中。振り下ろした腕の先まで）。
+    def creatureReach(): Float64 = 1.7
+
+    /// 敵の置いた物（同じクリップの姿勢は共有する。Creatures.drawnOf）。
+    def creaturesIn(res: Res.Res, t: Float64, enemies: List[Horde.Enemy]): List[Scene3d.Instance3d] =
+        let bodies = enemies |> List.map(e -> { kind = e#kind, group = e#id, anim = e#anim, world = Horde.worldOf(e) });
+        Creatures.drawnOf(res#creatures, EnemiesDoc.rec(res#enemies)#blendSeconds, t, bodies)#instances
 
     /// 手前の腕と銃: 今の銃口（目の座標）と、場面に入れる物。構えている武器の glb が読めていなければ None。
     def handsIn(res: Res.Res, a: Arsenal.Arsenal, particles: List[Particles3d.Particle], motion: Arms.Motion, t: Float64): Option[(Vec3.Vec3, StageView.Hands)] =
@@ -92,12 +118,13 @@ mod View {
 
     def p(x: Float64, y: Float64): Vec2.Vec2 = { x = x, y = y }
 
-    /// 照準（真ん中）・右下の弾の数・F3 の診断の行（左上）。照準はキャプチャしていない間は薄くする（撃てないことを見せる）。
+    /// 照準（真ん中）・左下の体力・右下の弾の数・被弾の赤み（画面の縁）・F3 の診断の行（左上）。照準はキャプチャしていない間は薄くする（撃てないことを見せる）。
     /// 終了の確認の窓が出ている間は出さない（窓の文言を読ませる）。
     def hud(ctx: App.ViewCtx, w: Hud): List[Render.PlacedItem] =
         let theme = ThemeDoc.rec(w#theme);
         let alpha = if (w#looking) 1.0 else 0.35;
-        let marks = if (w#askingQuit) Nil else Render.fadeAll(alpha, List.append(crosshair(theme#accent, theme#bg), ammoPanel(ctx, theme#accent, theme#bg, w#ammo)));
+        let panels = List.append(crosshair(theme#accent, theme#bg), List.append(healthPanel(ctx, theme#accent, theme#bg, w#health), ammoPanel(ctx, theme#accent, theme#bg, w#ammo)));
+        let marks = if (w#askingQuit) Nil else List.append(hurtEdges(w#hurt, w#down), Render.fadeAll(alpha, panels));
         let rows = if (w#showsDiagnostics) ctx#diagnostics |> Option.map(FrameDiagnostics.summaryLines) |> Option.getWithDefault(Nil) else Nil;
         let lines = rows |> List.zipWithIndex |> List.map(e -> {
             let (i, line) = e;
@@ -143,6 +170,43 @@ mod View {
             case None    => infinity(center, ink)
         };
         { at = at, item = panel } :: count
+
+    /// 傷の色（暖かい赤。クリーチャーの発光と同じ側の色）。
+    def wound(): Color = Color.rgb(0.66, 0.07, 0.04)
+
+    /// 左下の体力の板: 角の丸い縦のグラデの板に差し色の細い縁、中に残りの割合の帯（左が濃く右へ明るむ・減ると傷の色へ寄る）と数。
+    def healthPanel(ctx: App.ViewCtx, ink: Color, bg: Color, health: Float64): List[Render.PlacedItem] =
+        let size = p(92.0, 22.0);
+        let at = p(10.0, World.height() - 10.0 - size#y);
+        let panel = Render.vgrad(size, { top = Color.lighten(bg, 0.08), bottom = Color.darken(bg, 0.4) }, 0)
+            |> Render.fade(0.8) |> Render.rounded(4.0) |> Render.outlineA({ color = ink, alpha = 0.45, width = 1.0 });
+        let left = at#x + 6.0;
+        let right = at#x + size#x - 30.0;
+        let (top, bottom) = (at#y + 7.0, at#y + size#y - 7.0);
+        let tone = Color.mix(wound(), ink, Num.clamp01(health * 1.6 - 0.3));
+        let end = left + (right - left) * Num.clamp01(health);
+        let track = gradAt((p(left, top), Color.darken(bg, 0.6), 0.9) :: (p(right, top), Color.darken(bg, 0.6), 0.9)
+                               :: (p(right, bottom), Color.darken(bg, 0.3), 0.9) :: (p(left, bottom), Color.darken(bg, 0.3), 0.9) :: Nil, 1);
+        let fill = gradAt((p(left, top), Color.darken(tone, 0.35), 1.0) :: (p(end, top), Color.lighten(tone, 0.15), 1.0)
+                              :: (p(end, bottom), tone, 1.0) :: (p(left, bottom), Color.darken(tone, 0.5), 1.0) :: Nil, 2);
+        let count = TextDraw.centeredAt({ text = Int32.toString(Num.roundInt(health * 100.0)), atlas = ctx#atlas, size = 12.0, color = tone, z = 2,
+                                         center = p(at#x + size#x - 15.0, at#y + size#y / 2.0) });
+        { at = at, item = panel } :: track :: (if (health > 0.0) fill :: Nil else Nil) ::: count :: Nil
+
+    /// 被弾の赤み: 画面の 4 辺から内へ消える台形の帯（縁が濃い）。倒れている間は進みに合わせて画面全体を暗い赤へ沈める。
+    def hurtEdges(hurt: Float64, down: Float64): List[Render.PlacedItem] =
+        let (wd, ht) = (World.width(), World.height());
+        let inset = 20.0 + 26.0 * hurt;
+        let a = Num.clamp01(hurt) * 0.55;
+        let red = wound();
+        let band = (o1: Vec2.Vec2, o2: Vec2.Vec2, i2: Vec2.Vec2, i1: Vec2.Vec2) ->
+            gradAt((o1, red, a) :: (o2, red, a) :: (i2, red, 0.0) :: (i1, red, 0.0) :: Nil, 0);
+        let (tl, tr, br, bl) = (p(0.0, 0.0), p(wd, 0.0), p(wd, ht), p(0.0, ht));
+        let (itl, itr, ibr, ibl) = (p(inset, inset), p(wd - inset, inset), p(wd - inset, ht - inset), p(inset, ht - inset));
+        let edges = if (a <= 0.0) Nil else band(tl, tr, itr, itl) :: band(tr, br, ibr, itr) :: band(br, bl, ibl, ibr) :: band(bl, tl, itl, ibl) :: Nil;
+        let veil = if (down <= 0.0) Nil
+            else { at = Vec2.zero(), item = Render.vgrad({ x = wd, y = ht }, { top = Color.darken(red, 0.7), bottom = Color.darken(red, 0.9) }, 0) |> Render.fade(Num.clamp01(down) * 0.85) } :: Nil;
+        List.append(edges, veil)
 
     /// ∞ の線（横に寝た 8 の字。字の無いフォントでも出る）。
     def infinity(center: Vec2.Vec2, ink: Color): List[Render.PlacedItem] =

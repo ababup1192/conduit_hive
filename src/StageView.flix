@@ -1,7 +1,7 @@
 // StageView — 迷路を一人称で描き、手前に腕と銃（ビューモデル）を重ねる（純粋）。
 //
 // ── 組み方 ──
-// 今いる区画から見える区画（Maze の見える区画の組）の灰色の箱と灯りだけを engine の Scene3d 1 つに入れる。
+// 今いる区画から見える区画（Maze の見える区画の組）の灰色の箱と灯り、その区画にいる敵と projectile だけを engine の Scene3d 1 つに入れる。
 // engine は視錐台の外しか間引かないので、壁の向こうの区画を描かないのはここが決める。
 // 霧は距離で施設の暗がりへ沈め、カメラの写す奥行きの端を霧のかかり切る距離にそろえる（霧の先は描かない）。
 //
@@ -41,9 +41,14 @@ mod StageView {
         look = LookDoc.Rec,
         // 描く区画の絵（見える区画の組の分だけ）。
         zones = List[MazeMesh.ZoneArt],
-        // ステージの座標の粒（当たった所の火花）と、撃った瞬間の灯り。
+        // ステージの座標の粒（当たった所の火花・体液・projectile の玉）と、撃った瞬間の灯り。
         billboards = List[Scene3d.Billboard3d],
         flash = List[Scene3d.PointLight],
+        // 敵（姿勢つきの置いた物）と、敵の材質が読む絵。
+        creatures = List[Scene3d.Instance3d],
+        creatureTextures = List[Texture3d.Texture3d],
+        // projectile の玉の点光源。
+        glows = List[Scene3d.PointLight],
         // 手前の腕と銃（構えている武器の glb が読めていなければ None）。
         hands = Option[Hands]
     }
@@ -67,9 +72,10 @@ mod StageView {
     /// 見える区画を engine の Scene3d 1 つで描く。
     def scene(w: In): Render.PlacedItem =
         let lk = w#look;
-        Render.scene3d(Vec2.zero(), { instances = w#zones |> List.flatMap(z -> z#instances),
+        Render.scene3d(Vec2.zero(), { instances = List.append(w#zones |> List.flatMap(z -> z#instances), w#creatures),
+                                      textures = w#creatureTextures,
                                       billboards = w#billboards,
-                                      pointLights = List.append(w#flash, stageLights(w)),
+                                      pointLights = List.append(w#flash, List.append(w#glows, stageLights(w))),
                                       environment = { ambient = lk#ambient, hemisphere = lk#hemisphere, toonSteps = 0,
                                                       fog = Some({ color = lk#fogColor, near = lk#fogNear, far = lk#fogFar }),
                                                       background = None },

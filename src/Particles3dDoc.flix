@@ -1,4 +1,4 @@
-// Particles3dDoc — conduit_hive.particles3d.json（3D の粒: マズルフラッシュ・当たった所の火花・撃った瞬間の灯り）の宣言ドキュメント層。
+// Particles3dDoc — conduit_hive.particles3d.json（3D の粒: マズルフラッシュ・当たった所の火花・撃った瞬間の灯り・敵の体液・projectile の光）の宣言ドキュメント層。
 // engine の fx.json（2D の FxDoc）とは別の物。出し方・動かし方・消し方はコード（Particles3d）で、ここは数と色だけ。
 // 長さは m・角度は度・時間は秒・速さは 1 秒あたり。
 // fail-open — 読めない・壊れているときは defaults() へ落とし、欄が無ければその欄だけ既定。
@@ -26,7 +26,10 @@ mod Particles3dDoc {
     /// 撃った瞬間だけ点ける灯り（ステージとビューモデルの両方の場面に 1 本ずつ）。
     pub type alias Flash = { color = Color, intensity = Float64, range = Float64, life = Float64 }
 
-    pub type alias Rec = { version = Int32, muzzle = Burst, spark = Burst, light = Flash }
+    /// ranged が吐く projectile の見え方: 光る玉の大きさ（m）・色・明るさの線形の倍率と、玉に付ける点光源の強さと届く距離。
+    pub type alias Glow = { size = Float64, color = Color, intensity = Float64, lightIntensity = Float64, lightRange = Float64 }
+
+    pub type alias Rec = { version = Int32, muzzle = Burst, spark = Burst, light = Flash, ichor = Burst, spit = Glow }
     pub enum Doc(Rec)
     pub def rec(d: Doc): Rec = match d { case Doc.Doc(r) => r }
 
@@ -39,7 +42,9 @@ mod Particles3dDoc {
         Doc.Doc({ version = 1,
                   muzzle = { count = 4, life = 0.06, lifeJitter = 0.3, speed = 0.6, spread = 25.0, size = 0.07, gravity = 0.0, color = hx("#ffd9a0"), intensity = 6.0 },
                   spark  = { count = 10, life = 0.35, lifeJitter = 0.5, speed = 6.0, spread = 70.0, size = 0.09, gravity = 9.8, color = hx("#ffc070"), intensity = 3.0 },
-                  light  = { color = hx("#ffc890"), intensity = 4.0, range = 6.0, life = 0.05 } })
+                  light  = { color = hx("#ffc890"), intensity = 4.0, range = 6.0, life = 0.05 },
+                  ichor  = { count = 12, life = 0.5, lifeJitter = 0.5, speed = 4.0, spread = 60.0, size = 0.08, gravity = 9.8, color = hx("#ff7a2a"), intensity = 2.5 },
+                  spit   = { size = 0.32, color = hx("#ff8a3c"), intensity = 5.0, lightIntensity = 2.5, lightRange = 4.0 } })
 
     pub def fromJson(text: String): Option[Doc] = DocJson.decodeObject(fromRoot, text)
 
@@ -67,8 +72,15 @@ mod Particles3dDoc {
         { color = colorOr(fallback#color, "color", o), intensity = f("intensity", fallback#intensity),
           range = f("range", fallback#range), life = f("life", fallback#life) }
 
+    def glowOr(fallback: Glow, key: String, root: Map[String, Json]): Glow =
+        let o = objectOf(key, root);
+        let f = (k, d) -> JsonCodec.floatOr(k, d, o);
+        { size = f("size", fallback#size), color = colorOr(fallback#color, "color", o), intensity = f("intensity", fallback#intensity),
+          lightIntensity = f("lightIntensity", fallback#lightIntensity), lightRange = f("lightRange", fallback#lightRange) }
+
     def fromRoot(root: Map[String, Json]): Doc =
         let d = rec(defaults());
         Doc.Doc({ version = JsonCodec.intOr("version", d#version, root),
-                  muzzle = burstOr(d#muzzle, "muzzle", root), spark = burstOr(d#spark, "spark", root), light = flashOr(d#light, "light", root) })
+                  muzzle = burstOr(d#muzzle, "muzzle", root), spark = burstOr(d#spark, "spark", root), light = flashOr(d#light, "light", root),
+                  ichor = burstOr(d#ichor, "ichor", root), spit = glowOr(d#spit, "spit", root) })
 }

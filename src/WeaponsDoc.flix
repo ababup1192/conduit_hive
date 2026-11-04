@@ -64,7 +64,7 @@ mod WeaponsDoc {
         Doc.Doc({ version = 1,
                   pistol  = { damage = 25.0, interval = 0.25, spread = 0.6, pellets = 1, recoil = 2.0, range = 60.0,
                               automatic = false, infinite = true, ammo = 0, owned = true },
-                  shotgun = { damage = 12.0, interval = 0.9, spread = 7.0, pellets = 9, recoil = 6.0, range = 30.0,
+                  shotgun = { damage = 20.0, interval = 0.9, spread = 10.0, pellets = 9, recoil = 6.0, range = 30.0,
                               automatic = false, infinite = false, ammo = 16, owned = false },
                   rifle   = { damage = 14.0, interval = 0.1, spread = 1.8, pellets = 1, recoil = 1.0, range = 70.0,
                               automatic = true, infinite = false, ammo = 120, owned = false } })

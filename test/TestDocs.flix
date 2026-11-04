@@ -72,4 +72,24 @@ mod TestDocs {
         let d = Particles3dDoc.rec(Particles3dDoc.defaults());
         Assert.assertEq(expected = Some((3, d#spark#life)),
             Particles3dDoc.fromJson("{\"spark\": {\"count\": 3}}") |> Option.map(x -> (Particles3dDoc.rec(x)#spark#count, Particles3dDoc.rec(x)#spark#life)))
+
+    @Test
+    def testEnemiesBrokenJsonIsNone(): Unit \ Assert =
+        Assert.assertEq(expected = true, Option.isEmpty(EnemiesDoc.fromJson("{ broken")))
+
+    /// 型の欄の 1 つだけを上書きすると、同じ型のほかの欄とほかの型は既定のまま。
+    @Test
+    def testEnemiesOverrideOneField(): Unit \ Assert =
+        let d = EnemiesDoc.rec(EnemiesDoc.defaults());
+        Assert.assertEq(expected = Some((5.0, d#melee#health, d#ranged#speed)),
+            EnemiesDoc.fromJson("{\"melee\": {\"speed\": 5.0}}")
+                |> Option.map(x -> (EnemiesDoc.rec(x)#melee#speed, EnemiesDoc.rec(x)#melee#health, EnemiesDoc.rec(x)#ranged#speed)))
+
+    /// 群れの種類は書いた名前だけになり（既定の名前は混ざらない）、書かない欄は既定の pack の値。
+    @Test
+    def testSpawnsGroupsFollowTheDocNames(): Unit \ Assert =
+        let pack = Map.get("pack", SpawnsDoc.rec(SpawnsDoc.defaults())#groups);
+        Assert.assertEq(expected = pack |> Option.map(g -> (1, Some((7, g#ranged)))),
+            SpawnsDoc.fromJson("{\"groups\": {\"swarm\": {\"melee\": 7}}}")
+                |> Option.map(x -> (Map.size(SpawnsDoc.rec(x)#groups), Map.get("swarm", SpawnsDoc.rec(x)#groups) |> Option.map(g -> (g#melee, g#ranged)))))
 }

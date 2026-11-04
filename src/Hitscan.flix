@@ -1,13 +1,20 @@
 // Hitscan — 弾の当たり判定（純粋）。弾は飛ばさず、撃った瞬間に照準からのレイを的の列に当て、一番近い物に当たる。
 // 的は壁・床・天井（迷路の当たり判定と同じ箱）と、立てた物（的の柱）。壁も同じ列に入れるので、壁の向こうの物には当たらない。
-// 敵（段 2）は Struck に case を足し、毎コマ体のカプセル（CollisionShape3d のカプセル）を的の列の後ろへ足す。
+// 敵は毎コマ、体のカプセルと頭の球を的の列の前へ足す（Horde.targetsOf。頭を体より前に置くので、同じ距離なら頭に当たる）。
 mod Hitscan {
     use fge::{Camera3d, CollisionShape3d, Hash01, Num, Ray3d, Vec3}
 
-    /// 弾が当たった物。Wall = 壁・床・天井・Prop = 立てた物（番号は Props.pillarsOf の並び）。
+    /// 敵の当たった所。Head は威力が EnemiesDoc の headMultiplier 倍。
+    pub enum Part with Eq, ToString {
+        case Body
+        case Head
+    }
+
+    /// 弾が当たった物。Wall = 壁・床・天井・Prop = 立てた物（番号は Props.pillarsOf の並び）・Enemy = 敵（番号は Horde の敵の id）。
     pub enum Struck with Eq, ToString {
         case Wall
         case Prop(Int32)
+        case Enemy(Int32, Part)
     }
 
     /// 当たった所。normal = 当たった面の向き（弾の来た側を向く・長さ 1）。

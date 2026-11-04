@@ -68,14 +68,15 @@ mod Controls {
 
     // ── Doc の読み込み・読み直し（watchFile / F1） ──
 
-    /// 起動時と描き出しが同じ形で読む Doc の束と腕と銃の glb。区切りごとに進み具合を知らせる
+    /// 起動時と描き出しが同じ形で読む Doc の束と腕と銃・敵の glb。区切りごとに進み具合を知らせる
     /// （実機は起動画面が進む・描き出しとテストと flow は HeadlessLoad.handle で絵を解く）。
     pub def loadDocs(): Res.Docs \ Fs.FileRead + IO + LoadProgress =
         LoadProgress.report("reading docs...", 0, 0);
         { sample = SampleDoc.load(SampleDoc.path()), keys = KeysDoc.load(KeysDoc.path()), theme = ThemeDoc.load(ThemeDoc.path()),
           walk = WalkDoc.load(WalkDoc.path()), look = LookDoc.load(LookDoc.path()), maze = MazeDoc.load(MazeDoc.path()),
           weapons = WeaponsDoc.load(WeaponsDoc.path()), hands = HandsDoc.load(HandsDoc.path()),
-          particles = Particles3dDoc.load(Particles3dDoc.path()), rigs = Arms.load() }
+          particles = Particles3dDoc.load(Particles3dDoc.path()), enemies = EnemiesDoc.load(EnemiesDoc.path()),
+          spawns = SpawnsDoc.load(SpawnsDoc.path()), rigs = Arms.load(), creatures = Creatures.load() }
 
     def reloadSample(res: Res.Res): Res.Res \ Fs.FileRead = Res.withSample(SampleDoc.load(SampleDoc.path()), res)
 
@@ -88,6 +89,10 @@ mod Controls {
     def reloadHands(res: Res.Res): Res.Res \ Fs.FileRead = Res.withHands(HandsDoc.load(HandsDoc.path()), res)
 
     def reloadParticles(res: Res.Res): Res.Res \ Fs.FileRead = Res.withParticles(Particles3dDoc.load(Particles3dDoc.path()), res)
+
+    def reloadEnemies(res: Res.Res): Res.Res \ Fs.FileRead = Res.withEnemies(EnemiesDoc.load(EnemiesDoc.path()), res)
+
+    def reloadSpawns(res: Res.Res): Res.Res \ Fs.FileRead = Res.withSpawns(SpawnsDoc.load(SpawnsDoc.path()), res)
 
     def reloadWalk(res: Res.Res): Res.Res \ Fs.FileRead = Res.withWalk(WalkDoc.load(WalkDoc.path()), res)
 
@@ -106,6 +111,8 @@ mod Controls {
             :: Resources.reloadRow("weapons", WeaponsDoc.path(), reloadWeapons, unchanged)
             :: Resources.reloadRow("hands", HandsDoc.path(), reloadHands, unchanged)
             :: Resources.reloadRow("particles3d", Particles3dDoc.path(), reloadParticles, unchanged)
+            :: Resources.reloadRow("enemies", EnemiesDoc.path(), reloadEnemies, unchanged)
+            :: Resources.reloadRow("spawns", SpawnsDoc.path(), reloadSpawns, unchanged)
             :: Resources.reloadRow("walk", WalkDoc.path(), reloadWalk, unchanged)
             :: Resources.reloadRow("look", LookDoc.path(), reloadLook, unchanged)
             :: Resources.reloadRow("maze", MazeDoc.path(), reloadMaze, (res, w) -> { play = w#play | World.initial(res) })

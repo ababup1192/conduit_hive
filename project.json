@@ -109,6 +109,20 @@
         "role": "material"
       },
       {
+        "id": "enemies",
+        "pattern": "assets/conduit_hive.enemies.json",
+        "title": "敵（体力・速さ・攻撃・projectile）と受ける側の体力",
+        "schema": "assets/enemies.schema.json",
+        "role": "tuning"
+      },
+      {
+        "id": "spawns",
+        "pattern": "assets/conduit_hive.spawns.json",
+        "title": "spawn の群れ（印の名前ごとの数・間隔・型）",
+        "schema": "assets/spawns.schema.json",
+        "role": "tuning"
+      },
+      {
         "id": "project",
         "pattern": "project.json",
         "schema": "project.schema.json",

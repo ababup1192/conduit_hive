@@ -1,0 +1,25 @@
+{
+  "version": 1,
+  "title": "spawn の群れ",
+  "note": "群れの種類ごとの数。迷路の Doc（maze.stage.json）の spawn の印の name がここの groups の鍵を指す（引けない名前の印は置かない）。部屋に入ると、その部屋の印から 1 回だけ湧く。melee・ranged = 1 つの印から湧く数・interval = 1 体ごとの間隔（秒）・scatter = 印のマスの中で散らす幅（m）。",
+  "groups": {
+    "pack": {
+      "melee": 3,
+      "ranged": 0,
+      "interval": 0.5,
+      "scatter": 2.4
+    },
+    "mixed": {
+      "melee": 3,
+      "ranged": 1,
+      "interval": 0.5,
+      "scatter": 2.4
+    },
+    "hive": {
+      "melee": 5,
+      "ranged": 1,
+      "interval": 0.35,
+      "scatter": 2.4
+    }
+  }
+}

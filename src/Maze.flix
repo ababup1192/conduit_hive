@@ -140,7 +140,7 @@ mod Maze {
         (Int32.toFloat64(cell#col) * m#cellSize, Int32.toFloat64(m#rows - 1 - cell#row) * m#cellSize)
 
     /// 点 x・z のあるマス。
-    def cellAt(m: Maze, x: Float64, z: Float64): Cell =
+    pub def cellAt(m: Maze, x: Float64, z: Float64): Cell =
         { col = Num.floorInt(x / m#cellSize), row = m#rows - 1 - Num.floorInt(z / m#cellSize) }
 
     /// 点 x・z のある区画（壁のマス・マス目の外は None）。

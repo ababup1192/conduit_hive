@@ -1,0 +1,45 @@
+{
+  "//": "conduit_hive.spawns.json の形（Studio の sections 方言）。既定は src/SpawnsDoc.flix の defaults() が正。",
+  "version": 1,
+  "sections": {
+    "groups": {
+      "kind": "catalog",
+      "label": "群れの種類（鍵 = 迷路の spawn の印の name）",
+      "order": 1,
+      "fields": {
+        "melee": {
+          "type": "int",
+          "label": "melee の数",
+          "order": 1,
+          "default": 3,
+          "min": 0,
+          "max": 64
+        },
+        "ranged": {
+          "type": "int",
+          "label": "ranged の数",
+          "order": 2,
+          "default": 0,
+          "min": 0,
+          "max": 64
+        },
+        "interval": {
+          "type": "float",
+          "label": "1 体ごとの間隔（秒）",
+          "order": 3,
+          "default": 0.5,
+          "min": 0,
+          "max": 5
+        },
+        "scatter": {
+          "type": "float",
+          "label": "散らす幅（m）",
+          "order": 4,
+          "default": 2.4,
+          "min": 0,
+          "max": 4
+        }
+      }
+    }
+  }
+}
