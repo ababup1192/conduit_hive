@@ -142,10 +142,90 @@
       "max": 50,
       "group": "動画の口"
     },
+    "minGrenades": {
+      "kind": "field",
+      "type": "int",
+      "label": "動画の口の間だけ、手榴弾をこの数より減らさない",
+      "order": 15,
+      "default": 1,
+      "min": 0,
+      "max": 10,
+      "group": "動画の口"
+    },
+    "crowdRange": {
+      "kind": "field",
+      "type": "float",
+      "label": "囲まれたとみなす距離（m）",
+      "order": 16,
+      "default": 2.0,
+      "min": 0,
+      "max": 10,
+      "group": "技"
+    },
+    "crowdCount": {
+      "kind": "field",
+      "type": "int",
+      "label": "囲まれたとみなす数（この数以上で回避か蹴り）",
+      "order": 17,
+      "default": 3,
+      "min": 1,
+      "max": 50,
+      "group": "技"
+    },
+    "throwMin": {
+      "kind": "field",
+      "type": "float",
+      "label": "手榴弾を投げる敵の距離の下限（m）",
+      "order": 18,
+      "default": 8.0,
+      "min": 0,
+      "max": 40,
+      "group": "技"
+    },
+    "throwMax": {
+      "kind": "field",
+      "type": "float",
+      "label": "手榴弾を投げる敵の距離の上限（m）",
+      "order": 19,
+      "default": 16.0,
+      "min": 0,
+      "max": 40,
+      "group": "技"
+    },
+    "clusterRadius": {
+      "kind": "field",
+      "type": "float",
+      "label": "群れの塊とみなす半径（m）",
+      "order": 20,
+      "default": 3.0,
+      "min": 0,
+      "max": 10,
+      "group": "技"
+    },
+    "clusterCount": {
+      "kind": "field",
+      "type": "int",
+      "label": "群れの塊とみなす数",
+      "order": 21,
+      "default": 4,
+      "min": 1,
+      "max": 50,
+      "group": "技"
+    },
+    "throwCone": {
+      "kind": "field",
+      "type": "float",
+      "label": "投げる狙いのずれの上限（度）",
+      "order": 22,
+      "default": 15.0,
+      "min": 0,
+      "max": 90,
+      "group": "技"
+    },
     "points": {
       "kind": "list",
       "label": "通る点",
-      "order": 15,
+      "order": 24,
       "fields": {
         "name": {
           "type": "string",

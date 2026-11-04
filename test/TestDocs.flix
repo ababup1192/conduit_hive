@@ -1,6 +1,6 @@
 // JSON 橋渡しのテスト（1 Doc につき最大 3 本まで。同型の重複は書かない）。
 mod TestDocs {
-    use fge::{GameEngine, LogCapture}
+    use fge::{Color, GameEngine, LogCapture}
 
     @Test
     def testMazeBrokenJsonIsNone(): Unit \ Assert =
@@ -72,6 +72,14 @@ mod TestDocs {
         let d = Particles3dDoc.rec(Particles3dDoc.defaults());
         Assert.assertEq(expected = Some((3, d#spark#life)),
             Particles3dDoc.fromJson("{\"spark\": {\"count\": 3}}") |> Option.map(x -> (Particles3dDoc.rec(x)#spark#count, Particles3dDoc.rec(x)#spark#life)))
+
+    /// 火の玉の塊の中心の色は、塊の出し方の欄と同じ blastFireball の中の hot から読む（数は既定のまま）。
+    @Test
+    def testFireballHotColorIsReadBesideItsBurst(): Unit \ Assert =
+        let d = Particles3dDoc.rec(Particles3dDoc.defaults());
+        Assert.assertEq(expected = Some((Color.hex("#102030") |> Option.map(Color.toHex), d#blast#fireball#puff#count)),
+            Particles3dDoc.fromJson("{\"blastFireball\": {\"hot\": \"#102030\"}}")
+                |> Option.map(x -> (Some(Color.toHex(Particles3dDoc.rec(x)#blast#fireball#hot)), Particles3dDoc.rec(x)#blast#fireball#puff#count)))
 
     @Test
     def testEnemiesBrokenJsonIsNone(): Unit \ Assert =

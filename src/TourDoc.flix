@@ -33,8 +33,18 @@ mod TourDoc {
         // 動画の口の間だけ、体力をこれより下げない・弾がこれを切ったら上限まで足す。
         minHealth = Float64,
         minAmmo = Int32,
-        // 動画の口の間だけ、最後の部屋の wave をこの数までにする（0 なら遊ぶ時と同じ全部。手で遊ぶ時は効かない）。
+        // 動画の口の間だけ、最後の部屋の wave をこの数までにする（0 なら遊ぶ時と同じ全部。手で遊ぶ時は効かない）・手榴弾をこの数より減らさない。
         finalWaves = Int32,
+        minGrenades = Int32,
+        // 囲まれた時: この距離（m）の内に crowdCount 体以上いれば、群れから離れる向きへ緊急回避か蹴り（交互に）。
+        crowdRange = Float64,
+        crowdCount = Int32,
+        // 手榴弾: throwMin〜throwMax（m）先の敵のまわり clusterRadius（m）の内に clusterCount 体以上いて、その敵が向きから throwCone（度）の内なら投げる。
+        throwMin = Float64,
+        throwMax = Float64,
+        clusterRadius = Float64,
+        clusterCount = Int32,
+        throwCone = Float64,
         points = List[Point]
     }
     pub enum Doc(Rec)
@@ -45,7 +55,8 @@ mod TourDoc {
     /// コード側の既定値（道筋そのものは JSON が正なので、点は迷路の start の印の近くの 1 つだけ）。
     pub def defaults(): Doc =
         Doc.Doc({ version = 1, turnRate = 220.0, lookEase = 0.16, turnSmooth = 0.1, aimRange = 14.0, rangedAimRange = 45.0, fireCone = 3.0, aimHeight = 1.15,
-                  shotgunRange = 7.0, switchHold = 1.6, arriveRadius = 0.8, giveUpSeconds = 15.0, minHealth = 45.0, minAmmo = 20, finalWaves = 0,
+                  shotgunRange = 7.0, switchHold = 1.6, arriveRadius = 0.8, giveUpSeconds = 15.0, minHealth = 45.0, minAmmo = 20, finalWaves = 0, minGrenades = 1,
+                  crowdRange = 2.0, crowdCount = 3, throwMin = 8.0, throwMax = 16.0, clusterRadius = 3.0, clusterCount = 4, throwCone = 15.0,
                   points = { name = "start", x = 18.0, z = 22.0, wait = 1.0, sprint = false, weapon = None, lookYaw = None, clear = false } :: Nil })
 
     pub def fromJson(text: String): Option[Doc] = DocJson.decodeObject(fromRoot, text)
@@ -72,7 +83,10 @@ mod TourDoc {
                   shotgunRange = f("shotgunRange", d#shotgunRange), switchHold = f("switchHold", d#switchHold),
                   arriveRadius = f("arriveRadius", d#arriveRadius), giveUpSeconds = f("giveUpSeconds", d#giveUpSeconds),
                   minHealth = f("minHealth", d#minHealth), minAmmo = JsonCodec.intOr("minAmmo", d#minAmmo, root),
-                  finalWaves = JsonCodec.intOr("finalWaves", d#finalWaves, root),
+                  finalWaves = JsonCodec.intOr("finalWaves", d#finalWaves, root), minGrenades = JsonCodec.intOr("minGrenades", d#minGrenades, root),
+                  crowdRange = f("crowdRange", d#crowdRange), crowdCount = JsonCodec.intOr("crowdCount", d#crowdCount, root),
+                  throwMin = f("throwMin", d#throwMin), throwMax = f("throwMax", d#throwMax), clusterRadius = f("clusterRadius", d#clusterRadius),
+                  clusterCount = JsonCodec.intOr("clusterCount", d#clusterCount, root), throwCone = f("throwCone", d#throwCone),
                   points = Map.get("points", root)
                       |> Option.flatMap(json -> JsonCodec.decodeList(JsonCodec.expectObject, json))
                       |> Option.map(rows -> rows |> List.filterMap(pointOf))

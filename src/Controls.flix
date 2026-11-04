@@ -3,7 +3,7 @@
 // 動いた量（frame#mouseDelta）で視点を回す。
 // 画面ごと: タイトルは Enter か押すと遊び始め・Esc で終了の確認。遊んでいる間の Esc はポーズ（上下で選び Enter で決める・Esc で続ける）。
 // クリアの画面は Enter・Esc・押すとタイトルへ。窓の閉じるボタンはどの画面でも終了の確認（Main の withCloseRequest）。
-// キャプチャしている間は左ボタンが引き金・数字キーの 1〜3 とホイールが持ち替え（FPS の慣習の固定のキー）。
+// キャプチャしている間は左ボタンが引き金・数字キーの 1〜3 とホイールが持ち替え（FPS の慣習の固定のキー）・手榴弾を投げる。回避と蹴りはキーだけで効く。
 // Doc の読み込み（loadDocs）と、保存即反映（watchFile）・F1 一括リロードの読み直しもここに置く。
 mod Controls {
 
@@ -22,6 +22,7 @@ mod Controls {
         let k = KeysDoc.rec(res#keys);
         let walk = WalkDoc.rec(res#walk);
         let held = ks -> List.exists(key -> App.isDown(key, frame), ks);
+        let pressed = ks -> List.exists(key -> App.justPressed(key, frame), ks);
         let axis = (neg, pos) -> (if (held(pos)) 1.0 else 0.0) - (if (held(neg)) 1.0 else 0.0);
         let (mdx, mdy) = lookOf(walk, World.isLooking(w), frame#windowFocused, frame#mouseDelta);
         let left = GameEngine.MouseButton.Left;
@@ -30,7 +31,9 @@ mod Controls {
                     turnRate = axis(k#turnLeft, k#turnRight) * walk#turnSpeed, sprint = held(k#sprint) },
           trigger = if (aiming) { pressed = Set.memberOf(left, frame#mouseClickedButtons), held = Set.memberOf(left, frame#mouseButtons) }
                     else Arsenal.released(),
-          choice = if (aiming) choiceOf(frame) else Arsenal.Choice.Keep }
+          choice = if (aiming) choiceOf(frame) else Arsenal.Choice.Keep,
+          moves = ((Moves.Move.Dodge, pressed(k#dodge)) :: (Moves.Move.Kick, pressed(k#kick)) :: (Moves.Move.Grenade, aiming and pressed(k#grenade)) :: Nil)
+              |> List.filter(snd) |> List.map(fst) |> List.toSet }
 
     /// 持ち替えの指示: 数字キーの 1・2・3 が武器の並び・ホイールを上へ回すと前・下へ回すと次。
     def choiceOf(frame: App.Frame): Arsenal.Choice =
@@ -113,10 +116,12 @@ mod Controls {
         { uiText = UiTextDoc.load(UiTextDoc.path()), keys = KeysDoc.load(KeysDoc.path()), theme = ThemeDoc.load(ThemeDoc.path()),
           walk = WalkDoc.load(WalkDoc.path()), look = LookDoc.load(LookDoc.path()), maze = MazeDoc.load(MazeDoc.path()),
           weapons = WeaponsDoc.load(WeaponsDoc.path()), viewmodel = FpViewmodelDoc.load(FpViewmodelDoc.path()),
-          particles = Particles3dDoc.load(Particles3dDoc.path()), juice = JuiceDoc.load(JuiceDoc.path()), player = PlayerDoc.load(PlayerDoc.path()), enemies = EnemiesDoc.load(EnemiesDoc.path()),
+          particles = Particles3dDoc.load(Particles3dDoc.path()), juice = JuiceDoc.load(JuiceDoc.path()), player = PlayerDoc.load(PlayerDoc.path()),
+          moves = MovesDoc.load(MovesDoc.path()), grenade = GrenadeDoc.load(GrenadeDoc.path()), enemies = EnemiesDoc.load(EnemiesDoc.path()),
           spawns = SpawnsDoc.load(SpawnsDoc.path()), pickups = PickupsDoc.load(PickupsDoc.path()), tour = TourDoc.load(TourDoc.path()),
           sounds = SoundsDoc.load(SoundsDoc.path()), mixer = AudioMixerDoc.load(AudioMixer.defaults(), mixerPath()), stage = StageModel.load(),
-          viewmodels = FpViewmodel.load(), creatures = Creatures.load(), pickupModels = PickupModels.load(), gibs = Gibs.load() }
+          viewmodels = FpViewmodel.load(), creatures = Creatures.load(), pickupModels = PickupModels.load(), gibs = Gibs.load(),
+          grenadeModel = Grenades.load(), bootModel = Boot.load() }
 
     def restartPlay(res: Res.Res, w: World.World): World.World =
         if (Option.isEmpty(World.sessionOf(w))) w else World.restart(res, w)
@@ -136,6 +141,10 @@ mod Controls {
     def reloadJuice(res: Res.Res): Res.Res \ Fs.FileRead = Res.withJuice(JuiceDoc.load(JuiceDoc.path()), res)
 
     def reloadPlayer(res: Res.Res): Res.Res \ Fs.FileRead = Res.withPlayer(PlayerDoc.load(PlayerDoc.path()), res)
+
+    def reloadMoves(res: Res.Res): Res.Res \ Fs.FileRead = Res.withMoves(MovesDoc.load(MovesDoc.path()), res)
+
+    def reloadGrenade(res: Res.Res): Res.Res \ Fs.FileRead = Res.withGrenade(GrenadeDoc.load(GrenadeDoc.path()), res)
 
     def reloadEnemies(res: Res.Res): Res.Res \ Fs.FileRead = Res.withEnemies(EnemiesDoc.load(EnemiesDoc.path()), res)
 
@@ -171,8 +180,11 @@ mod Controls {
             :: Resources.reloadRow("viewmodel", FpViewmodelDoc.path(), reloadViewmodel, unchanged)
             :: Resources.reloadRow("particles3d", Particles3dDoc.path(), reloadParticles, unchanged)
             :: Resources.reloadRow("creaturefx", Particles3dDoc.creaturePath(), reloadParticles, unchanged)
+            :: Resources.reloadRow("blastfx", Particles3dDoc.blastPath(), reloadParticles, unchanged)
             :: Resources.reloadRow("juice", JuiceDoc.path(), reloadJuice, unchanged)
             :: Resources.reloadRow("player", PlayerDoc.path(), reloadPlayer, unchanged)
+            :: Resources.reloadRow("moves", MovesDoc.path(), reloadMoves, unchanged)
+            :: Resources.reloadRow("grenade", GrenadeDoc.path(), reloadGrenade, unchanged)
             :: Resources.reloadRow("enemies", EnemiesDoc.path(), reloadEnemies, unchanged)
             :: Resources.reloadRow("spawns", SpawnsDoc.path(), reloadSpawns, unchanged)
             :: Resources.reloadRow("pickups", PickupsDoc.path(), reloadPickups, unchanged)

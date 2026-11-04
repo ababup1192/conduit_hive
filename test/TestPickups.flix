@@ -30,7 +30,9 @@ mod TestPickups {
     /// Doc の種類の名前の量。
     def amountOf(name: String): Option[Int32] = Map.get(name, PickupsDoc.rec(PickupsDoc.defaults())#amounts)
 
-    def rules(): Pickups.Rules = { t = 1.0, weapons = weapons(), viewmodel = vm(), player = player() }
+    def grenade(): GrenadeDoc.Rec = GrenadeDoc.rec(GrenadeDoc.defaults())
+
+    def rules(): Pickups.Rules = { t = 1.0, weapons = weapons(), viewmodel = vm(), player = player(), grenade = grenade() }
 
     /// 置いた物のうち種類 k の物。
     def pointOf(k: Kind): Option[Pickups.Point] = res()#pickupPoints |> List.find(p -> p#kind == k)
@@ -59,7 +61,7 @@ mod TestPickups {
     @Test
     def testHealthTopsUpToTheMax(): Unit \ Assert =
         let hurt = Health.hurt(0.0, 10.0, Health.full(player()));
-        let carry = { arsenal = Arsenal.initial(weapons()), health = hurt };
+        let carry = { arsenal = Arsenal.initial(weapons()), health = hurt, grenades = Grenades.initial(grenade()) };
         Assert.assertEq(expected = Some(player()#health),
             pointOf(Kind.HealthSmall) |> Option.flatMap(p -> Pickups.take(rules(), p, carry)) |> Option.map(c -> c#health#points))
 

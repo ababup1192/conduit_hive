@@ -25,7 +25,7 @@ mod PickupsDoc {
         lights = Int32,
         // 拾った時の知らせを出す長さ。
         noticeSeconds = Float64,
-        // 種類の名前 → 量（回復は体力・弾倉と武器は弾の数。JSON の items の amount）。
+        // 種類の名前 → 量（回復は体力・弾倉と武器は弾の数・手榴弾は個数。JSON の items の amount）。
         amounts = Map[String, Int32],
         // 倒れた敵が物を落とす確率（0〜1）・落とした物が消えるまで（秒）・落ちている物の上限（越えたら古い物から消す）・
         // 落とす物の種類の名前 → 選ばれやすさ（重み）と量（JSON の dropItems）。
@@ -47,10 +47,10 @@ mod PickupsDoc {
         Doc.Doc({ version = 1, radius = 1.3, scale = 1.4, hover = 0.6, bob = 0.08, bobSeconds = 2.4, spinDegPerSec = 55.0, glow = 2.2,
                   lightIntensity = 0.7, lightRange = 3.5, lights = 2, noticeSeconds = 1.6,
                   amounts = Map#{ "health_small" => 25, "health_large" => 60, "ammo_shotgun" => 8, "ammo_rifle" => 60,
-                                  "weapon_shotgun" => 12, "weapon_rifle" => 90 },
+                                  "weapon_shotgun" => 12, "weapon_rifle" => 90, "grenade" => 1 },
                   dropChance = 0.22, dropSeconds = 30.0, dropLimit = 24,
                   dropItems = Map#{ "ammo_rifle" => { weight = 5.0, amount = 20 }, "ammo_shotgun" => { weight = 3.0, amount = 4 },
-                                    "health_small" => { weight = 2.0, amount = 15 } } })
+                                    "health_small" => { weight = 2.0, amount = 15 }, "grenade" => { weight = 1.0, amount = 1 } } })
 
     pub def fromJson(text: String): Option[Doc] = DocJson.decodeObject(fromRoot, text)
 

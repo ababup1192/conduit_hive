@@ -5,8 +5,8 @@
 mod Knockback {
     use fge::{Num, Vec3}
 
-    /// のけぞり: 押され始めた時刻・押す向き（長さ 1 の x・z）・始めの速さ（m/秒。decay 秒ごとに 1/e へ減る）。
-    pub type alias Push = { at = Float64, dx = Float64, dz = Float64, speed = Float64 }
+    /// のけぞり: 押され始めた時刻・押す向き（長さ 1 の x・z）・始めの速さ（m/秒）・その速さが 1/e へ減る秒。
+    pub type alias Push = { at = Float64, dx = Float64, dz = Float64, speed = Float64, decay = Float64 }
 
     /// 吹っ飛び: 足元の高さ（m）・速さ（m/秒）・横の回る速さ（ラジアン/秒。滑る速さに合わせて減る）・始めの横の速さ。
     pub type alias Flight = { y = Float64, vx = Float64, vy = Float64, vz = Float64, spin = Float64, speed0 = Float64 }
@@ -15,7 +15,7 @@ mod Knockback {
     pub type alias Place = { x = Float64, z = Float64, yaw = Float64 }
 
     /// 押されていない。
-    pub def noPush(): Push = { at = -1000.0, dx = 0.0, dz = 0.0, speed = 0.0 }
+    pub def noPush(): Push = { at = -1000.0, dx = 0.0, dz = 0.0, speed = 0.0, decay = 1.0 }
 
     /// 飛んでいない（床の上で止まっている）。
     pub def grounded(): Flight = { y = 0.0, vx = 0.0, vy = 0.0, vz = 0.0, spin = 0.0, speed0 = 0.0 }
@@ -41,20 +41,24 @@ mod Knockback {
             case WeaponsDoc.Weapon.Shotgun => f#shotgun
             case WeaponsDoc.Weapon.Rifle   => f#rifle
         };
-        { at = t, dx = away#dx, dz = away#dz, speed = base * closeFactor(f#closeRange, f#closeBoost, away#distance) }
+        shove(t, away, base * closeFactor(f#closeRange, f#closeBoost, away#distance), f#decay)
+
+    /// 時刻 t に、向き away へ速さ speed（m/秒。decay 秒ごとに 1/e へ減る）で押す（蹴り・爆発の生き残り）。
+    pub def shove(t: Float64, away: { dx = Float64, dz = Float64, distance = Float64 }, speed: Float64, decay: Float64): Push =
+        { at = t, dx = away#dx, dz = away#dz, speed = speed, decay = decay }
 
     /// 時刻 t の押される速さ（m/秒）。
-    def pushSpeedAt(f: EnemiesDoc.Flinch, t: Float64, p: Push): Float64 =
-        if (t < p#at) 0.0 else p#speed * Float64.exp(0.0 - (t - p#at) / Float64.max(0.001, f#decay))
+    def pushSpeedAt(t: Float64, p: Push): Float64 =
+        if (t < p#at) 0.0 else p#speed * Float64.exp(0.0 - (t - p#at) / Float64.max(0.001, p#decay))
 
     /// このコマ（dt 秒）に押されて動く量（x, z の m）。
-    pub def pushStep(f: EnemiesDoc.Flinch, t: Float64, dt: Float64, p: Push): (Float64, Float64) =
-        let v = pushSpeedAt(f, t, p) * dt;
+    pub def pushStep(t: Float64, dt: Float64, p: Push): (Float64, Float64) =
+        let v = pushSpeedAt(t, p) * dt;
         (p#dx * v, p#dz * v)
 
     /// 時刻 t に体が押される向きへ傾く角（ラジアン）: 拳銃 1 発の速さで leanDeg まで、速さが減るのに合わせて戻る。
     pub def leanAt(f: EnemiesDoc.Flinch, t: Float64, p: Push): Float64 =
-        rad(f#leanDeg) * Num.clamp01(pushSpeedAt(f, t, p) / Float64.max(0.001, f#pistol))
+        rad(f#leanDeg) * Num.clamp01(pushSpeedAt(t, p) / Float64.max(0.001, f#pistol))
 
     // ── 吹っ飛び ──
 
@@ -62,9 +66,12 @@ mod Knockback {
     // WhyNot: 上への速さに近さの倍率をそのまま掛けない — 散弾銃の 0 m で 2 m 近く跳ね上がり、天井の灯りまで届く絵になる。
     pub def launch(fl: JuiceDoc.Fling, w: WeaponsDoc.Weapon, away: { dx = Float64, dz = Float64, distance = Float64 }, seed: Float64): Flight =
         let k = closeFactor(fl#closeRange, fl#closeBoost, away#distance);
-        let speed = JuiceDoc.ofWeapon(w, fl#speed) * k;
-        { y = 0.0, vx = away#dx * speed, vy = fl#lift * Num.sqrt(k), vz = away#dz * speed,
-          spin = rad(fl#spin) * k * (if (seed < 0.5) -1.0 else 1.0), speed0 = speed }
+        flingAt(fl, { speed = JuiceDoc.ofWeapon(w, fl#speed) * k, lift = fl#lift * Num.sqrt(k), spin = k }, away, seed)
+
+    /// 向き away へ、横の速さ speed・上への速さ lift（m/秒）で倒れて飛び出す。横の回る速さは Doc の spin の spin 倍（seed で向きを決める）。
+    pub def flingAt(fl: JuiceDoc.Fling, how: { speed = Float64, lift = Float64, spin = Float64 }, away: { dx = Float64, dz = Float64, distance = Float64 }, seed: Float64): Flight =
+        { y = 0.0, vx = away#dx * how#speed, vy = how#lift, vz = away#dz * how#speed,
+          spin = rad(fl#spin) * how#spin * (if (seed < 0.5) -1.0 else 1.0), speed0 = how#speed }
 
     /// 横の速さ（m/秒）。
     def horizontal(f: Flight): Float64 = Num.sqrt(f#vx * f#vx + f#vz * f#vz)

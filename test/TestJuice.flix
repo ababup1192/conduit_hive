@@ -1,7 +1,7 @@
 // 撃った・倒した時の手応えの規則: 弾ける条件（Gibs.bursts）・吹っ飛ぶ向きと強さと壁（Knockback・Horde）・粒と肉片と曳光弾の上限・
 // melee の飛びかかりの当たり・ranged の溜めの時間・hit stop（World.paceOf）・手応えの Doc の橋渡し。
 mod TestJuice {
-    use fge::{Clock, Num, Vec3}
+    use fge::{Clock, Mat4, Num, Vec3}
     use Creatures.Kind
     use TestSupport.{clockAt, mazeOf, resWith}
 
@@ -149,6 +149,43 @@ mod TestJuice {
         let doc = Particles3dDoc.rec(Particles3dDoc.defaults())#tracer;
         let tr = { origin = Vec3.zero(), target = Vec3.v3(0.0, 0.0, 10.0), born = 0.0 };
         Assert.assertEq(expected = 0, List.length(Tracers.step(doc, (10.0 + doc#length) / doc#speed, tr :: Nil)))
+
+    // ── 爆発の形 ──
+
+    def blastDoc(): Particles3dDoc.Doc = Particles3dDoc.defaults()
+
+    /// 点 at で時刻 0 に爆発の部分 part を出した粒。
+    def blastAt(part: Particles3d.BlastPart, at: Vec3.Vec3): List[Particles3d.Particle] =
+        Particles3d.emit(blastDoc(), Particles3d.Kind.Blast(part), Particles3d.Space.World, at, Vec3.v3(0.0, 1.0, 0.0), 0.0, 3)
+
+    def blastArt(): BlastFx.Art = BlastFx.artOf(Particles3dDoc.rec(blastDoc())#blast)
+
+    def eye(): Vec3.Vec3 = Vec3.v3(0.0, 1.6, -8.0)
+
+    /// 火の玉の塊は 1 つにつき 3 枚の殻（中心・橙・外）で描く。
+    @Test
+    def testFireballDrawsThreeShellsPerPuff(): Unit \ Assert =
+        let puffs = blastAt(Particles3d.BlastPart.Fireball, Vec3.v3(0.0, 0.5, 0.0));
+        Assert.assertEq(expected = 3 * Particles3dDoc.rec(blastDoc())#blast#fireball#puff#count, List.length(BlastFx.instancesOf(blastDoc(), blastArt(), eye(), 0.05, puffs)))
+
+    /// 焦げ跡は寿命（scorch の life）を過ぎると描かない。
+    @Test
+    def testScorchVanishesAfterItsLife(): Unit \ Assert =
+        let life = Particles3dDoc.rec(blastDoc())#blast#scorch#life;
+        Assert.assertEq(expected = 0, List.length(BlastFx.instancesOf(blastDoc(), blastArt(), eye(), life + 0.1, blastAt(Particles3d.BlastPart.Scorch, Vec3.v3(0.0, 0.06, 0.0)))))
+
+    /// 宙（床から 3 m）で弾けた爆発は、床に焦げ跡も衝撃の輪も描かない。
+    @Test
+    def testAirBurstLeavesNothingOnTheFloor(): Unit \ Assert =
+        let high = Vec3.v3(0.0, 3.0, 0.0);
+        Assert.assertEq(expected = (0, 0), (List.length(BlastFx.instancesOf(blastDoc(), blastArt(), eye(), 0.05, blastAt(Particles3d.BlastPart.Scorch, high))),
+                                            List.length(BlastFx.instancesOf(blastDoc(), blastArt(), eye(), 0.05, blastAt(Particles3d.BlastPart.Ring, high)))))
+
+    /// 形で描く火の玉の塊はビルボードにしない（中心の光と同じ丸いコマを重ねると、平たい円盤に見える）。
+    @Test
+    def testFireballIsNotABillboard(): Unit \ Assert =
+        let puffs = blastAt(Particles3d.BlastPart.Fireball, Vec3.v3(0.0, 0.5, 0.0));
+        Assert.assertEq(expected = 0, List.length(Particles3d.billboards(blastDoc(), Particles3d.textureName(), Res.particleRegion(res()), Particles3d.Space.World, Mat4.identity(), 0.05, puffs)))
 
     // ── 飛びかかり・溜め ──
 

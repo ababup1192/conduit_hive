@@ -1,0 +1,248 @@
+{
+  "//": "conduit_hive.grenade.json の形（Studio の sections 方言）。既定は src/GrenadeDoc.flix の defaults() が正。",
+  "version": 1,
+  "sections": {
+    "carry": {
+      "kind": "record",
+      "label": "持てる数",
+      "order": 1,
+      "fields": {
+        "max": {
+          "type": "int",
+          "label": "上限",
+          "order": 1,
+          "default": 3,
+          "min": 0,
+          "max": 20
+        },
+        "start": {
+          "type": "int",
+          "label": "遊び始めの数",
+          "order": 2,
+          "default": 2,
+          "min": 0,
+          "max": 20
+        }
+      }
+    },
+    "throw": {
+      "kind": "record",
+      "label": "投げ方",
+      "order": 2,
+      "fields": {
+        "speed": {
+          "type": "float",
+          "label": "照準の向きへの速さ（m/秒）",
+          "order": 1,
+          "default": 13.0,
+          "min": 0,
+          "max": 60
+        },
+        "lift": {
+          "type": "float",
+          "label": "上へ足す速さ（m/秒）",
+          "order": 2,
+          "default": 3.5,
+          "min": 0,
+          "max": 20
+        },
+        "cooldown": {
+          "type": "float",
+          "label": "次に投げられるまで（秒）",
+          "order": 3,
+          "default": 0.9,
+          "min": 0,
+          "max": 5
+        },
+        "spin": {
+          "type": "float",
+          "label": "回る速さ（度/秒）",
+          "order": 4,
+          "default": 540.0,
+          "min": 0,
+          "max": 3000
+        }
+      }
+    },
+    "flight": {
+      "kind": "record",
+      "label": "飛び方",
+      "order": 3,
+      "fields": {
+        "gravity": {
+          "type": "float",
+          "label": "下へ引く強さ（m/秒²）",
+          "order": 1,
+          "default": 14.0,
+          "min": 0,
+          "max": 40
+        },
+        "bounce": {
+          "type": "float",
+          "label": "跳ねた時に残る、面に向かう速さの割合",
+          "order": 2,
+          "default": 0.4,
+          "min": 0,
+          "max": 1
+        },
+        "friction": {
+          "type": "float",
+          "label": "跳ねた時に残る、面に沿う速さの割合",
+          "order": 3,
+          "default": 0.65,
+          "min": 0,
+          "max": 1
+        },
+        "radius": {
+          "type": "float",
+          "label": "玉の半径（m）",
+          "order": 4,
+          "default": 0.06,
+          "min": 0.01,
+          "max": 0.5
+        },
+        "fuse": {
+          "type": "float",
+          "label": "投げてから爆発するまで（秒）",
+          "order": 5,
+          "default": 2.0,
+          "min": 0.1,
+          "max": 10
+        },
+        "scale": {
+          "type": "float",
+          "label": "glb の大きさの倍率",
+          "order": 6,
+          "default": 1.6,
+          "min": 0.1,
+          "max": 5
+        }
+      }
+    },
+    "blast": {
+      "kind": "record",
+      "label": "爆発",
+      "order": 4,
+      "fields": {
+        "radius": {
+          "type": "float",
+          "label": "届く半径（m）",
+          "order": 1,
+          "default": 6.0,
+          "min": 0,
+          "max": 20
+        },
+        "damage": {
+          "type": "float",
+          "label": "真ん中の傷",
+          "order": 2,
+          "default": 150.0,
+          "min": 0,
+          "max": 1000
+        },
+        "edgeDamage": {
+          "type": "float",
+          "label": "縁の傷",
+          "order": 3,
+          "default": 25.0,
+          "min": 0,
+          "max": 1000
+        },
+        "gibRadius": {
+          "type": "float",
+          "label": "この内で倒れた敵は肉片になる（m）",
+          "order": 4,
+          "default": 3.0,
+          "min": 0,
+          "max": 20
+        },
+        "push": {
+          "type": "float",
+          "label": "吹っ飛ぶ横の速さ（真ん中・m/秒）",
+          "order": 5,
+          "default": 8.0,
+          "min": 0,
+          "max": 40
+        },
+        "lift": {
+          "type": "float",
+          "label": "吹っ飛ぶ上の速さ（真ん中・m/秒）",
+          "order": 6,
+          "default": 4.5,
+          "min": 0,
+          "max": 20
+        },
+        "pushDecay": {
+          "type": "float",
+          "label": "生き残りが押される速さの減る秒",
+          "order": 7,
+          "default": 0.25,
+          "min": 0.01,
+          "max": 2
+        },
+        "selfRadius": {
+          "type": "float",
+          "label": "自分が傷を受ける半径（m）",
+          "order": 8,
+          "default": 4.5,
+          "min": 0,
+          "max": 20
+        },
+        "selfDamage": {
+          "type": "float",
+          "label": "自分が真ん中で受ける傷",
+          "order": 9,
+          "default": 50.0,
+          "min": 0,
+          "max": 1000
+        }
+      }
+    },
+    "light": {
+      "kind": "record",
+      "label": "爆発の瞬間の点光源",
+      "order": 5,
+      "fields": {
+        "color": {
+          "type": "color",
+          "label": "色",
+          "order": 1,
+          "default": "#ff8a3c"
+        },
+        "intensity": {
+          "type": "float",
+          "label": "強さ",
+          "order": 2,
+          "default": 2.6,
+          "min": 0,
+          "max": 20
+        },
+        "range": {
+          "type": "float",
+          "label": "届く距離（m）",
+          "order": 3,
+          "default": 7.0,
+          "min": 0,
+          "max": 30
+        },
+        "seconds": {
+          "type": "float",
+          "label": "長さ（秒）",
+          "order": 4,
+          "default": 0.16,
+          "min": 0.01,
+          "max": 2
+        }
+      }
+    },
+    "shake": {
+      "kind": "field",
+      "type": "float",
+      "label": "camera shake の強さ（0..1）",
+      "order": 6,
+      "default": 0.85,
+      "min": 0,
+      "max": 1
+    }
+  }
+}

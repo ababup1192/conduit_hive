@@ -6,7 +6,8 @@
 mod Particles3d {
     use fge::{Color, Hash01, Mat4, Num, PxSpriteAtlas, Rect2, Scene3d, Texture3d, Vec2, Vec3}
 
-    /// 粒の種類（Doc の欄と、描くコマを決める）。Muzzle は武器ごとの形・Smoke は壁の煙・Gore は弾けた時の体液・Ring は弾けた時の衝撃の輪。
+    /// 粒の種類（Doc の欄と、描くコマを決める）。Muzzle は武器ごとの形・Smoke は壁の煙・Gore は弾けた時の体液・Ring は弾けた時の衝撃の輪・
+    /// Blast は手榴弾の爆発の粒（BlastPart の 4 つ）。
     pub enum Kind with Eq, ToString {
         case Muzzle(WeaponsDoc.Weapon)
         case Spark
@@ -14,6 +15,18 @@ mod Particles3d {
         case Ichor
         case Gore
         case Ring
+        case Blast(BlastPart)
+    }
+
+    /// 爆発の部分: 真ん中の光・床を走る衝撃の輪・上る煙・飛び散る火花と破片・火の玉の塊・床の焦げ跡。
+    /// Ring・Fireball・Scorch は形で描く（BlastFx。ビルボードのコマが無い）。
+    pub enum BlastPart with Eq, ToString {
+        case Flash
+        case Ring
+        case Smoke
+        case Debris
+        case Fireball
+        case Scorch
     }
 
     /// 粒の置き場。World = ステージの座標・Muzzle = 銃口の局所の座標（原点が銃口・+Z が銃身の向き）。
@@ -40,6 +53,12 @@ mod Particles3d {
         case Kind.Ichor  => Particles3dDoc.rec(doc)#ichor
         case Kind.Gore   => Particles3dDoc.rec(doc)#gore
         case Kind.Ring   => Particles3dDoc.rec(doc)#ring
+        case Kind.Blast(BlastPart.Flash)  => Particles3dDoc.rec(doc)#blast#flash
+        case Kind.Blast(BlastPart.Ring)   => Particles3dDoc.rec(doc)#blast#ring
+        case Kind.Blast(BlastPart.Smoke)  => Particles3dDoc.rec(doc)#blast#smoke
+        case Kind.Blast(BlastPart.Debris) => Particles3dDoc.rec(doc)#blast#debris
+        case Kind.Blast(BlastPart.Fireball) => Particles3dDoc.rec(doc)#blast#fireball#puff
+        case Kind.Blast(BlastPart.Scorch) => Particles3dDoc.rec(doc)#blast#scorch
     }
 
     /// 武器 w のマズルフラッシュの出し方。
@@ -149,13 +168,17 @@ mod Particles3d {
 
     /// 粒の絵を GPU に登録する名前と、上げ直すかを決める鍵（絵はコードで決まるので、塗り方を替えたら版を上げる）。
     pub def textureName(): String = "particles3d"
-    pub def textureKey(): String = "particles3d:v5"
+    pub def textureKey(): String = "particles3d:v6"
 
-    /// 種類のコマ（textureOf の中の矩形）。
+    /// 種類のコマ（textureOf の中の矩形）。形で描く爆発の部分（BlastFx）はコマが無い（ビルボードにしない）。
     pub def regionOf(t: PxSpriteAtlas.Baked, kind: Kind): Option[Rect2.Rect2] = match kind {
         case Kind.Muzzle(_) => PxSpriteAtlas.regionOf(t, "muzzle", "a")
         case Kind.Smoke     => PxSpriteAtlas.regionOf(t, "smoke", "a")
         case Kind.Ring      => PxSpriteAtlas.regionOf(t, "ring", "a")
+        case Kind.Blast(BlastPart.Smoke) => PxSpriteAtlas.regionOf(t, "smoke", "a")
+        case Kind.Blast(BlastPart.Ring)     => None
+        case Kind.Blast(BlastPart.Fireball) => None
+        case Kind.Blast(BlastPart.Scorch)   => None
         case _              => PxSpriteAtlas.regionOf(t, "spark", "a")
     }
 
@@ -214,10 +237,21 @@ mod Particles3d {
         let off = Float64.abs(d - 0.9) / 0.05;
         if (off <= 1.0) greyOf(1.0 - 0.6 * off) else 0
 
-    /// 煙: 縁がちぎれた丸い塊（4 px の升ごとの濃淡で縁を削り、真ん中ほど明るい）。
+    /// 格子 cell px ごとの値を、間でなめらかにつないだ濃淡（0..1）。
+    def valueNoise(cell: Int32, salt: Int32, x: Int32, y: Int32): Float64 =
+        let (gx, gy) = (x / cell, y / cell);
+        let (fx, fy) = (Int32.toFloat64(Int32.modulo(x, cell)) / Int32.toFloat64(cell), Int32.toFloat64(Int32.modulo(y, cell)) / Int32.toFloat64(cell));
+        let ease = (u: Float64) -> u * u * (3.0 - 2.0 * u);
+        let at = (i: Int32, j: Int32) -> Hash01.at(i * 131 + j, salt);
+        let top = Num.lerp(at(gx, gy), at(gx + 1, gy), ease(fx));
+        let bottom = Num.lerp(at(gx, gy + 1), at(gx + 1, gy + 1), ease(fx));
+        Num.lerp(top, bottom, ease(fy))
+
+    /// 煙: 縁がふくらみでちぎれた丸い塊。中は大小 2 つのなめらかな濃淡で、真ん中ほど明るい。
+    // WhyNot: 升ごとに値を変えるだけにしない — 爆発の煙は 2 m を超えて広がり、升の段がモザイクに見える。
     def smokePixel(x: Int32, y: Int32): Int32 =
         let (u, v) = unitOf(sparkSide(), x, y);
         let d = Num.sqrt(u * u + v * v);
-        let n = Hash01.at((x / 4) * 131 + y / 4, 91);
-        if (d <= 0.62 + 0.38 * n) greyOf(0.55 + 0.45 * n * (1.0 - d)) else 0
+        let n = 0.65 * valueNoise(16, 91, x, y) + 0.35 * valueNoise(6, 92, x, y);
+        if (d <= 0.55 + 0.5 * n) greyOf(0.5 + 0.5 * n * (1.0 - 0.6 * d)) else 0
 }

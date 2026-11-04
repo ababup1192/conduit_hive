@@ -38,7 +38,9 @@
     "spit_burst": { "count": 2 },
     "gib": { "count": 2 },
     "player_hurt": { "count": 3 },
-    "step_metal": { "count": 4 }
+    "step_metal": { "count": 4 },
+    "grenade_bounce": { "count": 2 },
+    "explosion": { "count": 2 }
   },
   "levels": {
     "shot_pistol": { "volume": 1.0 },
@@ -53,6 +55,13 @@
     "enemy_charge": { "volume": 0.6 },
     "step_metal": { "volume": 0.5 },
     "alarm": { "volume": 0.5 },
+    "dodge": { "volume": 0.7 },
+    "kick": { "volume": 0.9 },
+    "kick_miss": { "volume": 0.6 },
+    "grenade_throw": { "volume": 0.6 },
+    "grenade_bounce": { "volume": 0.55 },
+    "explosion": { "volume": 1.0 },
+    "stamina_out": { "volume": 0.6 },
     "amb_machine": { "volume": 1.0 },
     "amb_vent": { "volume": 1.0 },
     "amb_pipes": { "volume": 1.0 }

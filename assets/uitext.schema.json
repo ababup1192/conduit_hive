@@ -148,6 +148,14 @@
       "order": 17,
       "default": "RIFLE",
       "group": "拾った知らせ"
+    },
+    "noticeGrenade": {
+      "kind": "field",
+      "type": "string",
+      "label": "手榴弾を拾った（{n} は数）",
+      "order": 18,
+      "default": "+{n}  GRENADE",
+      "group": "拾った知らせ"
     }
   }
 }

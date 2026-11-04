@@ -2,7 +2,7 @@
   "verbs": ["start", "tap", "hold", "release", "wait", "until", "drive", "expect", "mark", "run", "reload", "request", "close", "rewind"],
   "settings": ["fps", "ready"],
   "options": {},
-  "roles": ["forward", "back", "left", "right", "turnLeft", "turnRight", "sprint", "confirm", "cancel"],
+  "roles": ["forward", "back", "left", "right", "turnLeft", "turnRight", "sprint", "dodge", "kick", "grenade", "confirm", "cancel"],
   "probes": [
     {"name": "x", "kind": "num", "doc": "足元の x（m）"},
     {"name": "z", "kind": "num", "doc": "足元の z（m）"},
@@ -12,6 +12,8 @@
     {"name": "weapon", "kind": "text", "doc": "構えている武器（Pistol・Shotgun・Rifle）"},
     {"name": "shots", "kind": "num", "doc": "撃った回数の合計"},
     {"name": "health", "kind": "num", "doc": "プレイヤーの体力"},
+    {"name": "stamina", "kind": "num", "doc": "スタミナの残り"},
+    {"name": "grenades", "kind": "num", "doc": "持っている手榴弾の数"},
     {"name": "pilot", "kind": "text", "doc": "自動の操縦が向かっている点の名前（start tour の時だけ。歩き終えたら空）"},
     {"name": "enemies", "kind": "num", "doc": "倒れていない敵の数"}
   ],
@@ -30,6 +32,9 @@
     {"name": "shot:gib", "doc": "ギャラリーの場面（gallery/gib.png）", "args": {}},
     {"name": "shot:fling", "doc": "ギャラリーの場面（gallery/fling.png）", "args": {}},
     {"name": "shot:tracer", "doc": "ギャラリーの場面（gallery/tracer.png）", "args": {}},
+    {"name": "shot:dodge", "doc": "ギャラリーの場面（gallery/dodge.png）", "args": {}},
+    {"name": "shot:kick", "doc": "ギャラリーの場面（gallery/kick.png）", "args": {}},
+    {"name": "shot:blast", "doc": "ギャラリーの場面（gallery/blast.png）", "args": {}},
     {"name": "shot:title", "doc": "ギャラリーの場面（gallery/title.png）", "args": {}},
     {"name": "shot:pickups", "doc": "ギャラリーの場面（gallery/pickups.png）", "args": {}},
     {"name": "shot:clear", "doc": "ギャラリーの場面（gallery/clear.png）", "args": {}}

@@ -1,6 +1,6 @@
 {
   "version": 1,
-  "note": "音の通り道（形は engine の docs/mixer.schema.json）。gun = 銃声・薬莢・跳弾・先台・持ち替え、enemy = 敵の声と攻撃と体液と弾ける音、player = 自分の傷・足音・拾う音、ambient = 環境音のループと警報と扉、ui = メニューとクリア。銃声が鳴ると環境音を下げる（ダッキング）。cooldowns = 同じ名前がこの秒の内に続いたら鳴らさない。音ごとの量（素材の大きさの違い）は conduit_hive.sounds.json の levels。",
+  "note": "音の通り道（形は engine の docs/mixer.schema.json）。gun = 銃声・薬莢・跳弾・先台・持ち替え・手榴弾と爆発、enemy = 敵の声と攻撃と体液と弾ける音、player = 自分の傷・足音・拾う音・回避と蹴りと息切れ、ambient = 環境音のループと警報と扉、ui = メニューとクリア。銃声が鳴ると環境音を下げる（ダッキング）。cooldowns = 同じ名前がこの秒の内に続いたら鳴らさない。音ごとの量（素材の大きさの違い）は conduit_hive.sounds.json の levels。",
   "defaultBus": "player",
   "transitionSeconds": 0.3,
   "buses": [
@@ -11,9 +11,9 @@
     { "name": "ui", "volume": 0.4, "lowpassGainHF": 1.0 }
   ],
   "routes": [
-    { "bus": "gun", "prefixes": ["shot_", "shell", "ricochet", "shotgun_pump", "reload", "dryfire", "switch"] },
+    { "bus": "gun", "prefixes": ["shot_", "shell", "ricochet", "shotgun_pump", "reload", "dryfire", "switch", "grenade_", "explosion"] },
     { "bus": "enemy", "prefixes": ["enemy_", "spit_burst", "gib"] },
-    { "bus": "player", "prefixes": ["player_", "step_", "pickup_"] },
+    { "bus": "player", "prefixes": ["player_", "step_", "pickup_", "dodge", "kick", "stamina_out"] },
     { "bus": "ambient", "prefixes": ["amb_", "alarm", "door"] },
     { "bus": "ui", "prefixes": ["ui_", "clear"] }
   ],
@@ -36,7 +36,10 @@
     { "prefix": "pickup_", "seconds": 0.1 },
     { "prefix": "alarm", "seconds": 3.0 },
     { "prefix": "door", "seconds": 1.0 },
-    { "prefix": "ui_move", "seconds": 0.04 }
+    { "prefix": "ui_move", "seconds": 0.04 },
+    { "prefix": "grenade_bounce", "seconds": 0.08 },
+    { "prefix": "explosion", "seconds": 0.1 },
+    { "prefix": "stamina_out", "seconds": 0.8 }
   ],
   "snapshots": []
 }

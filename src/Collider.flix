@@ -82,4 +82,16 @@ mod Collider {
         let middle = Vec3.add(origin, Vec3.mul(toward, 0.5));
         CollisionWorld3d.boxesNear(world, middle, length * 0.5 + 0.5)
             |> List.forAll(b -> Option.isEmpty(Ray3d.hitBox(ray, length, b)))
+
+    /// origin から target へ進む間に当たる箱の、一番近い当たり（projectile が弾ける所・手榴弾が跳ねる所）。
+    pub def firstHit(world: CollisionWorld3d.CollisionWorld3d, origin: Vec3.Vec3, target: Vec3.Vec3): Option[Ray3d.RayHit] =
+        let toward = Vec3.sub(target, origin);
+        let length = Vec3.length(toward);
+        let ray = Ray3d.ray3d(origin, toward);
+        CollisionWorld3d.boxesNear(world, origin, length + 0.5)
+            |> List.filterMap(b -> Ray3d.hitBox(ray, length, b))
+            |> List.foldLeft((best, h) -> match best {
+                case Some(b) if b#distance <= h#distance => best
+                case _ => Some(h)
+            }, None)
 }

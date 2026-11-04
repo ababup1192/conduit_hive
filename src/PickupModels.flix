@@ -1,14 +1,17 @@
-// PickupModels — 拾う物の形（読み込みのほかは純粋）: 武器は Blender の glb（原点は床の上の真ん中・長い向きは Z・骨なし）、
+// PickupModels — 拾う物の形（読み込みのほかは純粋）: 武器と手榴弾は Blender の glb（原点は床の上の真ん中・長い向きは Z・骨なし）、
 // 回復と弾倉は鋼の箱の組み合わせに発光の筋（施設の光る筋と同じ冷たい色）。どの物の下にも、光る縁の台座を床に敷く。
 // 形は読み込みで 1 回だけ組み、置くたびに world の行列だけを替える（instancesAt）。浮き方と回り方は Pickups。
 mod PickupModels {
-    use fge::{Color, Gltf, LoadProgress, Log, Mat4, Mesh3d, Model3d, Num, Scene3d, ShaderDoc, Texture3d, Vec3}
+    use fge::{Color, Gltf, ImageData, LoadProgress, Log, Mat4, Mesh3d, Model3d, Num, Scene3d, ShaderDoc, Texture3d, Vec3}
     use fge::ShaderDoc.{Field, Shade, Out}
     use WeaponsDoc.Weapon
     use Pickups.Kind
 
-    /// 武器の拾う物の glb（読めなかった武器は無い）。
-    pub type alias Models = Map[Weapon, Model3d.Model3d]
+    /// 武器の拾う物の glb（読めなかった武器は無い）と、手榴弾の拾う物の glb（読めなければ None・台座だけになる）。
+    pub type alias Models = { weapons = Map[Weapon, Model3d.Model3d], grenade = Option[Model3d.Model3d] }
+
+    /// glb を 1 つも読んでいない形の束（テストと、読めなかった時）。
+    pub def none(): Models = { weapons = Map.empty(), grenade = None }
 
     /// 形 1 つ（原点のまわりの形と、光る物なら材質）。
     type alias Shape = { mesh = Mesh3d.Mesh3d, material = Option[Scene3d.Material3d], name = String }
@@ -22,9 +25,20 @@ mod PickupModels {
     /// 拾える武器（拳銃は始めから持つので拾う物の形が無い）。
     def weapons(): List[Weapon] = Weapon.Shotgun :: Weapon.Rifle :: Nil
 
-    /// 武器の glb を絵つきで読む。読めない武器は理由を 1 行出して置かない（その武器の拾う物は台座だけになる）。
+    /// 手榴弾の拾う物の glb のパス。
+    def grenadePath(): String = "assets/models/pickup_grenade.glb"
+
+    /// 武器と手榴弾の glb を絵つきで読む。読めない物は理由を 1 行出して置かない（その拾う物は台座だけになる）。
     pub def load(): Models \ Fs.FileRead + IO + LoadProgress =
         let dec = LoadProgress.imageDecoder();
+        let grenade = Fs.FileRead.readBytes(grenadePath()) |> Result.mapErr(e -> "${grenadePath()}: 読めない（${e}）")
+            |> Result.flatMap(b -> Gltf.fromGlbTexturedUsing(dec, Gltf.noTextureLimits(), b) |> Result.mapErr(why -> "${grenadePath()}: ${why}"));
+        { weapons = loadWeapons(dec), grenade = match grenade {
+              case Ok(m)    => Some(m)
+              case Err(why) => Log.warnThen("[pickup] ${why}", None)
+          } }
+
+    def loadWeapons(dec: ImageData.ImageDecoder): Map[Weapon, Model3d.Model3d] \ Fs.FileRead + IO + LoadProgress =
         weapons()
             |> LoadProgress.mapWithProgress("reading pickups...", w -> (w, Fs.FileRead.readBytes(pathOf(w)) |> Result.mapErr(e -> "${pathOf(w)}: 読めない（${e}）")))
             |> LoadProgress.parMapWithProgress("decoding pickups...", raw -> {
@@ -108,7 +122,9 @@ mod PickupModels {
         let glow = PickupsDoc.rec(doc)#glow;
         { bodies = Map#{ Kind.HealthSmall => medkit(look, glow, 1.0), Kind.HealthLarge => medkit(look, glow, 1.35),
                          Kind.AmmoShotgun => shells(look, glow), Kind.AmmoRifle => magazines(look, glow) },
-          pad = padOf(look, glow), models = models |> Map.map(glowingModel(look, glow)), textures = models |> Map.valuesOf |> List.flatMap(m -> m#textures) }
+          pad = padOf(look, glow),
+          models = { weapons = models#weapons |> Map.map(glowingModel(look, glow)), grenade = models#grenade |> Option.map(glowingModel(look, glow)) },
+          textures = List.append(models#weapons |> Map.valuesOf |> List.flatMap(m -> m#textures), models#grenade |> Option.toList |> List.flatMap(m -> m#textures)) }
 
     /// 武器の glb の、自分で光らない材質に施設の光る筋の色をうっすら足す（暗がりで黒い影にならない）。光る筋の材質はそのまま。
     def glowingModel(look: LookDoc.Rec, glow: Float64, m: Model3d.Model3d): Model3d.Model3d =
@@ -127,7 +143,7 @@ mod PickupModels {
     pub type alias Placement = { x = Float64, z = Float64, y = Float64, yaw = Float64, scale = Float64 }
 
     /// 種類 kind の拾う物を置いた物: 台座は床に・物は高さ y で yaw だけ回し、scale 倍にして。
-    /// 武器の glb は床に寝かせた向き（横の形が上を向く）で作ってあるので、Z のまわりに 90 度起こして横の形を横から見せる。
+    /// 武器の glb は床に寝かせた向き（横の形が上を向く）で作ってあるので、Z のまわりに 90 度起こして横の形を横から見せる。手榴弾の glb はそのまま。
     pub def instancesAt(art: Art, kind: Kind, at: Placement): List[Scene3d.Instance3d] =
         let floor = Mat4.translate(Vec3.v3(at#x, 0.0, at#z));
         let k = Float64.max(0.05, at#scale);
@@ -135,7 +151,9 @@ mod PickupModels {
         let pad = art#pad |> List.map(place(floor));
         let shaped = Map.getWithDefault(kind, Nil, art#bodies) |> List.map(place(body));
         let upright = Mat4.mul(body, Mat4.rotateZ(Num.pi() * 0.5));
-        let modeled = weaponOf(kind) |> Option.flatMap(w -> Map.get(w, art#models)) |> Option.map(Model3d.partInstances(upright)) |> Option.getWithDefault(Nil);
+        let weapon = weaponOf(kind) |> Option.flatMap(w -> Map.get(w, art#models#weapons)) |> Option.map(Model3d.partInstances(upright));
+        let grenade = if (kind == Kind.Grenade) art#models#grenade |> Option.map(Model3d.partInstances(body)) else None;
+        let modeled = weapon |> Option.withDefault(default = grenade) |> Option.getWithDefault(Nil);
         List.flatten(pad :: shaped :: modeled :: Nil)
 
     /// glb で描く種類の武器（ほかは None）。

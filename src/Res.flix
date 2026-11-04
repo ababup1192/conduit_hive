@@ -18,6 +18,8 @@ mod Res {
         particles = Particles3dDoc.Doc,
         juice = JuiceDoc.Doc,
         player = PlayerDoc.Doc,
+        moves = MovesDoc.Doc,
+        grenade = GrenadeDoc.Doc,
         enemies = EnemiesDoc.Doc,
         spawns = SpawnsDoc.Doc,
         pickups = PickupsDoc.Doc,
@@ -30,8 +32,11 @@ mod Res {
         viewmodels = FpViewmodel.Viewmodels,
         creatures = Creatures.Bodies,
         pickupModels = PickupModels.Models,
-        // 弾けた時の肉片（読めなければ None・肉片を出さない）。
-        gibs = Option[Model3d.Model3d]
+        // 弾けた時の肉片（読めなければ None・肉片を出さない）と、投げた手榴弾（読めなければ None・見えないが飛んで爆発する）。
+        gibs = Option[Model3d.Model3d],
+        grenadeModel = Option[Model3d.Model3d],
+        // 蹴りの間に手前へ出る脚（読めなければ None・蹴りは効くが脚は見えない）。
+        bootModel = Option[Model3d.Model3d]
     }
 
     /// 描く元の束。
@@ -47,6 +52,9 @@ mod Res {
         particles = Particles3dDoc.Doc,
         juice = JuiceDoc.Doc,
         player = PlayerDoc.Doc,
+        // 技（スタミナ・走る・緊急回避・蹴り）と手榴弾。
+        moves = MovesDoc.Doc,
+        grenade = GrenadeDoc.Doc,
         enemies = EnemiesDoc.Doc,
         spawns = SpawnsDoc.Doc,
         pickups = PickupsDoc.Doc,
@@ -86,20 +94,27 @@ mod Res {
         particleTexture = PxSpriteAtlas.Baked,
         // 弾けた時の肉片の形と、曳光弾の線の形と材質（粒の Doc を読み直した時に作り直す）。
         gibArt = Gibs.Art,
-        tracerArt = Tracers.Art
+        tracerArt = Tracers.Art,
+        // 爆発の形で描く部分（火の玉の塊・衝撃の輪・焦げ跡。粒の Doc を読み直した時に作り直す）。
+        blastArt = BlastFx.Art,
+        // 投げた手榴弾の glb（読めなければ None）と、蹴りの間に手前へ出る脚の形（boot.glb の腿と脛）。
+        grenadeModel = Option[Model3d.Model3d],
+        bootArt = Boot.Art
     }
 
     /// Doc の束から描く元を組む。
     pub def build(docs: Docs): Res =
         let stage = stageOf(docs#maze, docs#look, docs#stage);
         withPlans({ uiText = docs#uiText, keys = docs#keys, theme = docs#theme, walk = docs#walk, look = docs#look, mazeDoc = docs#maze,
-          weapons = docs#weapons, viewmodel = docs#viewmodel, particles = docs#particles, juice = docs#juice, player = docs#player, enemies = docs#enemies,
+          weapons = docs#weapons, viewmodel = docs#viewmodel, particles = docs#particles, juice = docs#juice, player = docs#player,
+          moves = docs#moves, grenade = docs#grenade, enemies = docs#enemies,
           spawns = docs#spawns, pickups = docs#pickups, tour = docs#tour,
           sounds = docs#sounds, mixerDoc = docs#mixer, mixer = SoundsDoc.mixerOf(docs#mixer, docs#sounds), stage = docs#stage, viewmodels = docs#viewmodels, creatures = docs#creatures, timing = Creatures.timingOf(docs#creatures),
           spawnPoints = stage#spawnPoints, wavePlans = Map.empty(), tourWavePlans = Map.empty(), pickupPoints = Pickups.pointsOf(stage#maze, docs#pickups),
           pickupArt = PickupModels.build(LookDoc.rec(docs#look), docs#pickups, docs#pickupModels), maze = stage#maze, collision = stage#collision, openCells = stage#openCells, props = stage#props, hitTargets = stage#hitTargets,
           art = stage#art, propArt = stage#propArt, stageTextures = stage#textures, particleTexture = Particles3d.textureOf(),
-          gibArt = Gibs.artOf(docs#gibs), tracerArt = Tracers.artOf(Particles3dDoc.rec(docs#particles)#tracer) })
+          gibArt = Gibs.artOf(docs#gibs), tracerArt = Tracers.artOf(Particles3dDoc.rec(docs#particles)#tracer), blastArt = BlastFx.artOf(Particles3dDoc.rec(docs#particles)#blast),
+          grenadeModel = docs#grenadeModel, bootArt = Boot.build(docs#bootModel) })
 
     /// 迷路と見た目から作る物。
     type alias Stage = {
@@ -168,11 +183,15 @@ mod Res {
     pub def withViewmodel(viewmodel: FpViewmodelDoc.Doc, res: Res): Res = { viewmodel = viewmodel | res }
 
     pub def withParticles(particles: Particles3dDoc.Doc, res: Res): Res =
-        { particles = particles, tracerArt = Tracers.artOf(Particles3dDoc.rec(particles)#tracer) | res }
+        { particles = particles, tracerArt = Tracers.artOf(Particles3dDoc.rec(particles)#tracer), blastArt = BlastFx.artOf(Particles3dDoc.rec(particles)#blast) | res }
 
     pub def withJuice(juice: JuiceDoc.Doc, res: Res): Res = { juice = juice | res }
 
     pub def withPlayer(player: PlayerDoc.Doc, res: Res): Res = { player = player | res }
+
+    pub def withMoves(moves: MovesDoc.Doc, res: Res): Res = { moves = moves | res }
+
+    pub def withGrenade(grenade: GrenadeDoc.Doc, res: Res): Res = { grenade = grenade | res }
 
     pub def withEnemies(enemies: EnemiesDoc.Doc, res: Res): Res = { enemies = enemies | res }
 

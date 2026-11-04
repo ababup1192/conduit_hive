@@ -15,9 +15,9 @@ mod TestSupport {
         ({ uiText = UiTextDoc.defaults(), keys = KeysDoc.defaults(), theme = ThemeDoc.defaults(),
                     walk = WalkDoc.defaults(), look = LookDoc.defaults(), maze = maze,
                     weapons = WeaponsDoc.defaults(), viewmodel = FpViewmodelDoc.defaults(), particles = Particles3dDoc.defaults(), juice = JuiceDoc.defaults(),
-                    player = PlayerDoc.defaults(), enemies = EnemiesDoc.defaults(), spawns = noWaves(), pickups = PickupsDoc.defaults(), tour = TourDoc.defaults(),
+                    player = PlayerDoc.defaults(), moves = MovesDoc.defaults(), grenade = GrenadeDoc.defaults(), enemies = EnemiesDoc.defaults(), spawns = noWaves(), pickups = PickupsDoc.defaults(), tour = TourDoc.defaults(),
                     sounds = SoundsDoc.defaults(), mixer = AudioMixer.defaults(),
-                    stage = None, viewmodels = Map.empty(), creatures = Map.empty(), pickupModels = Map.empty(), gibs = None })
+                    stage = None, viewmodels = Map.empty(), creatures = Map.empty(), pickupModels = PickupModels.none(), gibs = None, grenadeModel = None, bootModel = None })
 
     /// wave の無い spawns の Doc（既定の wave は最後の部屋 H のもので、小さな迷路に H は無い。湧かせるテストは Res.withSpawns で wave を書く）。
     def noWaves(): SpawnsDoc.Doc = SpawnsDoc.Doc.Doc({ waves = Nil | SpawnsDoc.rec(SpawnsDoc.defaults()) })
@@ -48,6 +48,14 @@ mod TestSupport {
     /// 今が t 秒で、このコマの刻みが dt 秒の遊びの時計。
     pub def clockAt(t: Float64, dt: Float64): Clock.Clock[PlayClock.Play] =
         Clock.advance(Clock.paceOf(Clock.Run.Running), dt, Clock.advance(Clock.paceOf(Clock.Run.Running), t - dt, Clock.start()))
+
+    /// 同じ刻み dt 秒で n コマ（1 以上）進めた World（最初のコマは first・残りは rest の入力。時計は App と同じく World.paceOf の進み方で進める）。
+    pub def simulate(res: Res.Res, first: World.Input, rest: World.Input, dt: Float64, n: Int32, w: World.World): World.World =
+        List.range(1, n) |> List.foldLeft((acc, _) -> tick(res, rest, dt, acc), tick(res, first, dt, w))
+
+    /// 時計を World.paceOf の進み方で dt 秒進めて、入力 input で 1 コマ進めた World。
+    def tick(res: Res.Res, input: World.Input, dt: Float64, w: World.World): World.World =
+        World.step(res, input, { play = Clock.advance(World.paceOf(res, w), dt, w#play) | w })
 
     /// 東西に長い 3 マスの部屋（壁の内側は x が 4〜16 m・z が 4〜8 m）。start は西の端のマス・東向き。
     pub def eastRoom(): MazeDoc.Doc = mazeOf("#####" :: "#AAA#" :: "#####" :: Nil, 1, 1, 90.0)

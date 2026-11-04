@@ -1,0 +1,33 @@
+{
+  "version": 1,
+  "title": "技（スタミナ・走る・緊急回避・蹴り）",
+  "note": "群れに囲まれた時に立て直す技の数。減る・戻る・跳ぶ・押し返す規則はコード（src/Stamina.flix・Moves.flix・Horde.kick）。stamina = スタミナ（max = 最大・regenPerSecond = 使わない間に戻る速さ/秒・regenDelay = 最後に使ってから戻り始めるまで秒・resumeAt = 走り切って息切れした後に走れるまで戻る量・sprintPerSecond = Shift で走る間に減る速さ/秒）。dodge = Space の緊急回避（押している向きへ・押していなければ後ろへ。cost = 使うスタミナ・seconds = 跳ぶ長さ・distance = 跳ぶ距離 m・iframe = 跳び始めから攻撃が当たらない秒・cooldown = 跳び始めから次に跳べるまで・dip = 目が沈む深さ m・fovKick = 画角が広がる度）。kick = F の蹴り（cost・range = 足元から敵の体の縁まで m・arc = 前の扇の角の全体（度）・damage = 傷・push = 押し返す速さ m/秒・pushDecay = その速さが 1/e へ減る秒（押す距離はおよそ push × pushDecay）・fling = 倒れた敵が飛ぶ速さ・cooldown = 次に蹴れるまで・seconds = 脚が見えている長さ・shake = camera shake の強さ 0..1）。",
+  "stamina": {
+    "max": 100.0,
+    "regenPerSecond": 28.0,
+    "regenDelay": 0.9,
+    "resumeAt": 35.0,
+    "sprintPerSecond": 18.0
+  },
+  "dodge": {
+    "cost": 34.0,
+    "seconds": 0.3,
+    "distance": 4.5,
+    "iframe": 0.24,
+    "cooldown": 0.55,
+    "dip": 0.26,
+    "fovKick": 9.0
+  },
+  "kick": {
+    "cost": 22.0,
+    "range": 1.6,
+    "arc": 120.0,
+    "damage": 18.0,
+    "push": 11.0,
+    "pushDecay": 0.22,
+    "fling": 4.5,
+    "cooldown": 0.7,
+    "seconds": 0.42,
+    "shake": 0.45
+  }
+}

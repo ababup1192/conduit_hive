@@ -49,6 +49,11 @@
       "looping": false
     },
     {
+      "name": "dodge",
+      "path": "assets/sfx/dodge.wav",
+      "looping": false
+    },
+    {
       "name": "door",
       "path": "assets/sfx/door.wav",
       "looping": false
@@ -139,6 +144,16 @@
       "looping": false
     },
     {
+      "name": "explosion_1",
+      "path": "assets/sfx/explosion_1.wav",
+      "looping": false
+    },
+    {
+      "name": "explosion_2",
+      "path": "assets/sfx/explosion_2.wav",
+      "looping": false
+    },
+    {
       "name": "gib_1",
       "path": "assets/sfx/gib_1.wav",
       "looping": false
@@ -146,6 +161,31 @@
     {
       "name": "gib_2",
       "path": "assets/sfx/gib_2.wav",
+      "looping": false
+    },
+    {
+      "name": "grenade_bounce_1",
+      "path": "assets/sfx/grenade_bounce_1.wav",
+      "looping": false
+    },
+    {
+      "name": "grenade_bounce_2",
+      "path": "assets/sfx/grenade_bounce_2.wav",
+      "looping": false
+    },
+    {
+      "name": "grenade_throw",
+      "path": "assets/sfx/grenade_throw.wav",
+      "looping": false
+    },
+    {
+      "name": "kick",
+      "path": "assets/sfx/kick.wav",
+      "looping": false
+    },
+    {
+      "name": "kick_miss",
+      "path": "assets/sfx/kick_miss.wav",
       "looping": false
     },
     {
@@ -279,6 +319,11 @@
       "looping": false
     },
     {
+      "name": "stamina_out",
+      "path": "assets/sfx/stamina_out.wav",
+      "looping": false
+    },
+    {
       "name": "step_metal_1",
       "path": "assets/sfx/step_metal_1.wav",
       "looping": false
@@ -401,10 +446,31 @@
         "role": "material"
       },
       {
+        "id": "blastfx",
+        "pattern": "assets/conduit_hive.blastfx.json",
+        "title": "爆発の粒（火の玉・輪・煙・破片）",
+        "schema": "assets/blastfx.schema.json",
+        "role": "material"
+      },
+      {
         "id": "player",
         "pattern": "assets/conduit_hive.player.json",
         "title": "プレイヤーの体力（被弾の赤み・やり直すまで）",
         "schema": "assets/player.schema.json",
+        "role": "tuning"
+      },
+      {
+        "id": "moves",
+        "pattern": "assets/conduit_hive.moves.json",
+        "title": "技（スタミナ・走る・緊急回避・蹴り）",
+        "schema": "assets/moves.schema.json",
+        "role": "tuning"
+      },
+      {
+        "id": "grenade",
+        "pattern": "assets/conduit_hive.grenade.json",
+        "title": "手榴弾（持てる数・投げ方・飛び方・爆発）",
+        "schema": "assets/grenade.schema.json",
         "role": "tuning"
       },
       {

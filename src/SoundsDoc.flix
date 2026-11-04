@@ -56,7 +56,8 @@ mod SoundsDoc {
         room = { machine = 0.8, vent = 0.4, pipes = 0.3 }, corridor = { machine = 0.3, vent = 0.8, pipes = 0.5 }, zones = Map.empty(),
         variants = Map#{ "shot_pistol" => 3, "shot_shotgun" => 2, "shot_rifle" => 4, "shell" => 3, "ricochet" => 3,
                          "enemy_growl" => 3, "enemy_scream" => 3, "enemy_swing" => 2, "enemy_hit" => 3, "enemy_down" => 2,
-                         "spit_burst" => 2, "player_hurt" => 3, "step_metal" => 4 },
+                         "spit_burst" => 2, "player_hurt" => 3, "step_metal" => 4,
+                         "grenade_bounce" => 2, "explosion" => 2 },
         levels = Map#{ "shot_rifle" => 0.5 }
     })
 

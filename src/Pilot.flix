@@ -1,28 +1,30 @@
 // Pilot — 紹介の動画で、決めた道筋（TourDoc）を歩いて撃つ自動の操縦（純粋）。`start tour` で始めた時だけ動く。
 //
 // 毎コマ: 見通しのある近い敵を 1 体選んで狙い（選んだ敵は倒れるか見えなくなるまで替えない）→ 向きを狙いへなめらかに寄せる
-// → 次の点へ歩く（向きと歩く向きは別。狙いながら横や後ろへも歩く）→ 狙いのずれが fireCone の内なら引き金を引く → 敵との距離で武器を選ぶ。
+// → 次の点へ歩く（向きと歩く向きは別。狙いながら横や後ろへも歩く）→ 狙いのずれが fireCone の内なら引き金を引く → 敵との距離で武器を選ぶ
+// → 囲まれたら（crowdRange の内に crowdCount 体以上）蹴るか群れから離れる向きへ緊急回避（交互に）→ 前の群れの塊に手榴弾を投げる。
 // 出すのはキーとマウスと同じ入力（Command = World.Input と同じ形）なので、当たり判定・弾・拾う・音は手で遊ぶ時と同じ規則を通る。
 mod Pilot {
     use fge::{Num, Vec3}
     use WeaponsDoc.Weapon
 
     /// 何番目の点へ向かっているか・着いたか・その点で待った秒・その点へ向かい始めてからの秒・狙っている敵の id・
-    /// 最後に持ち替えた時刻・向きを変えている速さ（ラジアン/秒。yaw と pitch）。
+    /// 最後に持ち替えた時刻・向きを変えている速さ（ラジアン/秒。yaw と pitch）・囲まれた時に最後に使ったのが蹴りか。
     pub type alias State = { index = Int32, arrived = Bool, waited = Float64, heading = Float64, target = Option[Int32],
-                             switchedAt = Float64, yawSpeed = Float64, pitchSpeed = Float64 }
+                             switchedAt = Float64, yawSpeed = Float64, pitchSpeed = Float64, kickedLast = Bool }
 
-    /// このコマに見る物: 遊びの時計の今と刻み（秒）・体・武器・群れ。
-    pub type alias Situation = { t = Float64, dt = Float64, walker = Walker.Walker, arsenal = Arsenal.Arsenal, horde = Horde.Horde }
+    /// このコマに見る物: 遊びの時計の今と刻み（秒）・体・武器・群れ・技（スタミナ）・手榴弾。
+    pub type alias Situation = { t = Float64, dt = Float64, walker = Walker.Walker, arsenal = Arsenal.Arsenal, horde = Horde.Horde,
+                                 moves = Moves.Moves, grenades = Grenades.State }
 
     /// このコマの入力（World.Input と同じ形）。
-    pub type alias Command = { drive = Walker.Drive, trigger = Arsenal.Trigger, choice = Arsenal.Choice }
+    pub type alias Command = { drive = Walker.Drive, trigger = Arsenal.Trigger, choice = Arsenal.Choice, moves = Moves.Press }
 
     /// 狙っている敵: id・狙う点・目からの水平の距離（m）。
     type alias Aim = { id = Int32, point = Vec3.Vec3, distance = Float64 }
 
     pub def start(): State =
-        { index = 0, arrived = false, waited = 0.0, heading = 0.0, target = None, switchedAt = -100.0, yawSpeed = 0.0, pitchSpeed = 0.0 }
+        { index = 0, arrived = false, waited = 0.0, heading = 0.0, target = None, switchedAt = -100.0, yawSpeed = 0.0, pitchSpeed = 0.0, kickedLast = false }
 
     /// 向かっている点の名前（歩き終えたら空）。
     pub def pointName(tour: TourDoc.Rec, s: State): String =
@@ -46,13 +48,15 @@ mod Pilot {
         let walked = walkOf(tour, at, aim, point, s);
         let (wantYaw, wantPitch) = lookOf(eye, at#walker, aim, point, walked);
         let turned = turnToward(tour, at, wantYaw, wantPitch, walked#state);
-        let (forward, strafe) = relativeOf(at#walker#yaw, walked#direction);
+        let escape = escapeOf(res, tour, at, turned#state);
+        let (forward, strafe) = relativeOf(at#walker#yaw, escape#direction |> Option.getWithDefault(walked#direction));
         let fire = aim |> Option.exists(a -> isAligned(tour, wantYaw - at#walker#yaw, wantPitch - at#walker#pitch)
                                              and a#distance <= Arsenal.statsOf(res#weapons, at#arsenal)#range);
-        let (choice, switched) = choiceOf(res, tour, at, aim, point, turned#state);
+        let (choice, switched) = choiceOf(res, tour, at, aim, point, escape#state);
         ({ drive = { forward = forward, strafe = strafe, turnDeg = deg(turned#yaw), lookDeg = deg(turned#pitch),
                      turnRate = 0.0, sprint = walked#sprint },
-           trigger = { pressed = fire, held = fire }, choice = choice },
+           trigger = { pressed = fire, held = fire }, choice = choice,
+           moves = if (throwsNow(res, tour, eye, at)) Set.insert(Moves.Move.Grenade, escape#press) else escape#press },
          { target = aim |> Option.map(a -> a#id) | switched })
 
     // ── 狙う敵 ──
@@ -99,7 +103,7 @@ mod Pilot {
                    state = { heading = s#heading + at#dt | s } }
         }) |> Option.getWithDefault(still)
 
-    /// 体の向き yaw に対して、水平の向き direction を前と右へ分ける（Walker.heading の逆）。
+    /// 体の向き yaw に対して、水平の向き direction を前と右へ分ける（Walker.headingOf の逆）。
     def relativeOf(yaw: Float64, direction: (Float64, Float64)): (Float64, Float64) =
         let (dx, dz) = direction;
         let (s, c) = (Num.sin(yaw), Num.cos(yaw));
@@ -132,6 +136,38 @@ mod Pilot {
     /// 狙いのずれ（ラジアン）が fireCone の内か（上下は倍まで許す。敵の背は高い）。
     def isAligned(tour: TourDoc.Rec, yawError: Float64, pitchError: Float64): Bool =
         Float64.abs(deg(wrapAngle(yawError))) <= tour#fireCone and Float64.abs(deg(pitchError)) <= tour#fireCone * 2.0
+
+    // ── 囲まれた時の技と手榴弾 ──
+
+    /// 囲まれた時の技: 押す技・跳ぶ向き（群れから離れる向き。跳ばなければ None）・次の状態。
+    type alias Escape = { press = Moves.Press, direction = Option[(Float64, Float64)], state = State }
+
+    /// crowdRange の内に crowdCount 体以上いれば、前に蹴っていなくて蹴れるなら蹴り、ほかは跳べるなら群れの真ん中から離れる向きへ跳ぶ。
+    def escapeOf(res: Res.Res, tour: TourDoc.Rec, at: Situation, s: State): Escape =
+        let md = MovesDoc.rec(res#moves);
+        let me = at#walker;
+        let crowd = Horde.aliveEnemies(at#horde) |> List.filter(e -> Num.sqrt((e#x - me#x) * (e#x - me#x) + (e#z - me#z) * (e#z - me#z)) <= tour#crowdRange);
+        let n = List.length(crowd);
+        let (cx, cz) = crowd |> List.foldLeft((acc, e) -> (fst(acc) + e#x - me#x, snd(acc) + e#z - me#z), (0.0, 0.0));
+        let away = Moves.dodgeHeading(me#yaw, (0.0 - cx, 0.0 - cz));
+        let canKick = Result.isOk(Moves.kick(md#kick, at#t, at#moves));
+        let canDodge = Result.isOk(Moves.dodge(md#dodge, at#t, at#dt, away, at#moves));
+        let idle = { press = Moves.none(), direction = None, state = s };
+        if (n < Int32.max(1, tour#crowdCount)) idle
+        else if (canKick and (not s#kickedLast or not canDodge)) { press = Set#{Moves.Move.Kick}, direction = None, state = { kickedLast = true | s } }
+        else if (canDodge) { press = Set#{Moves.Move.Dodge}, direction = Some(away), state = { kickedLast = false | s } }
+        else idle
+
+    /// 手榴弾を投げるか: 持っていて投げられ、throwMin〜throwMax 先の見通しのある敵が向きから throwCone の内にいて、
+    /// そのまわり clusterRadius の内に clusterCount 体以上いる（その敵を含む）。
+    def throwsNow(res: Res.Res, tour: TourDoc.Rec, eye: Vec3.Vec3, at: Situation): Bool =
+        let alive = Horde.aliveEnemies(at#horde);
+        let ahead = (e: Horde.Enemy) -> Float64.abs(deg(wrapAngle(Num.atan2(e#x - eye#x, e#z - eye#z) - at#walker#yaw))) <= tour#throwCone;
+        let packed = (e: Horde.Enemy) -> alive |> List.count(o -> (o#x - e#x) * (o#x - e#x) + (o#z - e#z) * (o#z - e#z) <= tour#clusterRadius * tour#clusterRadius) >= tour#clusterCount;
+        Grenades.canThrow(at#t, at#grenades) and alive |> List.exists(e -> {
+            let d = distanceTo(eye, e);
+            d >= tour#throwMin and d <= tour#throwMax and ahead(e) and packed(e) and Collider.isLineClear(res#collision, eye, Vec3.v3(e#x, 1.0, e#z))
+        })
 
     // ── 武器 ──
 

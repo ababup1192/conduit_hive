@@ -577,6 +577,94 @@ def bake_atlas(o, size, name, extra_occluders=()):
     return tex
 
 
+def _flat_tree(m, img, col):
+    m.use_nodes = True
+    nt = m.node_tree
+    nt.nodes.clear()
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    em = nt.nodes.new("ShaderNodeEmission")
+    em.inputs["Color"].default_value = (*col, 1.0)
+    nt.links.new(em.outputs["Emission"], out.inputs["Surface"])
+    t = nt.nodes.new("ShaderNodeTexImage")
+    t.image = img
+    for n in nt.nodes:
+        n.select = False
+    t.select = True
+    nt.nodes.active = t
+
+
+def _bake_pass(o, size, name, setup, fill_mean):
+    img = bpy.data.images.new(name + "_raw", size, size, alpha=True, float_buffer=True)
+    img.colorspace_settings.name = "Linear Rec.709"
+    for m in [s.material for s in o.material_slots]:
+        setup(m, img)
+    bpy.ops.object.select_all(action="DESELECT")
+    o.select_set(True)
+    bpy.context.view_layer.objects.active = o
+    bpy.ops.object.bake(type="EMIT")
+    a = np.empty(size * size * 4, dtype=np.float32)
+    img.pixels.foreach_get(a)
+    a = a.reshape(size, size, 4)
+    hit = a[..., 3:] > 0.5
+    rgb = a[..., :3]
+    fill = rgb[hit[..., 0]].mean(axis=0) if fill_mean else np.zeros(3, dtype=np.float32)
+    rgb = np.where(hit, rgb, fill)
+    px = np.concatenate([to_srgb(rgb), np.ones((size, size, 1), dtype=np.float32)], axis=-1)
+    tex = bpy.data.images.new(name, size, size, alpha=False)
+    tex.colorspace_settings.name = "sRGB"
+    tex.pixels.foreach_set(px.astype(np.float32).ravel())
+    tex.file_format = "PNG"
+    tex.pack()
+    bpy.data.images.remove(img)
+    return tex
+
+
+def bake_one_material(o, size, name):
+    """鋼の部品は _bake_tree の色の作り（AO・角の擦れ）、glow は emissive の絵へ。材質を 1 つ（色の絵と emissive の絵）にまとめる。"""
+    t0 = time.time()
+    sc = bpy.context.scene
+    sc.render.engine = "CYCLES"
+    sc.cycles.device = "CPU"
+    sc.cycles.samples = 24
+    sc.render.bake.margin = max(4, size // 128)
+    sc.render.bake.use_clear = True
+    if sc.world is None:
+        sc.world = bpy.data.worlds.new("w")
+    unwrap(o, margin=0.008)
+    is_glow = lambda m: m.name.split(".")[0] == "glow"
+
+    def color(m, img):
+        if is_glow(m):
+            _flat_tree(m, img, tuple(c * 0.3 for c in GLOW_COLOR))
+        else:
+            _bake_tree(m, img)
+
+    col = _bake_pass(o, size, name + "_color", color, True)
+    emit = _bake_pass(o, size, name + "_emit", lambda m, img: _flat_tree(m, img, GLOW_COLOR if is_glow(m) else (0, 0, 0)), False)
+    m = bpy.data.materials.new(name)
+    m.use_nodes = True
+    nt = m.node_tree
+    nt.nodes.clear()
+    out = nt.nodes.new("ShaderNodeOutputMaterial")
+    bsdf = nt.nodes.new("ShaderNodeBsdfPrincipled")
+    nt.links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
+    tc = nt.nodes.new("ShaderNodeTexImage")
+    tc.image = col
+    nt.links.new(tc.outputs["Color"], bsdf.inputs["Base Color"])
+    te = nt.nodes.new("ShaderNodeTexImage")
+    te.image = emit
+    nt.links.new(te.outputs["Color"], bsdf.inputs["Emission Color"])
+    bsdf.inputs["Emission Strength"].default_value = GLOW_STRENGTH
+    bsdf.inputs["Metallic"].default_value = 0.4
+    bsdf.inputs["Roughness"].default_value = 0.45
+    me = o.data
+    for p in me.polygons:
+        p.material_index = 0
+    me.materials.clear()
+    me.materials.append(m)
+    print("bake %s %dpx %.1fs" % (name, size, time.time() - t0))
+
+
 def export_glb(path, animations):
     kw = dict(filepath=path, export_format="GLB", export_yup=True, export_apply=False,
               export_texcoords=True, export_normals=True, export_tangents=False,

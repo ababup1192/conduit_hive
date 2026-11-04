@@ -1,0 +1,576 @@
+{
+  "//": "conduit_hive.blastfx.json の形（Studio の sections 方言）。既定は src/Particles3dDoc.flix の defaults() が正。",
+  "version": 1,
+  "sections": {
+    "blastFlash": {
+      "kind": "record",
+      "label": "真ん中の一瞬の光",
+      "order": 1,
+      "fields": {
+        "count": {
+          "type": "int",
+          "label": "1 回に出す数",
+          "order": 1,
+          "default": 5,
+          "min": 0,
+          "max": 64
+        },
+        "life": {
+          "type": "float",
+          "label": "寿命（秒）",
+          "order": 2,
+          "default": 0.1,
+          "min": 0.01,
+          "max": 3
+        },
+        "lifeJitter": {
+          "type": "float",
+          "label": "寿命の散らし（0 で全部同じ）",
+          "order": 3,
+          "default": 0.4,
+          "min": 0,
+          "max": 1
+        },
+        "speed": {
+          "type": "float",
+          "label": "飛び出す速さ（m/秒）",
+          "order": 4,
+          "default": 1.5,
+          "min": 0,
+          "max": 30
+        },
+        "spread": {
+          "type": "float",
+          "label": "向きの広がり（度）",
+          "order": 5,
+          "default": 180.0,
+          "min": 0,
+          "max": 180
+        },
+        "size": {
+          "type": "float",
+          "label": "大きさ（m）",
+          "order": 6,
+          "default": 0.7,
+          "min": 0.005,
+          "max": 1
+        },
+        "grow": {
+          "type": "float",
+          "label": "寿命の終わりの大きさの倍率（1 未満で縮む・1 を超えて広がる）",
+          "default": 1.6,
+          "min": 0,
+          "max": 10,
+          "order": 7
+        },
+        "aspect": {
+          "type": "float",
+          "label": "横の長さの倍率（1 で丸）",
+          "default": 1.0,
+          "min": 0.1,
+          "max": 6,
+          "order": 8
+        },
+        "gravity": {
+          "type": "float",
+          "label": "下へ引く強さ（m/秒²）",
+          "order": 9,
+          "default": 0.0,
+          "min": -30,
+          "max": 30
+        },
+        "color": {
+          "type": "color",
+          "label": "色",
+          "order": 10,
+          "default": "#ffe2b0"
+        },
+        "intensity": {
+          "type": "float",
+          "label": "明るさの倍率（線形。1 を超えるとブルームが掛かる）",
+          "order": 11,
+          "default": 2.0,
+          "min": 0,
+          "max": 40
+        }
+      }
+    },
+    "blastRing": {
+      "kind": "record",
+      "label": "床を走る衝撃の輪",
+      "order": 2,
+      "fields": {
+        "count": {
+          "type": "int",
+          "label": "1 回に出す数",
+          "order": 1,
+          "default": 1,
+          "min": 0,
+          "max": 64
+        },
+        "life": {
+          "type": "float",
+          "label": "寿命（秒）",
+          "order": 2,
+          "default": 0.42,
+          "min": 0.01,
+          "max": 3
+        },
+        "lifeJitter": {
+          "type": "float",
+          "label": "寿命の散らし（0 で全部同じ）",
+          "order": 3,
+          "default": 0.0,
+          "min": 0,
+          "max": 1
+        },
+        "speed": {
+          "type": "float",
+          "label": "飛び出す速さ（m/秒）",
+          "order": 4,
+          "default": 0.0,
+          "min": 0,
+          "max": 30
+        },
+        "spread": {
+          "type": "float",
+          "label": "向きの広がり（度）",
+          "order": 5,
+          "default": 0.0,
+          "min": 0,
+          "max": 180
+        },
+        "size": {
+          "type": "float",
+          "label": "始めの半径（m）",
+          "order": 6,
+          "default": 0.6,
+          "min": 0.005,
+          "max": 1
+        },
+        "grow": {
+          "type": "float",
+          "label": "寿命の終わりの半径の倍率",
+          "default": 11.0,
+          "min": 0,
+          "max": 20,
+          "order": 7
+        },
+        "aspect": {
+          "type": "float",
+          "label": "横の長さの倍率（1 で丸）",
+          "default": 1.0,
+          "min": 0.1,
+          "max": 6,
+          "order": 8
+        },
+        "gravity": {
+          "type": "float",
+          "label": "下へ引く強さ（m/秒²）",
+          "order": 9,
+          "default": 0.0,
+          "min": -30,
+          "max": 30
+        },
+        "color": {
+          "type": "color",
+          "label": "色",
+          "order": 10,
+          "default": "#ff9a50"
+        },
+        "intensity": {
+          "type": "float",
+          "label": "明るさの倍率（線形。1 を超えるとブルームが掛かる）",
+          "order": 11,
+          "default": 1.6,
+          "min": 0,
+          "max": 40
+        }
+      }
+    },
+    "blastSmoke": {
+      "kind": "record",
+      "label": "上る煙",
+      "order": 3,
+      "fields": {
+        "count": {
+          "type": "int",
+          "label": "1 回に出す数",
+          "order": 1,
+          "default": 30,
+          "min": 0,
+          "max": 64
+        },
+        "life": {
+          "type": "float",
+          "label": "寿命（秒）",
+          "order": 2,
+          "default": 2.6,
+          "min": 0.01,
+          "max": 3
+        },
+        "lifeJitter": {
+          "type": "float",
+          "label": "寿命の散らし（0 で全部同じ）",
+          "order": 3,
+          "default": 0.4,
+          "min": 0,
+          "max": 1
+        },
+        "speed": {
+          "type": "float",
+          "label": "飛び出す速さ（m/秒）",
+          "order": 4,
+          "default": 1.6,
+          "min": 0,
+          "max": 30
+        },
+        "spread": {
+          "type": "float",
+          "label": "向きの広がり（度）",
+          "order": 5,
+          "default": 75.0,
+          "min": 0,
+          "max": 180
+        },
+        "size": {
+          "type": "float",
+          "label": "大きさ（m）",
+          "order": 6,
+          "default": 0.8,
+          "min": 0.005,
+          "max": 3
+        },
+        "grow": {
+          "type": "float",
+          "label": "寿命の終わりの大きさの倍率（1 未満で縮む・1 を超えて広がる）",
+          "default": 3.4,
+          "min": 0,
+          "max": 10,
+          "order": 7
+        },
+        "aspect": {
+          "type": "float",
+          "label": "横の長さの倍率（1 で丸）",
+          "default": 1.0,
+          "min": 0.1,
+          "max": 6,
+          "order": 8
+        },
+        "gravity": {
+          "type": "float",
+          "label": "下へ引く強さ（m/秒²）",
+          "order": 9,
+          "default": -0.9,
+          "min": -30,
+          "max": 30
+        },
+        "color": {
+          "type": "color",
+          "label": "色",
+          "order": 10,
+          "default": "#6e6862"
+        },
+        "intensity": {
+          "type": "float",
+          "label": "明るさの倍率（線形。1 を超えるとブルームが掛かる）",
+          "order": 11,
+          "default": 1.0,
+          "min": 0,
+          "max": 40
+        }
+      }
+    },
+    "blastDebris": {
+      "kind": "record",
+      "label": "飛び散る火花と破片",
+      "order": 4,
+      "fields": {
+        "count": {
+          "type": "int",
+          "label": "1 回に出す数",
+          "order": 1,
+          "default": 50,
+          "min": 0,
+          "max": 64
+        },
+        "life": {
+          "type": "float",
+          "label": "寿命（秒）",
+          "order": 2,
+          "default": 0.7,
+          "min": 0.01,
+          "max": 3
+        },
+        "lifeJitter": {
+          "type": "float",
+          "label": "寿命の散らし（0 で全部同じ）",
+          "order": 3,
+          "default": 0.5,
+          "min": 0,
+          "max": 1
+        },
+        "speed": {
+          "type": "float",
+          "label": "飛び出す速さ（m/秒）",
+          "order": 4,
+          "default": 12.0,
+          "min": 0,
+          "max": 30
+        },
+        "spread": {
+          "type": "float",
+          "label": "向きの広がり（度）",
+          "order": 5,
+          "default": 80.0,
+          "min": 0,
+          "max": 180
+        },
+        "size": {
+          "type": "float",
+          "label": "大きさ（m）",
+          "order": 6,
+          "default": 0.07,
+          "min": 0.005,
+          "max": 1
+        },
+        "grow": {
+          "type": "float",
+          "label": "寿命の終わりの大きさの倍率（1 未満で縮む・1 を超えて広がる）",
+          "default": 0.5,
+          "min": 0,
+          "max": 10,
+          "order": 7
+        },
+        "aspect": {
+          "type": "float",
+          "label": "横の長さの倍率（1 で丸）",
+          "default": 1.0,
+          "min": 0.1,
+          "max": 6,
+          "order": 8
+        },
+        "gravity": {
+          "type": "float",
+          "label": "下へ引く強さ（m/秒²）",
+          "order": 9,
+          "default": 9.8,
+          "min": -30,
+          "max": 30
+        },
+        "color": {
+          "type": "color",
+          "label": "色",
+          "order": 10,
+          "default": "#ffb060"
+        },
+        "intensity": {
+          "type": "float",
+          "label": "明るさの倍率（線形。1 を超えるとブルームが掛かる）",
+          "order": 11,
+          "default": 3.0,
+          "min": 0,
+          "max": 40
+        }
+      }
+    },
+    "blastFireball": {
+      "kind": "record",
+      "label": "膨らんで崩れる火の玉の塊",
+      "order": 5,
+      "fields": {
+        "count": {
+          "type": "int",
+          "label": "塊の数",
+          "order": 1,
+          "default": 9,
+          "min": 0,
+          "max": 64
+        },
+        "life": {
+          "type": "float",
+          "label": "寿命（秒）",
+          "order": 2,
+          "default": 0.75,
+          "min": 0.01,
+          "max": 3
+        },
+        "lifeJitter": {
+          "type": "float",
+          "label": "寿命の散らし（0 で全部同じ）",
+          "order": 3,
+          "default": 0.35,
+          "min": 0,
+          "max": 1
+        },
+        "speed": {
+          "type": "float",
+          "label": "飛び出す速さ（m/秒）",
+          "order": 4,
+          "default": 4.5,
+          "min": 0,
+          "max": 30
+        },
+        "spread": {
+          "type": "float",
+          "label": "向きの広がり（度）",
+          "order": 5,
+          "default": 75.0,
+          "min": 0,
+          "max": 180
+        },
+        "size": {
+          "type": "float",
+          "label": "塊の半径（m）",
+          "order": 6,
+          "default": 0.9,
+          "min": 0.005,
+          "max": 3
+        },
+        "grow": {
+          "type": "float",
+          "label": "寿命の終わりの大きさの倍率（1 未満で縮む・1 を超えて広がる）",
+          "default": 1.35,
+          "min": 0,
+          "max": 10,
+          "order": 7
+        },
+        "aspect": {
+          "type": "float",
+          "label": "横の長さの倍率（1 で丸）",
+          "default": 1.0,
+          "min": 0.1,
+          "max": 6,
+          "order": 8
+        },
+        "gravity": {
+          "type": "float",
+          "label": "下へ引く強さ（m/秒²。負で上へ昇る）",
+          "order": 9,
+          "default": -4.0,
+          "min": -30,
+          "max": 30
+        },
+        "color": {
+          "type": "color",
+          "label": "橙の殻の色",
+          "order": 10,
+          "default": "#ff7a26"
+        },
+        "intensity": {
+          "type": "float",
+          "label": "明るさの倍率（線形。1 を超えるとブルームが掛かる）",
+          "order": 11,
+          "default": 2.2,
+          "min": 0,
+          "max": 40
+        },
+        "hot": {
+          "type": "color",
+          "label": "中心の色",
+          "order": 12,
+          "default": "#fff0c8"
+        },
+        "cool": {
+          "type": "color",
+          "label": "外の殻の冷めた色",
+          "order": 13,
+          "default": "#6e1a0c"
+        }
+      }
+    },
+    "blastScorch": {
+      "kind": "record",
+      "label": "床の焦げ跡",
+      "order": 6,
+      "fields": {
+        "count": {
+          "type": "int",
+          "label": "1 回に出す数",
+          "order": 1,
+          "default": 1,
+          "min": 0,
+          "max": 64
+        },
+        "life": {
+          "type": "float",
+          "label": "残る秒",
+          "order": 2,
+          "default": 8.0,
+          "min": 0.01,
+          "max": 30
+        },
+        "lifeJitter": {
+          "type": "float",
+          "label": "寿命の散らし（0 で全部同じ）",
+          "order": 3,
+          "default": 0.0,
+          "min": 0,
+          "max": 1
+        },
+        "speed": {
+          "type": "float",
+          "label": "飛び出す速さ（m/秒）",
+          "order": 4,
+          "default": 0.0,
+          "min": 0,
+          "max": 30
+        },
+        "spread": {
+          "type": "float",
+          "label": "向きの広がり（度）",
+          "order": 5,
+          "default": 0.0,
+          "min": 0,
+          "max": 180
+        },
+        "size": {
+          "type": "float",
+          "label": "半径（m）",
+          "order": 6,
+          "default": 2.2,
+          "min": 0.005,
+          "max": 6
+        },
+        "grow": {
+          "type": "float",
+          "label": "寿命の終わりの大きさの倍率（1 未満で縮む・1 を超えて広がる）",
+          "default": 1.0,
+          "min": 0,
+          "max": 10,
+          "order": 7
+        },
+        "aspect": {
+          "type": "float",
+          "label": "横の長さの倍率（1 で丸）",
+          "default": 1.0,
+          "min": 0.1,
+          "max": 6,
+          "order": 8
+        },
+        "gravity": {
+          "type": "float",
+          "label": "下へ引く強さ（m/秒²）",
+          "order": 9,
+          "default": 0.0,
+          "min": -30,
+          "max": 30
+        },
+        "color": {
+          "type": "color",
+          "label": "焦げの色",
+          "order": 10,
+          "default": "#0d0a09"
+        },
+        "intensity": {
+          "type": "float",
+          "label": "焦げの中の残り火の明るさ（線形）",
+          "order": 11,
+          "default": 1.0,
+          "min": 0,
+          "max": 40
+        }
+      }
+    }
+  }
+}

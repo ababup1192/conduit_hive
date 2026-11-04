@@ -1,7 +1,7 @@
 {
   "version": 1,
   "title": "迷路（マス目）",
-  "note": "1 文字 = 1 マス（cellSize m 四方）。'#' は壁、ほかの文字は床で、その文字が区画（部屋と通路の塊）の名前。区画の名前・種類（room = 部屋で天井に灯りを吊る / corridor = 通路）・天井の高さは zones の行（行の無い文字は通路・wallHeight）。marks は x = 列・y = 行（左上が 0, 0）の印で、kind = start（歩き始める所・yaw は向きの度で 0 が上の行の向き・90 が右）/ spawn（敵が湧く所。name は見分けの名前だけで、何がいつ何体湧くかは conduit_hive.spawns.json の waves が正）/ pickup（name が拾う物の種類の名前で、量は conduit_hive.pickups.json の items が正）。印は湧く所と種類の名前だけを持ち、湧く数と拾う物の量は別の Doc が正。finalZone は最後の広い部屋の文字。",
+  "note": "1 文字 = 1 マス（cellSize m 四方）。'#' は壁、ほかの文字は床で、その文字が区画（部屋と通路の塊）の名前。区画の名前・種類（room = 部屋で天井に灯りを吊る / corridor = 通路）・天井の高さは zones の行（行の無い文字は通路・wallHeight）。marks は x = 列・y = 行（左上が 0, 0）の印で、kind = start（歩き始める所・yaw は向きの度で 0 が上の行の向き・90 が右）/ spawn（敵が湧く所。name は見分けの名前だけで、何がいつ何体湧くかは conduit_hive.spawns.json の waves が正）/ pickup（name が拾う物の種類の名前（grenade は手榴弾）で、量は conduit_hive.pickups.json の items が正）。印は湧く所と種類の名前だけを持ち、湧く数と拾う物の量は別の Doc が正。finalZone は最後の広い部屋の文字。",
   "cellSize": 4.0,
   "wallHeight": 4.0,
   "finalZone": "H",
@@ -662,6 +662,48 @@
       "name": "health_small",
       "x": 13,
       "y": 33
+    },
+    {
+      "kind": "pickup",
+      "name": "grenade",
+      "x": 19,
+      "y": 33
+    },
+    {
+      "kind": "pickup",
+      "name": "grenade",
+      "x": 3,
+      "y": 21
+    },
+    {
+      "kind": "pickup",
+      "name": "grenade",
+      "x": 19,
+      "y": 18
+    },
+    {
+      "kind": "pickup",
+      "name": "grenade",
+      "x": 32,
+      "y": 22
+    },
+    {
+      "kind": "pickup",
+      "name": "grenade",
+      "x": 7,
+      "y": 4
+    },
+    {
+      "kind": "pickup",
+      "name": "grenade",
+      "x": 20,
+      "y": 10
+    },
+    {
+      "kind": "pickup",
+      "name": "grenade",
+      "x": 34,
+      "y": 3
     }
   ]
 }

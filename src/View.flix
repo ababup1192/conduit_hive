@@ -68,6 +68,10 @@ mod View {
           ammo = Arsenal.ammoOf(res#weapons, a),
           slots = WeaponsDoc.all() |> List.map(wp -> { weapon = wp, owned = Set.memberOf(wp, a#owned), current = wp == a#current }),
           health = Health.fraction(pd, health), hurt = Health.flash(pd, t, health), down = Health.downProgress(pd, t, health),
+          stamina = Stamina.fraction(MovesDoc.rec(res#moves)#stamina, World.movesOf(s)#stamina), exhausted = World.movesOf(s)#stamina#exhausted,
+          grenades = World.grenadesOf(s)#carried,
+          dash = Moves.dodgeSwell(MovesDoc.rec(res#moves)#dodge, t, World.movesOf(s)),
+          dashAge = World.movesOf(s)#dodge |> Option.map(d -> Float64.max(0.0, t - d#at)) |> Option.getWithDefault(0.0),
           notice = World.noticeOf(s) |> Option.flatMap(noticeIn(res, t)), marker = markerIn(res, t, World.marksOf(s)) }
 
     /// 照準の印（JuiceDoc の marker の長さの間だけ出す）。
@@ -90,6 +94,7 @@ mod View {
             case Pickups.Kind.AmmoRifle     => tx#noticeRounds
             case Pickups.Kind.WeaponShotgun => tx#noticeShotgun
             case Pickups.Kind.WeaponRifle   => tx#noticeRifle
+            case Pickups.Kind.Grenade       => tx#noticeGrenade
         };
         String.replace(src = "{n}", dst = Int32.toString(n#amount), template)
 
@@ -102,8 +107,13 @@ mod View {
         let a = World.arsenalOf(s);
         let particles = World.particlesOf(s);
         let drawn = Maze.visibleFrom(res#maze, body#x, body#z);
-        let motion = { phase = Walker.stridePhase(WalkDoc.rec(res#walk), body), sway = World.swayOf(s) };
-        let viewmodel = viewmodelIn(res, a, particles, motion, t);
+        let dd = MovesDoc.rec(res#moves)#dodge;
+        let lag = World.swayOf(s);
+        let motion = { phase = Walker.stridePhase(WalkDoc.rec(res#walk), body),
+                       sway = { y = lag#y - dodgeTilt() * Moves.dodgeSwell(dd, t, World.movesOf(s)) | lag } };
+        let kick = Moves.kickProgress(MovesDoc.rec(res#moves)#kick, t, World.movesOf(s));
+        let viewmodel = viewmodelIn(res, a, particles, motion, kick, t);
+        let grenades = World.grenadesOf(s);
         let horde = World.hordeOf(s);
         let frustum = Camera3d.frustum(camera, World.width() / World.height());
         let seen = (x: Float64, y: Float64, z: Float64, radius: Float64) ->
@@ -122,16 +132,23 @@ mod View {
               :: (Tracers.headsOf(Particles3dDoc.rec(res#particles)#tracer, t, World.tracersOf(s))
                     |> List.filterMap(at -> Particles3d.tracerHead(res#particles, Particles3d.textureName(), Res.particleRegion(res, Particles3d.Kind.Spark), at)))
               :: Particles3d.billboards(res#particles, Particles3d.textureName(), Res.particleRegion(res), Particles3d.Space.World, Mat4.identity(), t, particles) :: Nil),
-          flash = List.append(viewmodel |> Option.toList |> List.flatMap(h -> flashLights(res, a, t, StageView.fromEye(camera, fst(h)))),
-                              Gibs.lightsOf(JuiceDoc.rec(res#juice)#gib, t, World.gibsOf(s))),
+          flash = List.flatten((viewmodel |> Option.toList |> List.flatMap(h -> flashLights(res, a, t, StageView.fromEye(camera, fst(h)))))
+                               :: Gibs.lightsOf(JuiceDoc.rec(res#juice)#gib, t, World.gibsOf(s))
+                               :: Grenades.lightsOf(GrenadeDoc.rec(res#grenade)#light, t, grenades) :: Nil),
           creatures = creaturesIn(res, t, enemies),
           pickups = List.append(items#instances, props),
-          effects = List.append(Gibs.instancesOf(JuiceDoc.rec(res#juice)#gib, res#gibArt, t, World.gibsOf(s)),
-                                Tracers.instancesOf(Particles3dDoc.rec(res#particles)#tracer, res#tracerArt, t, World.tracersOf(s))),
+          effects = List.flatten(Gibs.instancesOf(JuiceDoc.rec(res#juice)#gib, res#gibArt, t, World.gibsOf(s))
+                                 :: Tracers.instancesOf(Particles3dDoc.rec(res#particles)#tracer, res#tracerArt, t, World.tracersOf(s))
+                                 :: Grenades.instancesOf(GrenadeDoc.rec(res#grenade)#flight, res#grenadeModel, grenades)
+                                 :: BlastFx.instancesOf(res#particles, res#blastArt, camera#eye, t, particles) :: Nil),
           textures = List.flatten(res#stageTextures :: (res#creatures |> Map.valuesOf |> List.flatMap(b -> b#model#textures)) :: res#pickupArt#textures
-                                  :: res#gibArt#textures :: Nil),
+                                  :: res#gibArt#textures :: (res#grenadeModel |> Option.toList |> List.flatMap(m -> m#textures)) :: Nil),
           glows = List.append(shots |> List.map(p -> Particles3d.spitLight(res#particles, p#at)), items#lights),
           viewmodel = viewmodel |> Option.map(snd) }
+
+    /// 緊急回避の間に腕と銃が遅れて傾く角（度。見回しの遅れと同じ向きで、跳ぶ山の頂で最大）。
+    // WhyNot: Doc へ出さない — 回避の見え方は目の沈みと画角を MovesDoc で調整し、腕はそれに付いてくる従の動き。
+    def dodgeTilt(): Float64 = 7.0
 
     /// タイトルとクリアの背景: カメラから見える区画の迷路と拾う物だけ（敵・粒・腕と銃・的の柱は無し）。
     def showcaseIn(res: Res.Res, t: Float64, camera: Camera3d.Camera3d): StageView.In =
@@ -200,15 +217,16 @@ mod View {
         enemies |> List.filterMap(e -> Horde.chargeOf(res, t, e) |> Option.flatMap(k ->
             Particles3d.chargeBillboard(res#particles, Particles3d.textureName(), Res.particleRegion(res, Particles3d.Kind.Spark), Horde.mouthOf(e), k)))
 
-    /// 手前の腕と銃: 今の銃口（目の座標）と、場面に入れる物。構えている武器の glb が読めていなければ None。
-    def viewmodelIn(res: Res.Res, a: Arsenal.Arsenal, particles: List[Particles3d.Particle], motion: FpViewmodel.Motion, t: Float64): Option[(Vec3.Vec3, StageView.Viewmodel)] =
+    /// 手前の腕と銃: 今の銃口（目の座標）と、場面に入れる物（蹴りの進み kick がある間は画面の下から出る脚も）。構えている武器の glb が読めていなければ None。
+    def viewmodelIn(res: Res.Res, a: Arsenal.Arsenal, particles: List[Particles3d.Particle], motion: FpViewmodel.Motion, kick: Option[Float64], t: Float64): Option[(Vec3.Vec3, StageView.Viewmodel)] =
         let hd = FpViewmodelDoc.rec(res#viewmodel);
         Map.get(a#current, res#viewmodels) |> Option.map(model -> {
             let pose = FpViewmodel.poseOf(model, FpViewmodel.playingAt(hd, FpViewmodel.clipLength(model, "fire"), t, a));
             let place = FpViewmodel.placeOf(hd, motion);
             let frame = FpViewmodel.muzzleFrame(model, pose, place);
             let muzzle = Mat4.apply(frame, Vec3.zero());
-            (muzzle, { instances = FpViewmodel.instancesOf(model, pose, place), textures = model#model#textures,
+            let leg = kick |> Option.map(Boot.instancesAt(res#bootArt)) |> Option.getWithDefault(Nil);
+            (muzzle, { instances = List.append(FpViewmodel.instancesOf(model, pose, place), leg), textures = List.append(model#model#textures, res#bootArt#textures),
                        billboards = Particles3d.billboards(res#particles, Particles3d.textureName(), Res.particleRegion(res), Particles3d.Space.Muzzle, frame, t, particles),
                        flash = flashLights(res, a, t, muzzle), fovY = hd#fovY, near = hd#near, far = hd#far,
                        ambientScale = hd#ambientScale, lampScale = hd#lampScale })

@@ -4,7 +4,6 @@
 # ピックアップ: 3 つを立てて並べた台・長い向きは Blender の Y（engine の Z）・原点は床の上の真ん中（engine の y = 0 が床）。
 import bpy, bmesh, os, sys, math, time
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
-import numpy as np
 from mathutils import Vector, Matrix
 import vmlib as V
 
@@ -56,94 +55,6 @@ def build_grenade(m4):
     return parts
 
 
-def _flat_tree(m, img, col):
-    m.use_nodes = True
-    nt = m.node_tree
-    nt.nodes.clear()
-    out = nt.nodes.new("ShaderNodeOutputMaterial")
-    em = nt.nodes.new("ShaderNodeEmission")
-    em.inputs["Color"].default_value = (*col, 1.0)
-    nt.links.new(em.outputs["Emission"], out.inputs["Surface"])
-    t = nt.nodes.new("ShaderNodeTexImage")
-    t.image = img
-    for n in nt.nodes:
-        n.select = False
-    t.select = True
-    nt.nodes.active = t
-
-
-def _bake_pass(o, size, name, setup, fill_mean):
-    img = bpy.data.images.new(name + "_raw", size, size, alpha=True, float_buffer=True)
-    img.colorspace_settings.name = "Linear Rec.709"
-    for m in [s.material for s in o.material_slots]:
-        setup(m, img)
-    bpy.ops.object.select_all(action="DESELECT")
-    o.select_set(True)
-    bpy.context.view_layer.objects.active = o
-    bpy.ops.object.bake(type="EMIT")
-    a = np.empty(size * size * 4, dtype=np.float32)
-    img.pixels.foreach_get(a)
-    a = a.reshape(size, size, 4)
-    hit = a[..., 3:] > 0.5
-    rgb = a[..., :3]
-    fill = rgb[hit[..., 0]].mean(axis=0) if fill_mean else np.zeros(3, dtype=np.float32)
-    rgb = np.where(hit, rgb, fill)
-    px = np.concatenate([V.to_srgb(rgb), np.ones((size, size, 1), dtype=np.float32)], axis=-1)
-    tex = bpy.data.images.new(name, size, size, alpha=False)
-    tex.colorspace_settings.name = "sRGB"
-    tex.pixels.foreach_set(px.astype(np.float32).ravel())
-    tex.file_format = "PNG"
-    tex.pack()
-    bpy.data.images.remove(img)
-    return tex
-
-
-def bake_one_material(o, size, name):
-    """鋼の部品は vmlib の色の作り（AO・角の擦れ）、glow は emissive の絵へ。材質を 1 つにまとめる。"""
-    t0 = time.time()
-    sc = bpy.context.scene
-    sc.render.engine = "CYCLES"
-    sc.cycles.device = "CPU"
-    sc.cycles.samples = 24
-    sc.render.bake.margin = max(4, size // 128)
-    sc.render.bake.use_clear = True
-    if sc.world is None:
-        sc.world = bpy.data.worlds.new("w")
-    V.unwrap(o, margin=0.008)
-    is_glow = lambda m: m.name.split(".")[0] == "glow"
-
-    def color(m, img):
-        if is_glow(m):
-            _flat_tree(m, img, tuple(c * 0.3 for c in V.GLOW_COLOR))
-        else:
-            V._bake_tree(m, img)
-
-    col = _bake_pass(o, size, name + "_color", color, True)
-    emit = _bake_pass(o, size, name + "_emit", lambda m, img: _flat_tree(m, img, V.GLOW_COLOR if is_glow(m) else (0, 0, 0)), False)
-    m = bpy.data.materials.new(name)
-    m.use_nodes = True
-    nt = m.node_tree
-    nt.nodes.clear()
-    out = nt.nodes.new("ShaderNodeOutputMaterial")
-    bsdf = nt.nodes.new("ShaderNodeBsdfPrincipled")
-    nt.links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
-    tc = nt.nodes.new("ShaderNodeTexImage")
-    tc.image = col
-    nt.links.new(tc.outputs["Color"], bsdf.inputs["Base Color"])
-    te = nt.nodes.new("ShaderNodeTexImage")
-    te.image = emit
-    nt.links.new(te.outputs["Color"], bsdf.inputs["Emission Color"])
-    bsdf.inputs["Emission Strength"].default_value = V.GLOW_STRENGTH
-    bsdf.inputs["Metallic"].default_value = 0.4
-    bsdf.inputs["Roughness"].default_value = 0.45
-    me = o.data
-    for p in me.polygons:
-        p.material_index = 0
-    me.materials.clear()
-    me.materials.append(m)
-    print("bake %s %dpx %.1fs" % (name, size, time.time() - t0))
-
-
 def bounds(o):
     vs = [v.co for v in o.data.vertices]
     lo = Vector((min(v.x for v in vs), min(v.y for v in vs), min(v.z for v in vs)))
@@ -158,7 +69,7 @@ def make_grenade():
     body.data.transform(Matrix.Translation(-c))
     tris = V.tri_count([body])
     V.harden_normals(body, sharp_deg=40.0)
-    bake_one_material(body, 512, "grenade")
+    V.bake_one_material(body, 512, "grenade")
     V.export_glb(os.path.join(V.OUT, "grenade.glb"), animations=False)
     lo, hi = bounds(body)
     print("grenade tris=%d size(Blender x,y,z)=%.3f %.3f %.3f centroid_offset=%s" % (tris, *(hi - lo), tuple(round(x, 4) for x in c)))
@@ -184,7 +95,7 @@ def make_pickup():
     # 床の板と一緒にベイクする: 床に触れる所が暗くなる。板は書き出さない
     bpy.ops.mesh.primitive_plane_add(size=3, location=(0, 0, -0.0005))
     floor = bpy.context.active_object
-    bake_one_material(body, 512, "pk_grenade")
+    V.bake_one_material(body, 512, "pk_grenade")
     bpy.data.objects.remove(floor, do_unlink=True)
     V.export_glb(os.path.join(V.OUT, "pickup_grenade.glb"), animations=False)
     lo, hi = bounds(body)

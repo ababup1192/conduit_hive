@@ -5,7 +5,7 @@ mod Shots {
     use fge::{Hash01, Num, Vec3}
 
     /// 描き出せる場面の名前（この並びが source of truth。Makefile の SHOTS と assets/*.scenes.json もそろえる）。
-    pub def names(): List[String] = "corridor" :: "hall" :: "fire" :: "wall" :: "horde" :: "fight" :: "gib" :: "fling" :: "tracer" :: "title" :: "pickups" :: "clear" :: Nil
+    pub def names(): List[String] = "corridor" :: "hall" :: "fire" :: "wall" :: "horde" :: "fight" :: "gib" :: "fling" :: "tracer" :: "dodge" :: "kick" :: "blast" :: "title" :: "pickups" :: "clear" :: Nil
 
     /// 構図: 立つマス（列・行）・マスの真ん中から東へずらす距離（m）・向き（度。0 が北・90 が東）・見下ろす角（度）。
     type alias Shot = { col = Int32, row = Int32, dx = Float64, yaw = Float64, pitch = Float64 }
@@ -17,6 +17,9 @@ mod Shots {
     /// gib = 同じ所で散弾銃を構え、群れの前へ飛び出した 1 体が 2.8 m 先で弾けて 0.15 秒たった所（肉片・体液・衝撃の輪・弾けた光・倒した印）・
     /// fling = 同じ所で散弾銃で倒した 3 体が撃たれた向きへ吹っ飛んで 0.18 秒たった所・
     /// tracer = 同じ所で北寄りの奥を向いて連射銃を撃ち続け、曳光弾が奥の壁へ飛んでいる所（群れは右の手前から迫る）・
+    /// dodge = 同じ所で迫る群れから後ろへ緊急回避して 0.12 秒たった所（目が沈み画角が広がる・スタミナが減っている）・
+    /// kick = 同じ所で目の前まで詰めた 5 体を蹴って 0.13 秒たった所（脚・体液と埃・押し返された群れ）・
+    /// blast = 同じ所で 8 m 先の群れの真ん中で手榴弾が爆発して 0.08 秒たった所（火の玉・輪・煙・破片・肉片・吹っ飛ぶ体・爆発の光）・
     /// pickups = 最初の部屋から東の通路を抜けた先の部屋の入口から北東を見る（散弾銃と、その奥に弾倉が浮いている）。
     /// title と clear は構図を持たない画面（titleWorld・clearWorld）。
     def shotOf(name: String): Option[Shot] = match name {
@@ -29,6 +32,9 @@ mod Shots {
         case "gib"      => Some({ col = 16, row = 6, dx = 0.0, yaw = 90.0, pitch = 3.0 })
         case "fling"    => Some({ col = 16, row = 6, dx = 0.0, yaw = 90.0, pitch = 2.0 })
         case "tracer"   => Some({ col = 16, row = 6, dx = 0.0, yaw = 72.0, pitch = -2.0 })
+        case "dodge"    => Some({ col = 16, row = 6, dx = 0.0, yaw = 90.0, pitch = 0.0 })
+        case "kick"     => Some({ col = 16, row = 6, dx = 0.0, yaw = 90.0, pitch = 8.0 })
+        case "blast"    => Some({ col = 16, row = 6, dx = 0.0, yaw = 90.0, pitch = 2.0 })
         case "pickups"  => Some({ col = 15, row = 34, dx = 0.0, yaw = 45.0, pitch = 12.0 })
         case _          => None
     }
@@ -59,6 +65,9 @@ mod Shots {
                 case "gib"    => popped(res, viewer, crowded(res, 14, viewer, armed(res, WeaponsDoc.Weapon.Shotgun, placed)))
                 case "fling"  => flung(res, viewer, crowded(res, 16, viewer, armed(res, WeaponsDoc.Weapon.Shotgun, placed)))
                 case "tracer" => streaked(res, crowded(res, 18, { yaw = viewer#yaw + 0.31 | viewer }, armed(res, WeaponsDoc.Weapon.Rifle, placed)))
+                case "dodge"  => dodged(res, viewer, crowded(res, 16, viewer, armed(res, WeaponsDoc.Weapon.Shotgun, placed)))
+                case "kick"   => kicked(res, viewer, cornered(res, viewer, armed(res, WeaponsDoc.Weapon.Shotgun, placed)))
+                case "blast"  => blasted(res, viewer, crowded(res, 20, viewer, armed(res, WeaponsDoc.Weapon.Rifle, placed)))
                 case _        => placed
             }
         })
@@ -134,6 +143,39 @@ mod Shots {
         let flash = Particles3d.emit(res#particles, Particles3d.Kind.Muzzle(WeaponsDoc.Weapon.Rifle), Particles3d.Space.Muzzle,
             Vec3.v3(0.0, 0.0, Particles3d.muzzleOf(res#particles, WeaponsDoc.Weapon.Rifle)#size * 0.5), Vec3.v3(0.0, 0.0, 1.0), 0.0, 6);
         World.mapEffects(e -> { tracers = tracers, particles = List.append(flash, e#particles) | e }, w)
+
+    /// 後ろへ緊急回避して 0.12 秒たった所（スタミナは 1 回分減っている）。
+    def dodged(res: Res.Res, b: { x = Float64, z = Float64, yaw = Float64 }, w: World.World): World.World =
+        let md = MovesDoc.rec(res#moves);
+        let at = -0.12;
+        World.mapMoves(m -> { dodge = Some({ at = at, dx = 0.0 - Num.sin(b#yaw), dz = 0.0 - Num.cos(b#yaw) }),
+                              stamina = { points = md#stamina#max - md#dodge#cost, usedAt = at | m#stamina } | m }, w)
+
+    /// 目の前 1.3〜1.9 m に 5 体（扇に散らす）が詰めた群れ。
+    def cornered(res: Res.Res, b: { x = Float64, z = Float64, yaw = Float64 }, w: World.World): World.World =
+        let (fx, fz) = (Num.sin(b#yaw), Num.cos(b#yaw));
+        let spawns = List.range(0, 5) |> List.map(i -> {
+            let side = (Int32.toFloat64(i) - 2.0) * 0.75;
+            let ahead = 1.3 + Float64.abs(side) * 0.4 + Hash01.at(i, 83) * 0.2;
+            let (x, z) = (b#x + fx * ahead + fz * side, b#z + fz * ahead - fx * side);
+            { kind = Creatures.Kind.Melee, x = x, z = z, yaw = Num.atan2(b#x - x, b#z - z), home = res#maze#finalZone }
+        });
+        World.mapHorde(Horde.spawnNow(res, spawns), crowded(res, 10, { x = b#x + fx * 3.0, z = b#z + fz * 3.0 | b }, w))
+
+    /// 蹴ってから 8 コマたった所（脚が伸び切った頃）: 蹴った時刻を前へずらし、押し返された群れをその刻みで進める。
+    def kicked(res: Res.Res, b: { x = Float64, z = Float64, yaw = Float64 }, w: World.World): World.World =
+        let at = -8.0 * frameSeconds();
+        World.kickAt(res, at, w) |> World.mapHorde(h -> Horde.simulate(res, at, frameSeconds(), 8, bodyAt(res, b), h)#horde)
+
+    /// 8 m 先の床で手榴弾が爆発してから 5 コマたった所: 爆発の時刻を前へずらし、肉片と吹っ飛ぶ体をその刻みで進める。
+    def blasted(res: Res.Res, b: { x = Float64, z = Float64, yaw = Float64 }, w: World.World): World.World =
+        let at = -5.0 * frameSeconds();
+        let point = Vec3.v3(b#x + Num.sin(b#yaw) * 8.0, GrenadeDoc.rec(res#grenade)#flight#radius, b#z + Num.cos(b#yaw) * 8.0);
+        let gd = JuiceDoc.rec(res#juice)#gib;
+        let isClear = (p: Vec3.Vec3, q: Vec3.Vec3) -> Collider.isLineClear(res#collision, p, q);
+        World.detonate(res, point, at, w)
+            |> World.mapHorde(h -> Horde.simulate(res, at, frameSeconds(), 5, bodyAt(res, b), h)#horde)
+            |> World.mapEffects(e -> { gibs = List.range(1, 6) |> List.foldLeft((g, i) -> Gibs.step(gd, isClear, at + Int32.toFloat64(i) * frameSeconds(), frameSeconds(), g), e#gibs) | e })
 
     /// 引き金を引いて 1 回撃った瞬間の World（マズルフラッシュと灯りが点き、照準が反動で跳ね上がった所）。
     // WhyNot: 撃ってから時計を少し進めた World にしない — 時計を進めるのは App だけで、場面の World は実機（START=shot:fire）と共有する。

@@ -42,9 +42,16 @@ mod Particles3dDoc {
     pub type alias Tracer = { every = Int32, speed = Float64, length = Float64, width = Float64, color = Color, intensity = Float64,
                               alpha = Float64, limit = Int32 }
 
+    /// 爆発の火の玉の塊（形で描く）: puff = 塊 1 つずつの出し方（color = 真ん中の殻の橙）・hot = 中心の白に近い色・cool = 外の殻の冷めた暗い赤。
+    pub type alias Fireball = { puff = Burst, hot = Color, cool = Color }
+
+    /// 手榴弾の爆発（JSON は conduit_hive.blastfx.json）: 真ん中の一瞬の光・床を走る衝撃の輪・上る煙・飛び散る火花と破片・
+    /// 膨らんで崩れる火の玉の塊・床の焦げ跡（scorch の intensity = 焦げの中の残り火の明るさ）。
+    pub type alias Blast = { flash = Burst, ring = Burst, smoke = Burst, debris = Burst, fireball = Fireball, scorch = Burst }
+
     /// limit = 同時に出ている粒の上限（越えたら古い物から消す）。
     pub type alias Rec = { version = Int32, muzzle = Muzzles, spark = Burst, smoke = Burst, light = Flash, ichor = Burst, gore = Burst,
-                           ring = Burst, spit = Glow, charge = Charge, tracer = Tracer, limit = Int32 }
+                           ring = Burst, spit = Glow, charge = Charge, tracer = Tracer, blast = Blast, limit = Int32 }
     pub enum Doc(Rec)
     pub def rec(d: Doc): Rec = match d { case Doc.Doc(r) => r }
 
@@ -67,6 +74,13 @@ mod Particles3dDoc {
                   spit   = { size = 0.32, color = hx("#ff8a3c"), intensity = 5.0, lightIntensity = 2.5, lightRange = 4.0 },
                   charge = { size = 0.42, color = hx("#ff8a3c"), intensity = 5.0 },
                   tracer = { every = 1, speed = 110.0, length = 3.5, width = 0.022, color = hx("#ffb060"), intensity = 2.0, alpha = 0.85, limit = 8 },
+                  blast = { flash  = { count = 5, life = 0.1, lifeJitter = 0.4, speed = 1.5, spread = 180.0, size = 0.7, grow = 1.6, aspect = 1.0, gravity = 0.0, color = hx("#ffe2b0"), intensity = 2.0 },
+                            ring   = { count = 1, life = 0.42, lifeJitter = 0.0, speed = 0.0, spread = 0.0, size = 0.6, grow = 11.0, aspect = 1.0, gravity = 0.0, color = hx("#ff9a50"), intensity = 1.6 },
+                            smoke  = { count = 30, life = 2.6, lifeJitter = 0.4, speed = 1.6, spread = 75.0, size = 0.8, grow = 3.4, aspect = 1.0, gravity = -0.9, color = hx("#6e6862"), intensity = 1.0 },
+                            debris = { count = 50, life = 0.7, lifeJitter = 0.5, speed = 12.0, spread = 80.0, size = 0.07, grow = 0.5, aspect = 1.0, gravity = 9.8, color = hx("#ffb060"), intensity = 3.0 },
+                            fireball = { puff = { count = 9, life = 0.75, lifeJitter = 0.35, speed = 4.5, spread = 75.0, size = 0.9, grow = 1.35, aspect = 1.0, gravity = -4.0, color = hx("#ff7a26"), intensity = 2.2 },
+                                         hot = hx("#fff0c8"), cool = hx("#6e1a0c") },
+                            scorch = { count = 1, life = 8.0, lifeJitter = 0.0, speed = 0.0, spread = 0.0, size = 2.2, grow = 1.0, aspect = 1.0, gravity = 0.0, color = hx("#0d0a09"), intensity = 1.0 } },
                   limit = 320 })
 
     pub def fromJson(text: String): Option[Doc] = DocJson.decodeObject(fromRoot, text)
@@ -74,9 +88,12 @@ mod Particles3dDoc {
     /// 敵の側の粒（体液・弾けた時の体液と輪・projectile の光・溜めの光）の Doc。形は同じで、path() と一緒に読む。
     pub def creaturePath(): String = "assets/conduit_hive.creaturefx.json"
 
-    /// 武器の粒の Doc（p）と敵の粒の Doc（creaturePath）を 1 つの値に読む（読めない方はその欄だけ既定）。
-    // WhyNot: 1 つの JSON に戻さない — 13 の塊が Studio の 13 枚のタブになり、武器の手触りと敵の見え方を直す時が違う。
-    pub def load(p: String): Doc \ Fs.FileRead = fromRoot(Map.union(rootOf(p), rootOf(creaturePath())))
+    /// 爆発（手榴弾の中心の光・輪・煙・破片・火の玉の塊・焦げ跡）の Doc。粒の形は同じで、path() と一緒に読む。
+    pub def blastPath(): String = "assets/conduit_hive.blastfx.json"
+
+    /// 武器の粒の Doc（p）と敵の粒の Doc（creaturePath）と爆発の粒の Doc（blastPath）を 1 つの値に読む（読めない物はその欄だけ既定）。
+    // WhyNot: 1 つの JSON に戻さない — 17 の塊が Studio の 17 枚のタブになり、武器の手触りと敵の見え方と爆発の見え方を直す時が違う。
+    pub def load(p: String): Doc \ Fs.FileRead = fromRoot(Map.union(rootOf(p), Map.union(rootOf(creaturePath()), rootOf(blastPath()))))
 
     def rootOf(p: String): Map[String, Json] \ Fs.FileRead =
         DocJson.readJson(p) |> Result.toOption |> Option.flatMap(JsonCodec.expectObject) |> Option.getWithDefault(Map.empty())
@@ -97,6 +114,11 @@ mod Particles3dDoc {
           speed = f("speed", fallback#speed), spread = f("spread", fallback#spread), size = f("size", fallback#size),
           grow = f("grow", fallback#grow), aspect = f("aspect", fallback#aspect),
           gravity = f("gravity", fallback#gravity), color = colorOr(fallback#color, "color", o), intensity = f("intensity", fallback#intensity) }
+
+    /// 火の玉の塊（出し方の欄は burstOr と同じ・hot と cool の色だけ足す）。
+    def fireballOr(fallback: Fireball, key: String, root: Map[String, Json]): Fireball =
+        let o = objectOf(key, root);
+        { puff = burstOr(fallback#puff, key, root), hot = colorOr(fallback#hot, "hot", o), cool = colorOr(fallback#cool, "cool", o) }
 
     def flashOr(fallback: Flash, key: String, root: Map[String, Json]): Flash =
         let o = objectOf(key, root);
@@ -129,5 +151,8 @@ mod Particles3dDoc {
                   spark = burstOr(d#spark, "spark", root), smoke = burstOr(d#smoke, "smoke", root), light = flashOr(d#light, "light", root),
                   ichor = burstOr(d#ichor, "ichor", root), gore = burstOr(d#gore, "gore", root), ring = burstOr(d#ring, "ring", root),
                   spit = glowOr(d#spit, "spit", root), charge = chargeOr(d#charge, "charge", root), tracer = tracerOr(d#tracer, "tracer", root),
+                  blast = { flash = burstOr(d#blast#flash, "blastFlash", root), ring = burstOr(d#blast#ring, "blastRing", root),
+                            smoke = burstOr(d#blast#smoke, "blastSmoke", root), debris = burstOr(d#blast#debris, "blastDebris", root),
+                            fireball = fireballOr(d#blast#fireball, "blastFireball", root), scorch = burstOr(d#blast#scorch, "blastScorch", root) },
                   limit = JsonCodec.intOr("limit", d#limit, root) })
 }

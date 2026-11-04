@@ -40,6 +40,12 @@ mod Sounds {
         case Event.PickedUp(k)       => pickupFamilyOf(k)
         case Event.Switched(w)       => drawFamilyOf(w)
         case Event.DryFire(_)        => "dryfire"
+        case Event.Dodged            => "dodge"
+        case Event.Kicked(n)         => if (n > 0) "kick" else "kick_miss"
+        case Event.GrenadeThrown     => "grenade_throw"
+        case Event.GrenadeBounced    => "grenade_bounce"
+        case Event.Exploded          => "explosion"
+        case Event.StaminaOut        => "stamina_out"
         case Event.Cleared           => "clear"
         case Event.MenuMoved         => "ui_move"
         case Event.Started           => "ui_choose"
@@ -57,6 +63,7 @@ mod Sounds {
         case Pickups.Kind.AmmoRifle     => "pickup_ammo"
         case Pickups.Kind.WeaponShotgun => "pickup_weapon"
         case Pickups.Kind.WeaponRifle   => "pickup_weapon"
+        case Pickups.Kind.Grenade       => "pickup_ammo"
     }
 
     /// 持ち替えた先の武器を構える音（散弾銃は先台・連射銃は弾倉）。

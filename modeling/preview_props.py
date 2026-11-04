@@ -1,7 +1,8 @@
-# 骨なしの小物（肉片・手榴弾・手榴弾のピックアップ）の確かめの絵を debug/modeling/ へ描く（git 管理外）。
-#   cd modeling && devbox run -- blender -b --factory-startup --python preview_props.py [-- gibs grenade pickup_grenade]
+# 骨なしの小物（肉片・手榴弾・手榴弾のピックアップ・蹴りの脚）の確かめの絵を debug/modeling/ へ描く（git 管理外）。
+#   cd modeling && devbox run -- blender -b --factory-startup --python preview_props.py [-- gibs grenade pickup_grenade boot]
 #   gibs_lineup.png（8 種を並べて 灯り / 暗がり）・gibs_scatter.png（床に散らした様子 灯り / 暗がり）・
-#   grenade_orbit.png（立てた物と寝かせた物を斜めから 灯り 2 方向 / 暗がり）・pickup_grenade_orbit.png（同じ並び）
+#   grenade_orbit.png（立てた物と寝かせた物を斜めから 灯り 2 方向 / 暗がり）・pickup_grenade_orbit.png（同じ並び）・
+#   boot_orbit.png（伸ばした脚を横・斜め前・斜め後ろ / 暗がり）
 import bpy, os, sys, math, random
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import numpy as np
@@ -153,7 +154,23 @@ def prop(name, lying):
     save(tiles, name + "_orbit.png")
 
 
+def boot():
+    """蹴りの脚: 膝を伸ばして立てた形を横・斜め前・斜め後ろから（灯り）と、斜め前から（暗がり）。"""
+    fresh()
+    ms = {o.name.split(".")[0]: o for o in import_glb("boot")}
+    ms["leg_thigh"].location = (0, 0, 0.98)
+    ms["leg_shin"].location = (0, 0, 0.98 - 0.44)
+    ctr, ortho = Vector((0, -0.05, 0.5)), 1.15
+    tiles = []
+    lights(False, 0.6)
+    for yaw, pitch in ((-90, 8), (-30, 15), (150, 20)):
+        tiles.append(shot(ctr, yaw, pitch, ortho, 360, 480))
+    lights(True, 0.6)
+    tiles.append(shot(ctr, -30, 15, ortho, 360, 480))
+    save(tiles, "boot_orbit.png")
+
+
 for n in NAMES:
-    {"gibs": gibs, "grenade": lambda: prop("grenade", True), "pickup_grenade": lambda: prop("pickup_grenade", False)}[n]()
+    {"gibs": gibs, "grenade": lambda: prop("grenade", True), "pickup_grenade": lambda: prop("pickup_grenade", False), "boot": boot}[n]()
 if os.path.exists(TMP):
     os.remove(TMP)

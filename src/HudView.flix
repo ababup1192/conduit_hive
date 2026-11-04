@@ -1,8 +1,9 @@
-// HudView — 遊んでいる間の HUD（App.withHudView。view の絵のどれよりも手前）: 照準と当てた印（hit marker）・倒した印（kill marker）・左下の体力・右下の武器の並びと弾の数・
+// HudView — 遊んでいる間の HUD（App.withHudView。view の絵のどれよりも手前）: 照準と当てた印（hit marker）・倒した印（kill marker）・左下の体力とスタミナ・
+// 右下の武器の並びと弾の数と手榴弾の数・
 // 拾った時の知らせ（照準の下）・被弾の赤み・F3 の診断の行（純粋）。値は View が World から組んだ Hud を受ける。
 mod HudView {
 
-    use fge::{App, Bezier, Color, FrameDiagnostics, Num, Render, TextDraw, Vec2}
+    use fge::{App, Bezier, Color, FrameDiagnostics, Hash01, Num, Render, TextDraw, Vec2}
     use WeaponsDoc.Weapon
 
     /// 武器の並びの 1 つ: 武器・持っているか・構えているか。
@@ -25,9 +26,16 @@ mod HudView {
         ammo = Option[Int32],
         slots = List[Slot],
         // 体力の残りの割合（0..1）・被弾の赤みの強さ（0..1）・倒れてからやり直すまでの進み（0..1。倒れていなければ 0）。
+        // スタミナの残りの割合（0..1）と息切れしているか・持っている手榴弾の数。
+        stamina = Float64,
+        exhausted = Bool,
+        grenades = Int32,
         health = Float64,
         hurt = Float64,
         down = Float64,
+        // 緊急回避の流れの強さ（0..1。跳んでいなければ 0）と、跳んでからの秒（流れの筋がふちへ滑る）。
+        dash = Float64,
+        dashAge = Float64,
         notice = Option[Notice],
         marker = Marker
     }
@@ -37,15 +45,16 @@ mod HudView {
     def width(): Float64 = World.width()
     def height(): Float64 = World.height()
 
-    /// 照準（真ん中）・左下の体力・右下の武器の並びと弾の数・知らせ・被弾の赤み（画面の縁）・F3 の診断の行（左上）。
+    /// 照準（真ん中）・左下の体力・右下の武器の並びと弾の数・知らせ・緊急回避の流れと被弾の赤み（画面のふち）・F3 の診断の行（左上）。
     /// 照準はキャプチャしていない間は薄くする（撃てないことを見せる）。終了の確認の窓が出ている間は出さない（窓の文言を読ませる）。
     pub def draw(ctx: App.ViewCtx, w: Hud): List[Render.PlacedItem] =
         let theme = ThemeDoc.rec(w#theme);
         let alpha = if (w#looking) 1.0 else 0.35;
-        let panels = List.flatten(crosshair(theme#accent, theme#bg) :: healthPanel(ctx, theme#accent, theme#bg, w#health)
-                                  :: ammoPanel(ctx, theme#accent, theme#bg, w#ammo) :: slotRow(ctx, theme#accent, theme#bg, w#slots) :: Nil);
+        let panels = List.flatten(crosshair(theme#accent, theme#bg) :: healthPanel(ctx, theme#accent, theme#bg, w)
+                                  :: ammoPanel(ctx, theme#accent, theme#bg, w#ammo) :: grenadePanel(ctx, theme#accent, theme#bg, w#grenades)
+                                  :: slotRow(ctx, theme#accent, theme#bg, w#slots) :: Nil);
         let toast = w#notice |> Option.map(noticeOf(ctx, theme#accent, theme#bg)) |> Option.getWithDefault(Nil);
-        let marks = if (w#askingQuit) Nil else List.flatten(hurtEdges(w#hurt, w#down) :: Render.fadeAll(alpha, panels) :: toast :: markers(theme#accent, theme#bg, w#marker) :: Nil);
+        let marks = if (w#askingQuit) Nil else List.flatten(dashLines(theme#accent, w#dash, w#dashAge) :: hurtEdges(w#hurt, w#down) :: Render.fadeAll(alpha, panels) :: toast :: markers(theme#accent, theme#bg, w#marker) :: Nil);
         let rows = if (w#showsDiagnostics) ctx#diagnostics |> Option.map(FrameDiagnostics.summaryLines) |> Option.getWithDefault(Nil) else Nil;
         let lines = rows |> List.zipWithIndex |> List.map(e -> {
             let (i, line) = e;
@@ -192,13 +201,17 @@ mod HudView {
     /// 傷の色（暖かい赤。クリーチャーの発光と同じ側の色）。
     def bloodColor(): Color = Color.rgb(0.66, 0.07, 0.04)
 
-    /// 左下の体力の板: 中に残りの割合の帯（左が濃く右へ明るむ・減ると傷の色へ寄る）と数。
-    def healthPanel(ctx: App.ViewCtx, ink: Color, bg: Color, health: Float64): List[Render.PlacedItem] =
-        let size = p(92.0, 22.0);
+    /// 息切れの色（暖かい橙。クリーチャーの発光と同じ側で、尽きたことが一目で分かる）。
+    def exhaustedColor(): Color = Color.rgb(0.92, 0.42, 0.12)
+
+    /// 左下の体力の板: 中に残りの割合の帯（左が濃く右へ明るむ・減ると傷の色へ寄る）と数、その下にスタミナの細い帯。
+    def healthPanel(ctx: App.ViewCtx, ink: Color, bg: Color, w: Hud): List[Render.PlacedItem] =
+        let health = w#health;
+        let size = p(92.0, 28.0);
         let at = p(10.0, height() - 10.0 - size#y);
         let left = at#x + 6.0;
         let right = at#x + size#x - 30.0;
-        let (top, bottom) = (at#y + 7.0, at#y + size#y - 7.0);
+        let (top, bottom) = (at#y + 7.0, at#y + 15.0);
         let tone = Color.mix(bloodColor(), ink, Num.clamp01(health * 1.6 - 0.3));
         let end = left + (right - left) * Num.clamp01(health);
         let track = gradAt((p(left, top), Color.darken(bg, 0.6), 0.9) :: (p(right, top), Color.darken(bg, 0.6), 0.9)
@@ -207,24 +220,88 @@ mod HudView {
                               :: (p(end, bottom), tone, 1.0) :: (p(left, bottom), Color.darken(tone, 0.5), 1.0) :: Nil, 2);
         let count = TextDraw.centeredAt({ text = Int32.toString(Num.roundInt(health * 100.0)), atlas = ctx#atlas, size = 12.0, color = tone, z = 2,
                                          center = p(at#x + size#x - 15.0, at#y + size#y / 2.0) });
-        { at = at, item = plate(size, ink, bg, 0.45) } :: track :: (if (health > 0.0) fill :: Nil else Nil) ::: count :: Nil
+        List.append({ at = at, item = plate(size, ink, bg, 0.45) } :: track :: (if (health > 0.0) fill :: Nil else Nil) ::: count :: Nil,
+                    staminaBar(ink, bg, left, right, at#y + 19.0, w#stamina, w#exhausted))
 
-    /// 被弾の赤み: 画面の 4 辺から内へ消える台形の帯（縁が濃い）。倒れている間は進みに合わせて画面全体を暗い赤へ沈める。
-    def hurtEdges(hurt: Float64, down: Float64): List[Render.PlacedItem] =
+    /// スタミナの細い帯（左 left から右 right・上 top から 3 px）: 残りの分を差し色の明るみで、息切れの間は帯ごと息切れの色にして溝を濃くする。
+    def staminaBar(ink: Color, bg: Color, left: Float64, right: Float64, top: Float64, stamina: Float64, exhausted: Bool): List[Render.PlacedItem] =
+        let bottom = top + 3.0;
+        let tone = if (exhausted) exhaustedColor() else Color.lighten(ink, 0.1);
+        let groove = if (exhausted) Color.mix(Color.darken(bg, 0.6), exhaustedColor(), 0.25) else Color.darken(bg, 0.6);
+        let end = left + (right - left) * Num.clamp01(stamina);
+        let track = gradAt((p(left, top), groove, 0.9) :: (p(right, top), groove, 0.9) :: (p(right, bottom), Color.darken(bg, 0.3), 0.9)
+                               :: (p(left, bottom), Color.darken(bg, 0.3), 0.9) :: Nil, 1);
+        let fill = gradAt((p(left, top), Color.lighten(tone, 0.2), 1.0) :: (p(end, top), Color.lighten(tone, 0.35), 1.0)
+                              :: (p(end, bottom), Color.darken(tone, 0.2), 1.0) :: (p(left, bottom), Color.darken(tone, 0.45), 1.0) :: Nil, 2);
+        if (stamina > 0.0) track :: fill :: Nil else track :: Nil
+
+    // ── 手榴弾 ──
+
+    /// 手榴弾の数の板の大きさと左上（弾の数の板の左）。
+    def grenadeSize(): Vec2.Vec2 = p(34.0, 22.0)
+    def grenadeAt(): Vec2.Vec2 = p(ammoAt()#x - 5.0 - grenadeSize()#x, ammoAt()#y)
+
+    /// 弾の数の板の左の手榴弾の板: 左に手榴弾の影絵（丸い胴と上のレバーと輪）・右に数。持っていなければ薄くする。
+    def grenadePanel(ctx: App.ViewCtx, ink: Color, bg: Color, n: Int32): List[Render.PlacedItem] =
+        let at = grenadeAt();
+        let size = grenadeSize();
+        let alpha = if (n > 0) 1.0 else 0.4;
+        let c = p(at#x + 10.0, at#y + size#y / 2.0 + 1.5);
+        let body = List.range(0, 14) |> List.map(i -> {
+            let a = Int32.toFloat64(i) * Num.tau() / 14.0;
+            let v = p(c#x + 4.6 * Num.cos(a), c#y + 5.6 * Num.sin(a));
+            (v, Color.mix(Color.lighten(ink, 0.25), Color.mix(ink, bg, 0.5), Num.clamp01((v#y - (c#y - 5.6)) / 11.2)), alpha)
+        });
+        let cap = (p(c#x - 2.2, c#y - 7.6), ink, alpha) :: (p(c#x + 2.2, c#y - 7.6), ink, alpha)
+                      :: (p(c#x + 2.2, c#y - 5.0), Color.mix(ink, bg, 0.3), alpha) :: (p(c#x - 2.2, c#y - 5.0), Color.mix(ink, bg, 0.3), alpha) :: Nil;
+        let lever = (p(c#x + 1.5, c#y - 7.6), ink, alpha) :: (p(c#x + 3.4, c#y - 8.2), ink, alpha)
+                        :: (p(c#x + 5.6, c#y - 1.0), Color.mix(ink, bg, 0.4), alpha) :: (p(c#x + 4.4, c#y - 0.6), Color.mix(ink, bg, 0.4), alpha) :: Nil;
+        let ring = Bezier.polyline(List.range(0, 13) |> List.map(i -> {
+            let a = Int32.toFloat64(i) * Num.tau() / 12.0;
+            p(c#x - 4.2 + 1.8 * Num.cos(a), c#y - 8.0 + 1.8 * Num.sin(a))
+        }), { width = 0.8 }, Color.mix(ink, bg, 0.2), 2);
+        let count = TextDraw.centeredAt({ text = Int32.toString(n), atlas = ctx#atlas, size = 12.0, color = ink, z = 2,
+                                         center = p(at#x + size#x - 9.0, at#y + size#y / 2.0) });
+        List.flatten(({ at = at, item = plate(size, ink, bg, 0.45) } :: Nil)
+                     :: Render.fadeAll(alpha, ring) :: (gradAt(body, 2) :: gradAt(cap, 3) :: gradAt(lever, 3) :: Nil)
+                     :: Render.fadeAll(alpha, count :: Nil) :: Nil)
+
+    /// 画面の 4 辺から内へ inset px で消える台形の帯（ふちで濃さ a・内で 0）。
+    def edgeBands(c: Color, a: Float64, inset: Float64): List[Render.PlacedItem] =
         let (wd, ht) = (width(), height());
-        let inset = 20.0 + 26.0 * hurt;
-        let a = Num.clamp01(hurt) * 0.55;
-        let red = bloodColor();
         let band = (o1: Vec2.Vec2, o2: Vec2.Vec2, i2: Vec2.Vec2, i1: Vec2.Vec2) ->
-            gradAt((o1, red, a) :: (o2, red, a) :: (i2, red, 0.0) :: (i1, red, 0.0) :: Nil, 0);
+            gradAt((o1, c, a) :: (o2, c, a) :: (i2, c, 0.0) :: (i1, c, 0.0) :: Nil, 0);
         let (tl, tr, br, bl) = (p(0.0, 0.0), p(wd, 0.0), p(wd, ht), p(0.0, ht));
         let (itl, itr, ibr, ibl) = (p(inset, inset), p(wd - inset, inset), p(wd - inset, ht - inset), p(inset, ht - inset));
-        let edges = if (a <= 0.0) Nil else band(tl, tr, itr, itl) :: band(tr, br, ibr, itr) :: band(br, bl, ibl, ibr) :: band(bl, tl, itl, ibl) :: Nil;
-        let veil = if (down <= 0.0) Nil
-            else { at = Vec2.zero(), item = Render.vgrad({ x = wd, y = ht }, { top = Color.darken(red, 0.7), bottom = Color.darken(red, 0.9) }, 0) |> Render.fade(Num.clamp01(down) * 0.85) } :: Nil;
-        List.append(edges, veil)
+        if (a <= 0.0) Nil else band(tl, tr, itr, itl) :: band(tr, br, ibr, itr) :: band(br, bl, ibl, ibr) :: band(bl, tl, itl, ibl) :: Nil
 
-    /// ∞ の線（横に寝た 8 の字。字の無いフォントでも出る）。
+    /// 被弾の赤み: 画面の 4 辺から内へ消える台形の帯（ふちが濃い）。倒れている間は進みに合わせて画面全体を暗い赤へ沈める。
+    def hurtEdges(hurt: Float64, down: Float64): List[Render.PlacedItem] =
+        let red = bloodColor();
+        let veil = if (down <= 0.0) Nil
+            else { at = Vec2.zero(), item = Render.vgrad({ x = width(), y = height() }, { top = Color.darken(red, 0.7), bottom = Color.darken(red, 0.9) }, 0) |> Render.fade(Num.clamp01(down) * 0.85) } :: Nil;
+        List.append(edgeBands(red, Num.clamp01(hurt) * 0.55, 20.0 + 26.0 * hurt), veil)
+
+    /// 緊急回避の流れ: ふちの暗いかげりと、ふちから真ん中へ向かって細る淡い光の筋（真ん中の 4 割は空けて照準を隠さない）。
+    /// 筋は跳んでからの秒 age で外へ滑り、強さ dash で濃くなる。
+    def dashLines(ink: Color, dash: Float64, age: Float64): List[Render.PlacedItem] =
+        let k = Num.clamp01(dash);
+        let c = p(width() / 2.0, height() / 2.0);
+        let reach = Num.sqrt(c#x * c#x + c#y * c#y);
+        let pale = Color.mix(ink, Color.rgb(1.0, 1.0, 1.0), 0.6);
+        let count = 30;
+        let streaks = if (k <= 0.0) Nil else List.range(0, count) |> List.map(i -> {
+            let angle = Num.tau() * (Int32.toFloat64(i) + 0.6 * Hash01.at(i, 81)) / Int32.toFloat64(count);
+            let (dx, dy) = (Num.cos(angle), Num.sin(angle));
+            let inner = reach * (0.45 + 0.2 * Hash01.at(i, 82) + 0.6 * age);
+            let outer = inner + reach * (0.25 + 0.3 * Hash01.at(i, 83));
+            let half = 0.8 + 1.2 * Hash01.at(i, 84);
+            let a = k * (0.3 + 0.4 * Hash01.at(i, 85));
+            let at = (along: Float64, side: Float64) -> p(c#x + dx * along - dy * side, c#y + dy * along + dx * side);
+            gradAt((at(inner, 0.0), pale, 0.0) :: (at(outer, 0.0 - half), pale, a) :: (at(outer, half), pale, a) :: Nil, 0)
+        });
+        List.append(edgeBands(Color.darken(ink, 0.85), k * 0.6, 24.0 + 40.0 * k), streaks)
+
     def infinity(center: Vec2.Vec2, ink: Color): List[Render.PlacedItem] =
         let points = List.range(0, 41) |> List.map(i -> {
             let t = Int32.toFloat64(i) * Num.tau() / 40.0;

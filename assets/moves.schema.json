@@ -1,0 +1,203 @@
+{
+  "//": "conduit_hive.moves.json の形（Studio の sections 方言）。既定は src/MovesDoc.flix の defaults() が正。",
+  "version": 1,
+  "sections": {
+    "stamina": {
+      "kind": "record",
+      "label": "スタミナ",
+      "order": 1,
+      "fields": {
+        "max": {
+          "type": "float",
+          "label": "最大",
+          "order": 1,
+          "default": 100.0,
+          "min": 1,
+          "max": 1000
+        },
+        "regenPerSecond": {
+          "type": "float",
+          "label": "使わない間に戻る速さ（/秒）",
+          "order": 2,
+          "default": 28.0,
+          "min": 0,
+          "max": 500
+        },
+        "regenDelay": {
+          "type": "float",
+          "label": "最後に使ってから戻り始めるまで（秒）",
+          "order": 3,
+          "default": 0.9,
+          "min": 0,
+          "max": 5
+        },
+        "resumeAt": {
+          "type": "float",
+          "label": "息切れの後に走れるまで戻る量",
+          "order": 4,
+          "default": 35.0,
+          "min": 0,
+          "max": 1000
+        },
+        "sprintPerSecond": {
+          "type": "float",
+          "label": "走る間に減る速さ（/秒）",
+          "order": 5,
+          "default": 18.0,
+          "min": 0,
+          "max": 200
+        }
+      }
+    },
+    "dodge": {
+      "kind": "record",
+      "label": "緊急回避（Space）",
+      "order": 2,
+      "fields": {
+        "cost": {
+          "type": "float",
+          "label": "使うスタミナ",
+          "order": 1,
+          "default": 34.0,
+          "min": 0,
+          "max": 1000
+        },
+        "seconds": {
+          "type": "float",
+          "label": "跳ぶ長さ（秒）",
+          "order": 2,
+          "default": 0.3,
+          "min": 0.05,
+          "max": 1
+        },
+        "distance": {
+          "type": "float",
+          "label": "跳ぶ距離（m）",
+          "order": 3,
+          "default": 4.5,
+          "min": 0,
+          "max": 12
+        },
+        "iframe": {
+          "type": "float",
+          "label": "跳び始めから攻撃が当たらない長さ（秒）",
+          "order": 4,
+          "default": 0.24,
+          "min": 0,
+          "max": 1
+        },
+        "cooldown": {
+          "type": "float",
+          "label": "跳び始めから次に跳べるまで（秒）",
+          "order": 5,
+          "default": 0.55,
+          "min": 0,
+          "max": 5
+        },
+        "dip": {
+          "type": "float",
+          "label": "目が沈む深さ（m）",
+          "order": 6,
+          "default": 0.26,
+          "min": 0,
+          "max": 0.6
+        },
+        "fovKick": {
+          "type": "float",
+          "label": "画角が広がる角（度）",
+          "order": 7,
+          "default": 9.0,
+          "min": 0,
+          "max": 20
+        }
+      }
+    },
+    "kick": {
+      "kind": "record",
+      "label": "蹴り（F）",
+      "order": 3,
+      "fields": {
+        "cost": {
+          "type": "float",
+          "label": "使うスタミナ",
+          "order": 1,
+          "default": 22.0,
+          "min": 0,
+          "max": 1000
+        },
+        "range": {
+          "type": "float",
+          "label": "足元から敵の体の縁までの届く距離（m）",
+          "order": 2,
+          "default": 1.6,
+          "min": 0,
+          "max": 5
+        },
+        "arc": {
+          "type": "float",
+          "label": "前の扇の角の全体（度）",
+          "order": 3,
+          "default": 120.0,
+          "min": 0,
+          "max": 360
+        },
+        "damage": {
+          "type": "float",
+          "label": "傷",
+          "order": 4,
+          "default": 18.0,
+          "min": 0,
+          "max": 500
+        },
+        "push": {
+          "type": "float",
+          "label": "押し返す速さ（m/秒）",
+          "order": 5,
+          "default": 11.0,
+          "min": 0,
+          "max": 40
+        },
+        "pushDecay": {
+          "type": "float",
+          "label": "押す速さが 1/e へ減る秒",
+          "order": 6,
+          "default": 0.22,
+          "min": 0.01,
+          "max": 2
+        },
+        "fling": {
+          "type": "float",
+          "label": "倒れた敵が飛ぶ速さ（m/秒）",
+          "order": 7,
+          "default": 4.5,
+          "min": 0,
+          "max": 20
+        },
+        "cooldown": {
+          "type": "float",
+          "label": "次に蹴れるまで（秒）",
+          "order": 8,
+          "default": 0.7,
+          "min": 0,
+          "max": 5
+        },
+        "seconds": {
+          "type": "float",
+          "label": "脚が見えている長さ（秒）",
+          "order": 9,
+          "default": 0.42,
+          "min": 0.05,
+          "max": 2
+        },
+        "shake": {
+          "type": "float",
+          "label": "camera shake の強さ（0..1）",
+          "order": 10,
+          "default": 0.45,
+          "min": 0,
+          "max": 1
+        }
+      }
+    }
+  }
+}

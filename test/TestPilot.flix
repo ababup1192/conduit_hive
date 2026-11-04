@@ -19,7 +19,8 @@ mod TestPilot {
     /// 1 コマ（1/60 秒）の自動の操縦の入力。
     def commandIn(r: Res.Res, w: World.World): Option[Pilot.Command] =
         World.sessionOf(w) |> Option.map(s ->
-            fst(Pilot.drive(r, { t = 1.0, dt = 1.0 / 60.0, walker = World.walkerOf(s), arsenal = World.arsenalOf(s), horde = World.hordeOf(s) }, Pilot.start())))
+            fst(Pilot.drive(r, { t = 1.0, dt = 1.0 / 60.0, walker = World.walkerOf(s), arsenal = World.arsenalOf(s), horde = World.hordeOf(s),
+                                 moves = World.movesOf(s), grenades = World.grenadesOf(s) }, Pilot.start())))
 
     /// 真後ろの敵へも、1 コマに turnRate の 1/60 より大きくは回さない。
     @Test
@@ -51,4 +52,18 @@ mod TestPilot {
         let swung = World.step(r, World.walking(Walker.idle()), { play = clockAt(0.125, 0.125) | w0 });
         let after = World.step(r, World.walking(Walker.idle()), { play = clockAt(0.125 + hit, 0.05) | swung });
         Assert.assertEq(expected = Some(false), healthIn(after) |> Option.map(Health.isDown))
+
+    /// crowdRange の内に crowdCount 体いれば蹴る（初めは蹴りから。3 体は start の x 6 m・z 6 m から 1.2 m 前後）。
+    @Test
+    def testKicksWhenCrowded(): Unit \ Assert =
+        let r = tourRes();
+        let w = started(r) |> withMelee(r, 7.2, 6.0) |> withMelee(r, 7.0, 6.6) |> withMelee(r, 7.0, 5.4);
+        Assert.assertEq(expected = Some(true), commandIn(r, w) |> Option.map(c -> Moves.isPressed(Moves.Move.Kick, c#moves)))
+
+    /// 正面 9 m 先に clusterCount 体の塊がいれば手榴弾を投げる（塊は x 15 m のまわり 1 m の内）。
+    @Test
+    def testThrowsAtAPackAhead(): Unit \ Assert =
+        let r = tourRes();
+        let w = started(r) |> withMelee(r, 15.0, 6.0) |> withMelee(r, 15.0, 5.2) |> withMelee(r, 15.0, 6.8) |> withMelee(r, 14.4, 6.0);
+        Assert.assertEq(expected = Some(true), commandIn(r, w) |> Option.map(c -> Moves.isPressed(Moves.Move.Grenade, c#moves)))
 }

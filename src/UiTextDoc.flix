@@ -30,7 +30,8 @@ mod UiTextDoc {
         noticeShells = String,
         noticeRounds = String,
         noticeShotgun = String,
-        noticeRifle = String
+        noticeRifle = String,
+        noticeGrenade = String
     }
     pub enum Doc(Rec)
     pub def rec(d: Doc): Rec = match d { case Doc.Doc(r) => r }
@@ -41,12 +42,13 @@ mod UiTextDoc {
     pub def defaults(): Doc = Doc.Doc({
         version = 1, quitPrompt = "Quit?  Enter: yes  /  Esc: no",
         gameTitle = "CONDUIT HIVE", tagline = "PURGE THE HIVE AT THE END OF THE CONDUITS", startHint = "CLICK  OR  ENTER  TO  START",
-        controls = { key = "W A S D", action = "MOVE" } :: { key = "SHIFT", action = "RUN" } :: { key = "MOUSE", action = "LOOK" }
-                   :: { key = "LEFT BUTTON", action = "FIRE" } :: { key = "1 2 3  /  WHEEL", action = "SWITCH WEAPON" } :: { key = "ESC", action = "PAUSE" } :: Nil,
+        controls = { key = "W A S D", action = "MOVE" } :: { key = "SHIFT", action = "SPRINT" } :: { key = "MOUSE", action = "LOOK" }
+                   :: { key = "LEFT BUTTON", action = "FIRE" } :: { key = "1 2 3  /  WHEEL", action = "SWITCH WEAPON" }
+                   :: { key = "SPACE", action = "DODGE" } :: { key = "F", action = "KICK" } :: { key = "G", action = "GRENADE" } :: { key = "ESC", action = "PAUSE" } :: Nil,
         pauseTitle = "PAUSED", resume = "RESUME", toTitle = "TITLE",
         clearTitle = "HIVE PURGED", clearTime = "TIME", clearKills = "KILLS", clearBack = "CLICK  OR  ENTER  FOR  TITLE",
         noticeHealth = "+{n}  HEALTH", noticeShells = "+{n}  SHELLS", noticeRounds = "+{n}  ROUNDS",
-        noticeShotgun = "SHOTGUN", noticeRifle = "RIFLE" })
+        noticeShotgun = "SHOTGUN", noticeRifle = "RIFLE", noticeGrenade = "+{n}  GRENADE" })
 
     /// テキストから Doc へ（fail-open）。JSON でない・形が違うフィールドは既定へ落とす。
     pub def fromJson(text: String): Option[Doc] = DocJson.decodeObject(fromRoot, text)
@@ -68,7 +70,7 @@ mod UiTextDoc {
                   clearBack = s("clearBack", d#clearBack),
                   noticeHealth = s("noticeHealth", d#noticeHealth), noticeShells = s("noticeShells", d#noticeShells),
                   noticeRounds = s("noticeRounds", d#noticeRounds), noticeShotgun = s("noticeShotgun", d#noticeShotgun),
-                  noticeRifle = s("noticeRifle", d#noticeRifle) })
+                  noticeRifle = s("noticeRifle", d#noticeRifle), noticeGrenade = s("noticeGrenade", d#noticeGrenade) })
 
     /// path の Doc を読む。読めない・壊れているときは defaults（fail-open）。
     pub def load(p: String): Doc \ Fs.FileRead = DocJson.loadOr(fromJson, defaults(), p)

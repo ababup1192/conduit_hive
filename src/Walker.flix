@@ -37,8 +37,8 @@ mod Walker {
     pub def settle(world: CollisionWorld3d.CollisionWorld3d, walk: WalkDoc.Rec, w: Walker): Walker =
         withBody(CharacterBody3d.snapToFloor(world, Nil, settingsOf(walk), bodyOf(w)), w)
 
-    /// 歩く向き（前と右を足した水平の向き。長さは 1 以下）。
-    def heading(yaw: Float64, d: Drive): (Float64, Float64) =
+    /// 歩く向き（体の向き yaw に対して、前と右を足した水平の向き。長さは 1 以下）。
+    pub def headingOf(yaw: Float64, d: Drive): (Float64, Float64) =
         let (s, c) = (Num.sin(yaw), Num.cos(yaw));
         let x = d#forward * s + d#strafe * c;
         let z = d#forward * c - d#strafe * s;
@@ -47,16 +47,21 @@ mod Walker {
 
     /// 1 コマ進める（秒は遊びの時計の今のコマの分）。
     pub def step(world: CollisionWorld3d.CollisionWorld3d, walk: WalkDoc.Rec, d: Drive, clock: Clock.Clock[PlayClock.Play], w: Walker): Walker =
-        stepSeconds(world, walk, d, Num.clamp(0.0, 0.05, Clock.dtOf(clock)), w)
+        stepSeconds(world, walk, d, None, Num.clamp(0.0, 0.05, Clock.dtOf(clock)), w)
 
-    /// step の本体: 向き → engine の体を動かす → 歩いた距離を足す。
-    def stepSeconds(world: CollisionWorld3d.CollisionWorld3d, walk: WalkDoc.Rec, d: Drive, dt: Float64, w: Walker): Walker =
+    /// 緊急回避の 1 コマ: 向きと見上げ見下ろしは歩き方 d のまま、体は velocity（m/秒の水平の x・z）で動かす（壁から押し出すのは engine）。
+    pub def dash(world: CollisionWorld3d.CollisionWorld3d, walk: WalkDoc.Rec, d: Drive, velocity: (Float64, Float64), clock: Clock.Clock[PlayClock.Play], w: Walker): Walker =
+        stepSeconds(world, walk, { sprint = false | d }, Some(velocity), Num.clamp(0.0, 0.05, Clock.dtOf(clock)), w)
+
+    /// step の本体: 向き → engine の体を動かす（速さは歩き方から・dashing があればその速さ）→ 歩いた距離を足す。
+    def stepSeconds(world: CollisionWorld3d.CollisionWorld3d, walk: WalkDoc.Rec, d: Drive, dashing: Option[(Float64, Float64)], dt: Float64, w: Walker): Walker =
         let limit = rad(walk#pitchLimit);
         let yaw = w#yaw + rad(d#turnDeg + d#turnRate * dt);
         let pitch = Num.clamp(0.0 - limit, limit, w#pitch + rad(d#lookDeg));
         let speed = if (d#sprint) walk#runSpeed else walk#walkSpeed;
-        let (hx, hz) = heading(yaw, d);
-        let body = CharacterBody3d.moveAndSlide(world, Nil, settingsOf(walk), Vec3.v3(hx * speed, 0.0, hz * speed), dt, bodyOf(w));
+        let (hx, hz) = headingOf(yaw, d);
+        let (vx, vz) = dashing |> Option.getWithDefault((hx * speed, hz * speed));
+        let body = CharacterBody3d.moveAndSlide(world, Nil, settingsOf(walk), Vec3.v3(vx, 0.0, vz), dt, bodyOf(w));
         let moved = withBody(body, w);
         let flat = Num.sqrt((moved#x - w#x) * (moved#x - w#x) + (moved#z - w#z) * (moved#z - w#z));
         { yaw = yaw, pitch = pitch, distance = w#distance + flat, running = d#sprint | moved }

@@ -1,7 +1,7 @@
 // Pickups — 迷路に置いた拾う物と、拾う規則（純粋）。
 // 迷路の pickup の印は種類の名前だけを持ち、量は PickupsDoc が正。名前が引けない印・床でないマスの印は 1 行知らせて置かない。
 // 足元から radius の内に入ると拾う: 回復は体力を足す（満タンなら拾わない）・弾倉は弾を足す（上限なら拾わない）・
-// 武器は持っている武器に加えてその場で持ち替える（もう持っていれば弾倉と同じ）。拾った物は Session の taken に番号で残る。
+// 武器は持っている武器に加えてその場で持ち替える（もう持っていれば弾倉と同じ）・手榴弾は持てる数に足す（上限なら拾わない）。拾った物は Session の taken に番号で残る。
 // 倒れた敵は dropChance の確率で物を落とす（dropsOf。どれを落とすかは dropItems の重み・落とすかと種類は敵の番号から決まる）。
 // 落とした物は dropSeconds で消え、dropLimit を越えたら古い物から消える（keepDrops）。拾い方は置いた物と同じ。
 // 浮き方と回り方（hoverAt・spinAt）もここで決め、描くのは View（PickupModels の形を置く）。
@@ -17,23 +17,25 @@ mod Pickups {
         case AmmoRifle
         case WeaponShotgun
         case WeaponRifle
+        case Grenade
     }
 
-    /// 拾うと増える物。Heal = 体力・Ammo = その武器の弾・Arm = その武器（と弾）。
+    /// 拾うと増える物。Heal = 体力・Ammo = その武器の弾・Arm = その武器（と弾）・Grenades = 持っている手榴弾。
     pub enum Gain with Eq, ToString {
         case Heal
         case Ammo(Weapon)
         case Arm(Weapon)
+        case Grenades
     }
 
     /// 置いた拾う物 1 つ: 番号（印の並びの順）・種類・量・床の上の x・z（マスの真ん中）・区画。
     pub type alias Point = { id = Int32, kind = Kind, amount = Int32, x = Float64, z = Float64, zone = Char }
 
-    /// 拾った時に要る値: 時刻・武器と持ち替えの Doc・体力の Doc。
-    pub type alias Rules = { t = Float64, weapons = WeaponsDoc.Doc, viewmodel = FpViewmodelDoc.Rec, player = PlayerDoc.Rec }
+    /// 拾った時に要る値: 時刻・武器と持ち替えの Doc・体力の Doc・手榴弾の Doc。
+    pub type alias Rules = { t = Float64, weapons = WeaponsDoc.Doc, viewmodel = FpViewmodelDoc.Rec, player = PlayerDoc.Rec, grenade = GrenadeDoc.Rec }
 
-    /// 拾うと変わる物: 武器と体力。
-    pub type alias Carry = { arsenal = Arsenal.Arsenal, health = Health.Health }
+    /// 拾うと変わる物: 武器と体力と手榴弾。
+    pub type alias Carry = { arsenal = Arsenal.Arsenal, health = Health.Health, grenades = Grenades.State }
 
     /// 拾った結果: 変わった武器と体力・拾った物の番号（前から拾っていた物も）・このコマに拾った物（拾った順）。
     pub type alias Collected = { carry = Carry, taken = Set[Int32], picked = List[Point] }
@@ -49,7 +51,7 @@ mod Pickups {
 
     /// 全部の種類。
     def all(): List[Kind] =
-        Kind.HealthSmall :: Kind.HealthLarge :: Kind.AmmoShotgun :: Kind.AmmoRifle :: Kind.WeaponShotgun :: Kind.WeaponRifle :: Nil
+        Kind.HealthSmall :: Kind.HealthLarge :: Kind.AmmoShotgun :: Kind.AmmoRifle :: Kind.WeaponShotgun :: Kind.WeaponRifle :: Kind.Grenade :: Nil
 
     /// 種類の名前（迷路の印の name・PickupsDoc の items の鍵）。
     def nameOf(k: Kind): String = match k {
@@ -59,6 +61,7 @@ mod Pickups {
         case Kind.AmmoRifle     => "ammo_rifle"
         case Kind.WeaponShotgun => "weapon_shotgun"
         case Kind.WeaponRifle   => "weapon_rifle"
+        case Kind.Grenade       => "grenade"
     }
 
     /// 拾うと増える物。
@@ -69,6 +72,7 @@ mod Pickups {
         case Kind.AmmoRifle     => Gain.Ammo(Weapon.Rifle)
         case Kind.WeaponShotgun => Gain.Arm(Weapon.Shotgun)
         case Kind.WeaponRifle   => Gain.Arm(Weapon.Rifle)
+        case Kind.Grenade       => Gain.Grenades
     }
 
     def kindOf(name: String): Option[Kind] = all() |> List.find(k -> nameOf(k) == name)
@@ -95,6 +99,7 @@ mod Pickups {
         case Gain.Heal    => Health.heal(r#player, Int32.toFloat64(p#amount), c#health) |> Option.map(h -> { health = h | c })
         case Gain.Ammo(w) => Arsenal.addAmmo(r#weapons, w, p#amount, c#arsenal) |> Option.map(a -> { arsenal = a | c })
         case Gain.Arm(w)  => Arsenal.arm(r#weapons, r#viewmodel, r#t, w, p#amount, c#arsenal) |> Option.map(a -> { arsenal = a | c })
+        case Gain.Grenades => Grenades.add(r#grenade, p#amount, c#grenades) |> Option.map(g -> { grenades = g | c })
     }
 
     /// 足元 at から radius の内の、まだ拾っていない物を並びの順に拾う（拾えない物は置いたまま）。

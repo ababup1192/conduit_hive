@@ -182,10 +182,15 @@ mod Horde {
 
     // ── 撃たれる ──
 
+    /// 敵 1 体への一撃: 時刻・傷の量・生き残った時の押され方・倒れた時に弾けるか・倒れた時の飛び出し・
+    /// 攻撃の途中でもよろけさせるか（蹴りと爆発。撃たれた時は振り下ろしを止めない）。
+    type alias Blow = { t = Float64, amount = Float64, push = Knockback.Push, bursts = Bool, flight = Knockback.Flight, interrupts = Bool }
+
     /// 撃った 1 回 shot の粒が impacts に当たった（頭は headMultiplier 倍）。同じ敵に何粒当たっても 1 回の傷として足す。
     /// 生き残った敵は撃たれた向きへ押され、倒れた敵は吹っ飛ぶか、条件に当たれば弾けて群れから消える。
     pub def applyDamage(res: Res.Res, shot: Shot, impacts: List[Hitscan.Impact], h: Horde): Damaged =
         let d = doc(res);
+        let juice = JuiceDoc.rec(res#juice);
         let hits = impacts |> List.filterMap(hit -> match hit#struck {
             case Hitscan.Struck.Enemy(id, part) => Some((id, part))
             case _ => None
@@ -194,40 +199,94 @@ mod Horde {
         let taken = hits |> List.foldLeft((acc, hit) -> Map.insertWith((a, b) -> a + b, fst(hit), amountOf(snd(hit)), acc), Map.empty());
         let onHead = hits |> List.filter(hit -> snd(hit) == Hitscan.Part.Head)
             |> List.foldLeft((acc, hit) -> Map.insertWith((a, b) -> a + b, fst(hit), amountOf(snd(hit)), acc), Map.empty());
-        let outcomes = h#enemies |> List.map(e -> Map.get(e#id, taken) |> Option.map(amount -> struck(res, shot, amount, Map.getWithDefault(e#id, 0.0, onHead), e)));
-        let pairs = List.zip(h#enemies, outcomes);
+        let blows = h#enemies |> List.filterMap(e -> Map.get(e#id, taken) |> Option.map(amount ->
+            (e#id, shotBlow(d, juice, shot, amount, Map.getWithDefault(e#id, 0.0, onHead), e)))) |> List.toMap;
+        let kindOf = (id: Int32) -> enemyOf(id, h) |> Option.map(e -> e#kind);
+        resolve(d, blows, hits |> List.filterMap(hit -> kindOf(fst(hit)) |> Option.map(k -> Event.EnemyHit(k, snd(hit)))), h)
+
+    /// 撃った 1 回の、敵 e への一撃（押され方と飛び出しは武器と撃った点からの距離・弾けるかは Gibs.bursts）。
+    def shotBlow(d: EnemiesDoc.Rec, juice: JuiceDoc.Rec, shot: Shot, amount: Float64, headDamage: Float64, e: Enemy): Blow =
+        let away = Knockback.awayFrom(shot#origin#x, shot#origin#z, e#x, e#z);
+        let cause = { weapon = shot#weapon, distance = away#distance, headDamage = headDamage, overkill = amount - e#health };
+        { t = shot#t, amount = amount, push = Knockback.pushOf(d#flinch, shot#weapon, shot#t, away),
+          bursts = Gibs.bursts(juice#gib, cause, Hash01.at(e#id * 7 + shot#index, 61)),
+          flight = Knockback.launch(juice#fling, shot#weapon, away, Hash01.at(e#id, 62)), interrupts = false }
+
+    /// 一撃の束 blows（敵の番号 → 一撃）を群れに当てる。hitEvents = 当たった音の出来事。
+    def resolve(d: EnemiesDoc.Rec, blows: Map[Int32, Blow], hitEvents: List[Event], h: Horde): Damaged =
+        let pairs = h#enemies |> List.map(e -> (e, Map.get(e#id, blows) |> Option.map(b -> struck(d, b, e))));
         let enemies = pairs |> List.filterMap(pair -> match snd(pair) {
             case Some((_, Fate.Burst)) => None
             case Some((next, _))       => Some(next)
             case None                  => Some(fst(pair))
         });
         let downs = pairs |> List.filterMap(pair -> snd(pair) |> Option.filter(o -> isAlive(fst(pair)) and snd(o) != Fate.Hurt));
-        let kindOf = (id: Int32) -> enemyOf(id, h) |> Option.map(e -> e#kind);
-        let hitEvents = hits |> List.filterMap(hit -> kindOf(fst(hit)) |> Option.map(k -> Event.EnemyHit(k, snd(hit))));
         let downEvents = downs |> List.map(o -> Event.EnemyDown(fst(o)#kind, if (snd(o) == Fate.Burst) Events.Death.Burst else Events.Death.Fell));
         { horde = { enemies = enemies | h }, events = List.append(hitEvents, downEvents), fallen = downs |> List.map(fst),
           burst = downs |> List.filter(o -> snd(o) == Fate.Burst) |> List.map(fst) }
 
-    /// 撃たれた 1 体: 傷を足し、生きていれば押す・倒れたら吹っ飛ぶか弾けるかを決める（もう倒れていた体はそのまま）。
-    def struck(res: Res.Res, shot: Shot, amount: Float64, headDamage: Float64, e: Enemy): (Enemy, Fate) =
-        let d = doc(res);
-        let juice = JuiceDoc.rec(res#juice);
-        let away = Knockback.awayFrom(shot#origin#x, shot#origin#z, e#x, e#z);
-        let next = hurt(d, shot#t, amount, e);
-        let cause = { weapon = shot#weapon, distance = away#distance, headDamage = headDamage, overkill = amount - e#health };
-        let roll = Hash01.at(e#id * 7 + shot#index, 61);
+    /// 一撃を受けた 1 体: 傷を足し、生きていれば押す・倒れたら吹っ飛ぶか弾けるか（もう倒れていた体はそのまま）。
+    def struck(d: EnemiesDoc.Rec, b: Blow, e: Enemy): (Enemy, Fate) =
+        let next = hurt(d, b#t, b#amount, b#interrupts, e);
         if (not isAlive(e)) (next, Fate.Hurt)
-        else if (isAlive(next)) ({ push = Knockback.pushOf(d#flinch, shot#weapon, shot#t, away) | next }, Fate.Hurt)
-        else if (Gibs.bursts(juice#gib, cause, roll)) (next, Fate.Burst)
-        else ({ flight = Knockback.launch(juice#fling, shot#weapon, away, Hash01.at(e#id, 62)) | next }, Fate.Fell)
+        else if (isAlive(next)) ({ push = b#push | next }, Fate.Hurt)
+        else if (b#bursts) (next, Fate.Burst)
+        else ({ flight = b#flight | next }, Fate.Fell)
 
-    def hurt(d: EnemiesDoc.Rec, t: Float64, amount: Float64, e: Enemy): Enemy =
+    // ── 蹴られる・爆発に巻き込まれる ──
+
+    /// 蹴り 1 回: 時刻・蹴った足元と向き（ラジアン。0 が +Z）・値（MovesDoc の kick）。
+    pub type alias Kick = { t = Float64, x = Float64, z = Float64, yaw = Float64, doc = MovesDoc.Kick }
+
+    /// 敵 e が蹴りの扇の内か: 足元から体の縁までが range の内で、向きから arc の半分の角の内（倒れた体は入らない）。
+    pub def isInKick(k: Kick, e: Enemy): Bool =
+        let dx = e#x - k#x;
+        let dz = e#z - k#z;
+        let dist = distance(dx, dz);
+        let ahead = if (dist < 0.001) 1.0 else (dx * Num.sin(k#yaw) + dz * Num.cos(k#yaw)) / dist;
+        isAlive(e) and dist - Creatures.footprintOf(e#kind) <= k#doc#range and ahead >= Num.cos(rad(k#doc#arc) * 0.5)
+
+    /// 蹴り: 扇の内の敵に傷を付け、蹴った足元から離れる向きへ押し返して、攻撃の途中でもよろけさせる（倒れた敵は弾けずに飛ぶ）。
+    pub def kick(res: Res.Res, k: Kick, h: Horde): Damaged =
+        let fl = JuiceDoc.rec(res#juice)#fling;
+        let kicked = h#enemies |> List.filter(isInKick(k));
+        let blows = kicked |> List.map(e -> {
+            let away = Knockback.awayFrom(k#x, k#z, e#x, e#z);
+            (e#id, { t = k#t, amount = k#doc#damage, push = Knockback.shove(k#t, away, k#doc#push, k#doc#pushDecay), bursts = false,
+                     flight = Knockback.flingAt(fl, { speed = k#doc#fling, lift = fl#lift, spin = 1.0 }, away, Hash01.at(e#id, 62)), interrupts = true })
+        }) |> List.toMap;
+        resolve(doc(res), blows, kicked |> List.map(e -> Event.EnemyHit(e#kind, Hitscan.Part.Body)), h)
+
+    /// 爆発 1 つ: 時刻・点・値（GrenadeDoc の blast）・種（手榴弾の番号）。
+    pub type alias Blast = { t = Float64, point = Vec3.Vec3, doc = GrenadeDoc.Blast, seed = Int32 }
+
+    /// 爆発: 半径の内で、爆発の点から胸まで壁に遮られない敵に、距離で減る傷を付ける（Grenades.damageAt）。
+    /// 生き残った敵は外へ押されてよろけ、倒れた敵は弾ける半径の内なら肉片に・外なら外へ吹っ飛ぶ（近いほど強く）。
+    pub def blast(res: Res.Res, b: Blast, h: Horde): Damaged =
+        let fl = JuiceDoc.rec(res#juice)#fling;
+        let g = b#doc;
+        let low = Vec3.add(b#point, Vec3.v3(0.0, 0.3, 0.0));
+        let blows = h#enemies |> List.filterMap(e -> {
+            let away = Knockback.awayFrom(b#point#x, b#point#z, e#x, e#z);
+            let near = 1.0 - Num.clamp01(away#distance / Float64.max(0.001, g#radius));
+            let reached = isAlive(e) and away#distance <= g#radius and Collider.isLineClear(res#collision, low, Vec3.v3(e#x, 1.0, e#z));
+            if (not reached) None
+            else Some((e#id, { t = b#t, amount = Grenades.damageAt(g, away#distance), push = Knockback.shove(b#t, away, g#push * (0.5 + 0.5 * near), g#pushDecay),
+                              bursts = away#distance <= g#gibRadius,
+                              flight = Knockback.flingAt(fl, { speed = g#push * (0.5 + 0.5 * near), lift = g#lift * (0.5 + 0.5 * near), spin = 1.0 + near },
+                                                         away, Hash01.at(e#id * 5 + b#seed, 62)),
+                              interrupts = true }))
+        }) |> List.toMap;
+        resolve(doc(res), blows, Nil, h)
+
+    /// 傷 amount を足す: 0 以下で倒れ、ほかは staggerCooldown が明けていればよろける（interrupts なら攻撃の途中でも・明けていなくても）。
+    def hurt(d: EnemiesDoc.Rec, t: Float64, amount: Float64, interrupts: Bool, e: Enemy): Enemy =
         let health = e#health - amount;
-        let staggers = t >= e#staggerReadyAt;
+        let staggers = interrupts or t >= e#staggerReadyAt;
         let (act, stagger) = match e#act {
             case Act.Dying(_) => (e#act, e#staggerReadyAt)
             case _ if health <= 0.0 => (Act.Dying(t), e#staggerReadyAt)
-            case Act.Attack(_, _) => (e#act, e#staggerReadyAt)
+            case Act.Attack(_, _) if not interrupts => (e#act, e#staggerReadyAt)
             case _ if staggers => (Act.Hurt(t), t + d#staggerCooldown)
             case _ => (e#act, e#staggerReadyAt)
         };
@@ -312,13 +371,13 @@ mod Horde {
             case Act.Hurt(s)           => still(if (t - s >= Creatures.secondsOf(res#timing, e#kind, Clip.Hit)) { act = Act.Chase | e } else { moving = false | e })
             case Act.Dying(_)          => still(flown(res, dt, e))
         };
-        { enemy = animated(t, pushed(res, t, dt, r#enemy)) | r }
+        { enemy = animated(t, pushed(t, dt, r#enemy)) | r }
 
     /// 撃たれて押されている分だけ動かす（倒れた体は押さない。壁は Separation が押し戻す）。
-    def pushed(res: Res.Res, t: Float64, dt: Float64, e: Enemy): Enemy =
+    def pushed(t: Float64, dt: Float64, e: Enemy): Enemy =
         if (not isAlive(e) or e#push#speed <= 0.0) e
         else {
-            let (mx, mz) = Knockback.pushStep(doc(res)#flinch, t, dt, e#push);
+            let (mx, mz) = Knockback.pushStep(t, dt, e#push);
             { x = e#x + mx, z = e#z + mz | e }
         }
 

@@ -1,7 +1,7 @@
 {
   "version": 1,
   "title": "画面の文言",
-  "note": "画面に出す文言（字は Xolonium でラテン文字だけなので英字で書く）。quitPrompt = 閉じるボタン・タイトルの Esc で出る終了の確認。gameTitle〜controls = タイトルの画面（controls は操作の一覧の行）。pause* = Esc のポーズ。clear* = 最後の部屋を空にした後の画面。notice* = 拾った時に照準の下へ短く出す知らせ（{n} は拾った量）。",
+  "note": "画面に出す文言（字は Xolonium でラテン文字だけなので英字で書く）。quitPrompt = 閉じるボタン・タイトルの Esc で出る終了の確認。gameTitle〜controls = タイトルの画面（controls は操作の一覧の行）。pause* = Esc のポーズ。clear* = 最後の部屋を空にした後の画面。notice* = 拾った時に照準の下へ短く出す知らせ（{n} は拾った量。noticeGrenade は手榴弾）。",
   "quitPrompt": "Quit?  Enter: yes  /  Esc: no",
   "gameTitle": "CONDUIT HIVE",
   "tagline": "PURGE THE HIVE AT THE END OF THE CONDUITS",
@@ -13,7 +13,7 @@
     },
     {
       "key": "SHIFT",
-      "action": "RUN"
+      "action": "SPRINT"
     },
     {
       "key": "MOUSE",
@@ -26,6 +26,18 @@
     {
       "key": "1 2 3  /  WHEEL",
       "action": "SWITCH WEAPON"
+    },
+    {
+      "key": "SPACE",
+      "action": "DODGE"
+    },
+    {
+      "key": "F",
+      "action": "KICK"
+    },
+    {
+      "key": "G",
+      "action": "GRENADE"
     },
     {
       "key": "ESC",
@@ -43,5 +55,6 @@
   "noticeShells": "+{n}  SHELLS",
   "noticeRounds": "+{n}  ROUNDS",
   "noticeShotgun": "SHOTGUN",
-  "noticeRifle": "RIFLE"
+  "noticeRifle": "RIFLE",
+  "noticeGrenade": "+{n}  GRENADE"
 }

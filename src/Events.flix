@@ -50,6 +50,15 @@ mod Events {
         case Switched(WeaponsDoc.Weapon)
         // 弾の尽きた武器で引き金を引いた（空撃ち）。
         case DryFire(WeaponsDoc.Weapon)
+        // 緊急回避で跳んだ・蹴った（扇の内にいた敵の数）。
+        case Dodged
+        case Kicked(Int32)
+        // 手榴弾を投げた・手榴弾が強く跳ねた・爆発した。
+        case GrenadeThrown
+        case GrenadeBounced
+        case Exploded
+        // スタミナが尽きた（走り切って息切れした・足りずに回避か蹴りを使えなかった）。
+        case StaminaOut
         // 最後の部屋を空にした。
         case Cleared
         // ── 画面をまたぐ事（World.screenEventsOf。遊んでいる場面の外でも起きる） ──

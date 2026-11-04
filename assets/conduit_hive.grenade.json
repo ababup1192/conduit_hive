@@ -1,0 +1,41 @@
+{
+  "version": 1,
+  "title": "手榴弾",
+  "note": "G で投げる手榴弾。放物線・跳ね・爆発で敵を倒す・自分も傷を受ける規則はコード（src/Grenades.flix・Horde.blast・World.flix）。拾う量と倒れた敵が落とす確率は conduit_hive.pickups.json の grenade、爆発の粒は conduit_hive.blastfx.json。carry = 持てる数の上限と遊び始めの数。throw = 投げ方（speed = 照準の向きへの速さ m/秒・lift = 上へ足す速さ・cooldown = 次に投げられるまで秒・spin = 回る速さ 度/秒）。flight = 飛び方（gravity = 下へ引く強さ m/秒²・bounce = 跳ねた時に残る面に向かう速さの割合・friction = 面に沿う速さの割合・radius = 玉の半径 m・fuse = 投げてから爆発するまで秒・scale = glb の大きさの倍率）。blast = 爆発（radius = 届く半径 m・damage / edgeDamage = 真ん中と縁の傷・gibRadius = この内で倒れた敵は肉片になる・push / lift = 吹っ飛ぶ横と上の速さ（真ん中。縁で半分）・pushDecay = 生き残りが押される速さの減る秒・selfRadius / selfDamage = 自分が傷を受ける半径と真ん中の傷）。light = 爆発の瞬間の点光源（短く・届く距離を抑える）。shake = camera shake の強さ 0..1。",
+  "carry": {
+    "max": 3,
+    "start": 2
+  },
+  "throw": {
+    "speed": 13.0,
+    "lift": 3.5,
+    "cooldown": 0.9,
+    "spin": 540.0
+  },
+  "flight": {
+    "gravity": 14.0,
+    "bounce": 0.4,
+    "friction": 0.65,
+    "radius": 0.06,
+    "fuse": 2.0,
+    "scale": 1.6
+  },
+  "blast": {
+    "radius": 6.0,
+    "damage": 150.0,
+    "edgeDamage": 25.0,
+    "gibRadius": 3.0,
+    "push": 8.0,
+    "lift": 4.5,
+    "pushDecay": 0.25,
+    "selfRadius": 4.5,
+    "selfDamage": 50.0
+  },
+  "light": {
+    "color": "#ff8a3c",
+    "intensity": 2.6,
+    "range": 7.0,
+    "seconds": 0.16
+  },
+  "shake": 0.85
+}

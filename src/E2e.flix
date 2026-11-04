@@ -26,6 +26,7 @@ mod E2e {
     def roles(): InputMap.Table[String] =
         (Key.W, "forward") :: (Key.S, "back") :: (Key.A, "left") :: (Key.D, "right") ::
         (Key.Left, "turnLeft") :: (Key.Right, "turnRight") :: (Key.LeftShift, "sprint") ::
+        (Key.Space, "dodge") :: (Key.F, "kick") :: (Key.G, "grenade") ::
         (Key.Enter, "confirm") :: (Key.Escape, "cancel") :: Nil
 
     /// flow の表: 役と問い。
@@ -40,6 +41,8 @@ mod E2e {
               { name = "weapon", doc = "構えている武器（Pistol・Shotgun・Rifle）", read = Flow.Probe.Text(Resources.read((_, w) -> World.sessionOf(w) |> Option.map(s -> "${World.arsenalOf(s)#current}") |> Option.getWithDefault("-"))) } ::
               { name = "shots", doc = "撃った回数の合計", read = Flow.Probe.Num(Resources.read((_, w) -> playing(w, s -> Int32.toFloat64(World.arsenalOf(s)#shots)))) } ::
               { name = "health", doc = "プレイヤーの体力", read = Flow.Probe.Num(Resources.read((_, w) -> playing(w, s -> World.healthOf(s)#points))) } ::
+              { name = "stamina", doc = "スタミナの残り", read = Flow.Probe.Num(Resources.read((_, w) -> playing(w, s -> World.movesOf(s)#stamina#points))) } ::
+              { name = "grenades", doc = "持っている手榴弾の数", read = Flow.Probe.Num(Resources.read((_, w) -> playing(w, s -> Int32.toFloat64(World.grenadesOf(s)#carried)))) } ::
               { name = "pilot", doc = "自動の操縦が向かっている点の名前（start tour の時だけ。歩き終えたら空）", read = Flow.Probe.Text(Resources.read((res, w) -> World.pilotPoint(res, w))) } ::
               { name = "enemies", doc = "倒れていない敵の数", read = Flow.Probe.Num(Resources.read((_, w) -> playing(w, s -> Int32.toFloat64(Horde.aliveCount(World.hordeOf(s)))))) } :: Nil
           | Flow.emptyTable() }
