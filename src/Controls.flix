@@ -7,7 +7,7 @@
 // Doc の読み込み（loadDocs）と、保存即反映（watchFile）・F1 一括リロードの読み直しもここに置く。
 mod Controls {
 
-    use fge::{App, DocTable, GameEngine, LoadProgress, Resources, SortingLayer, Vec2}
+    use fge::{App, AudioMixer, AudioMixerDoc, DocTable, GameEngine, LoadProgress, Resources, SortingLayer, Vec2}
 
     /// マウスの動いた量（design px）を、このコマに回す角（度。yaw, pitch）へ。キャプチャしていない・窓にフォーカスが無い時は回さない。
     /// 上下は invertY で逆にする（pitch は正で下を向く）。
@@ -114,7 +114,8 @@ mod Controls {
           walk = WalkDoc.load(WalkDoc.path()), look = LookDoc.load(LookDoc.path()), maze = MazeDoc.load(MazeDoc.path()),
           weapons = WeaponsDoc.load(WeaponsDoc.path()), viewmodel = FpViewmodelDoc.load(FpViewmodelDoc.path()),
           particles = Particles3dDoc.load(Particles3dDoc.path()), player = PlayerDoc.load(PlayerDoc.path()), enemies = EnemiesDoc.load(EnemiesDoc.path()),
-          spawns = SpawnsDoc.load(SpawnsDoc.path()), pickups = PickupsDoc.load(PickupsDoc.path()), tour = TourDoc.load(TourDoc.path()), stage = StageModel.load(),
+          spawns = SpawnsDoc.load(SpawnsDoc.path()), pickups = PickupsDoc.load(PickupsDoc.path()), tour = TourDoc.load(TourDoc.path()),
+          sounds = SoundsDoc.load(SoundsDoc.path()), mixer = AudioMixerDoc.load(AudioMixer.defaults(), mixerPath()), stage = StageModel.load(),
           viewmodels = FpViewmodel.load(), creatures = Creatures.load(), pickupModels = PickupModels.load() }
 
     def restartPlay(res: Res.Res, w: World.World): World.World =
@@ -142,6 +143,13 @@ mod Controls {
 
     def reloadTour(res: Res.Res): Res.Res \ Fs.FileRead = Res.withTour(TourDoc.load(TourDoc.path()), res)
 
+    /// 音の通り道（形は engine の AudioMixerDoc。音ごとの量は SoundsDoc の levels）。
+    pub def mixerPath(): String = "assets/conduit_hive.mixer.json"
+
+    def reloadSounds(res: Res.Res): Res.Res \ Fs.FileRead = Res.withSounds(SoundsDoc.load(SoundsDoc.path()), res)
+
+    def reloadMixer(res: Res.Res): Res.Res \ Fs.FileRead = Res.withMixer(AudioMixerDoc.load(AudioMixer.defaults(), mixerPath()), res)
+
     def reloadWalk(res: Res.Res): Res.Res \ Fs.FileRead = Res.withWalk(WalkDoc.load(WalkDoc.path()), res)
 
     def reloadLook(res: Res.Res): Res.Res \ Fs.FileRead = Res.withLook(LookDoc.load(LookDoc.path()), res)
@@ -165,6 +173,8 @@ mod Controls {
             :: Resources.reloadRow("spawns", SpawnsDoc.path(), reloadSpawns, unchanged)
             :: Resources.reloadRow("pickups", PickupsDoc.path(), reloadPickups, unchanged)
             :: Resources.reloadRow("tour", TourDoc.path(), reloadTour, unchanged)
+            :: Resources.reloadRow("sounds", SoundsDoc.path(), reloadSounds, unchanged)
+            :: Resources.reloadRow("mixer", mixerPath(), reloadMixer, unchanged)
             :: Resources.reloadRow("walk", WalkDoc.path(), reloadWalk, unchanged)
             :: Resources.reloadRow("look", LookDoc.path(), reloadLook, unchanged)
             :: Resources.reloadRow("maze", MazeDoc.path(), reloadMaze, restartPlay)

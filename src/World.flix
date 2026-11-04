@@ -18,6 +18,7 @@
 //
 // ── 起きた事 ──
 // 1 コマに起きた事（撃った・当たった・倒れた・被弾…）は Session の events にそのコマの分だけ持つ。音（Sounds）はそれを写すだけ。
+// 撃った後に遅れて起きる事（薬莢が落ちる・先台を引く）は pending に時刻つきで控え、その時刻を迎えたコマの events へ出す。
 //
 // ── 撃つ ──
 // 引き金を引いて撃てる時（Arsenal.canFire）、照準（反動で跳ね上がった分を含む）からのレイを敵と的の列へ当て（Hitscan）、
@@ -30,7 +31,7 @@
 // 倒れた敵は時々弾や回復を落とす（Pickups.dropsOf）。紹介の動画の自動の操縦の間だけ、最後の部屋の wave を TourDoc の finalWaves までにする。
 mod World {
 
-    use fge::{Camera3d, Clock, Num, Vec3}
+    use fge::{Camera3d, Clock, Hash01, Num, Vec3}
     use Events.Event
 
     /// このフレームの入力: 歩き方（Walker.Drive）・引き金・持ち替え。
@@ -91,7 +92,8 @@ mod World {
     /// 歩いている間の中身: 体・マウスの視点・F3 の診断を出すか・武器・見回しの遅れ（度。ビューモデルの揺れ）・3D の粒・
     /// 敵の群れ・体力・やり直す所・最後にいた区画（壁の中の None は数えない）・このコマに起きた事・
     /// ポーズ・拾った物の番号・倒れた敵が落とした物・拾った時の知らせ・倒した数・始めた時刻・クリアした時刻・
-    /// 紹介の動画の自動の操縦（`start tour` の時だけ Some。キーとマウスの代わりに歩いて撃ち、体力と弾を TourDoc の下限より下げない）。
+    /// 紹介の動画の自動の操縦（`start tour` の時だけ Some。キーとマウスの代わりに歩いて撃ち、体力と弾を TourDoc の下限より下げない）・
+    /// 後の時刻に起きる事（時刻と起きる事。撃った後の薬莢と先台）。
     pub type alias SessionRec = {
         walker = Walker.Walker,
         look = Look,
@@ -111,7 +113,8 @@ mod World {
         kills = Int32,
         startedAt = Float64,
         clearedAt = Option[Float64],
-        pilot = Option[Pilot.State]
+        pilot = Option[Pilot.State],
+        pending = List[{ at = Float64, event = Event }]
     }
 
     /// 歩いている間の中身。作るのは World の中だけ。読む口は Session を受ける関数・書く口は mapSession。
@@ -155,7 +158,7 @@ mod World {
           horde = Horde.empty(), health = Health.full(PlayerDoc.rec(res#player)),
           checkpoint = { x = s#x, z = s#z, yawDeg = s#yaw, zone = None, arsenal = Arsenal.initial(res#weapons), kills = 0, taken = Set.empty(), waves = Map.empty() },
           lastZone = None, events = Nil,
-          pause = Pause.Running, taken = Set.empty(), drops = Nil, notice = None, kills = 0, startedAt = t, clearedAt = None, pilot = None }
+          pause = Pause.Running, taken = Set.empty(), drops = Nil, notice = None, kills = 0, startedAt = t, clearedAt = None, pilot = None, pending = Nil }
 
     /// 遊びから始める状態（迷路の start の印に立ち、始めた時刻は 0 秒）。
     pub def initial(res: Res.Res): World =
@@ -358,8 +361,9 @@ mod World {
 
     /// 1 コマ: 倒れている間はやり直す時刻を待つだけ。ほかは 歩く → 見回しの遅れ → 持ち替え → 部屋に入る → 拾う → 撃つ（か空撃ち）→ 群れ → 傷と粒 → 倒した数とクリア。
     def stepSession(res: Res.Res, input: Input, clock: Clock.Clock[PlayClock.Play], s0: SessionRec): SessionRec =
-        let s = { events = Nil | s0 };
         let t = Clock.secondsOf(Clock.nowOf(clock));
+        let (due, later) = List.partition(p -> p#at <= t, s0#pending);
+        let s = { events = due |> List.map(p -> p#event), pending = later | s0 };
         let dt = Num.clamp(0.0, 0.05, Clock.dtOf(clock));
         let pd = PlayerDoc.rec(res#player);
         if (Health.isRespawnDue(pd, t, s#health)) respawn(res, s)
@@ -370,7 +374,7 @@ mod World {
             let moved = { walker = Walker.step(res#collision, WalkDoc.rec(res#walk), input#drive, clock, s#walker),
                           sway = swayAfter(vm, input#drive, dt, s#sway), arsenal = equipped, particles = Particles3d.step(t, s#particles),
                           drops = Pickups.keepDrops(t, PickupsDoc.rec(res#pickups)#dropLimit, s#drops),
-                          events = switched(s#arsenal, equipped) | s };
+                          events = List.append(s#events, switched(s#arsenal, equipped)) | s };
             let picked = pickUp(res, t, enterZone(res, t, moved));
             let a = picked#arsenal;
             let wants = Arsenal.wantsToFire(Arsenal.statsOf(res#weapons, a), input#trigger);
@@ -467,7 +471,7 @@ mod World {
         let walker = Walker.settle(res#collision, WalkDoc.rec(res#walk), Walker.standing(c#x, 0.0, c#z, c#yawDeg));
         { walker = walker, health = Health.full(PlayerDoc.rec(res#player)), horde = Horde.restore(c#waves, s#horde),
           arsenal = c#arsenal, kills = c#kills, taken = c#taken, drops = Nil, notice = None,
-          particles = Nil, lastZone = None, events = Event.Respawned :: Nil | s }
+          particles = Nil, lastZone = None, events = Event.Respawned :: Nil, pending = Nil | s }
 
     /// 見回しの遅れ: このコマに回した角を足し、上限で切り、swayFollow 秒ほどで 0 へ戻す。
     def swayAfter(vm: FpViewmodelDoc.Rec, d: Walker.Drive, dt: Float64, sway: { x = Float64, y = Float64 }): { x = Float64, y = Float64 } =
@@ -492,10 +496,26 @@ mod World {
         let flash = Particles3d.emit(res#particles, Particles3d.Kind.Muzzle, Particles3d.Space.Muzzle, Vec3.v3(0.0, 0.0, ahead), Vec3.v3(0.0, 0.0, 1.0), t, a#shots);
         let damaged = Horde.applyDamage(res, t, stats#damage, impacts, s#horde);
         let fallen = damaged#fallen |> List.map(e -> { id = e#id, x = e#x, z = e#z, zone = Maze.zoneAt(res#maze, e#x, e#z) |> Option.getWithDefault(e#home) });
+        let sd = SoundsDoc.rec(res#sounds);
+        let ricochet = if (List.exists(hit -> not isEnemy(hit#struck), impacts) and Hash01.at(a#shots, 71) < sd#ricochetChance) Event.Ricochet :: Nil else Nil;
         { arsenal = Arsenal.fire(res#weapons, t, dt, a), horde = damaged#horde,
           drops = List.append(s#drops, Pickups.dropsOf(res#pickups, t, fallen)),
           particles = List.append(flash, List.append(sparks, s#particles)),
-          events = List.flatten(s#events :: (Event.Fired(a#current) :: Nil) :: damaged#events :: Nil) | s }
+          pending = List.append(s#pending, afterShot(sd, t, a#current)),
+          events = List.flatten(s#events :: (Event.Fired(a#current) :: Nil) :: ricochet :: damaged#events :: Nil) | s }
+
+    /// 撃った後に遅れて起きる事: 薬莢が床に落ちる（武器ごとの秒の後）・散弾銃は先台を引く。
+    def afterShot(sd: SoundsDoc.Rec, t: Float64, w: WeaponsDoc.Weapon): List[{ at = Float64, event = Event }] = match w {
+        case WeaponsDoc.Weapon.Pistol  => { at = t + sd#shellDelay#pistol, event = Event.ShellLanded(w) } :: Nil
+        case WeaponsDoc.Weapon.Rifle   => { at = t + sd#shellDelay#rifle, event = Event.ShellLanded(w) } :: Nil
+        case WeaponsDoc.Weapon.Shotgun =>
+            { at = t + sd#pumpDelay, event = Event.Pumped } :: { at = t + sd#shellDelay#shotgun, event = Event.ShellLanded(w) } :: Nil
+    }
+
+    def isEnemy(struck: Hitscan.Struck): Bool = match struck {
+        case Hitscan.Struck.Enemy(_, _) => true
+        case _                          => false
+    }
 
     /// 当たった物の粒: 敵は体液の飛沫・ほかは火花。
     def impactKindOf(struck: Hitscan.Struck): Particles3d.Kind = match struck {

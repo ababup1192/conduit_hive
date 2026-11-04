@@ -155,7 +155,8 @@ mod TestPickups {
         let r = { weapons = emptyShotgunAndPistol() | res() };
         let pull = { trigger = { pressed = true, held = true } | World.walking(Walker.idle()) };
         let drawn = World.step(r, { choice = Arsenal.Choice.Slot(Weapon.Shotgun) | World.walking(Walker.idle()) }, { play = clockAt(0.05, 0.05) | World.initial(r) });
-        Assert.assertEq(expected = "dryfire" :: "switch" :: Nil, Sounds.events(World.step(r, pull, { play = clockAt(0.1 + vm()#drawSeconds, 0.05) | drawn })))
+        let pulled = World.step(r, pull, { play = clockAt(0.1 + vm()#drawSeconds, 0.05) | drawn });
+        Assert.assertEq(expected = "dryfire" :: "switch" :: Nil, Sounds.events(r, { play = pulled#play | drawn }, pulled))
 
     // ── やり直す ──
 

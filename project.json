@@ -24,28 +24,38 @@
   ],
   "sounds": [
     {
-      "name": "shot_pistol",
-      "path": "assets/sfx/shot.wav",
+      "name": "alarm",
+      "path": "assets/sfx/alarm.wav",
       "looping": false
     },
     {
-      "name": "shot_shotgun",
-      "path": "assets/sfx/shot.wav",
+      "name": "amb_machine",
+      "path": "assets/sfx/amb_machine.wav",
+      "looping": true
+    },
+    {
+      "name": "amb_pipes",
+      "path": "assets/sfx/amb_pipes.wav",
+      "looping": true
+    },
+    {
+      "name": "amb_vent",
+      "path": "assets/sfx/amb_vent.wav",
+      "looping": true
+    },
+    {
+      "name": "clear",
+      "path": "assets/sfx/clear.wav",
       "looping": false
     },
     {
-      "name": "shot_rifle",
-      "path": "assets/sfx/shot.wav",
+      "name": "door",
+      "path": "assets/sfx/door.wav",
       "looping": false
     },
     {
-      "name": "pickup",
-      "path": "assets/sfx/pickup.wav",
-      "looping": false
-    },
-    {
-      "name": "switch",
-      "path": "assets/sfx/switch.wav",
+      "name": "door_heavy",
+      "path": "assets/sfx/door_heavy.wav",
       "looping": false
     },
     {
@@ -54,18 +64,238 @@
       "looping": false
     },
     {
-      "name": "clear",
-      "path": "assets/sfx/clear.wav",
+      "name": "enemy_down_1",
+      "path": "assets/sfx/enemy_down_1.wav",
       "looping": false
     },
     {
-      "name": "ui_move",
-      "path": "assets/sfx/ui_move.wav",
+      "name": "enemy_down_2",
+      "path": "assets/sfx/enemy_down_2.wav",
+      "looping": false
+    },
+    {
+      "name": "enemy_growl_1",
+      "path": "assets/sfx/enemy_growl_1.wav",
+      "looping": true
+    },
+    {
+      "name": "enemy_growl_2",
+      "path": "assets/sfx/enemy_growl_2.wav",
+      "looping": true
+    },
+    {
+      "name": "enemy_growl_3",
+      "path": "assets/sfx/enemy_growl_3.wav",
+      "looping": true
+    },
+    {
+      "name": "enemy_hit_1",
+      "path": "assets/sfx/enemy_hit_1.wav",
+      "looping": false
+    },
+    {
+      "name": "enemy_hit_2",
+      "path": "assets/sfx/enemy_hit_2.wav",
+      "looping": false
+    },
+    {
+      "name": "enemy_hit_3",
+      "path": "assets/sfx/enemy_hit_3.wav",
+      "looping": false
+    },
+    {
+      "name": "enemy_scream_1",
+      "path": "assets/sfx/enemy_scream_1.wav",
+      "looping": false
+    },
+    {
+      "name": "enemy_scream_2",
+      "path": "assets/sfx/enemy_scream_2.wav",
+      "looping": false
+    },
+    {
+      "name": "enemy_scream_3",
+      "path": "assets/sfx/enemy_scream_3.wav",
+      "looping": false
+    },
+    {
+      "name": "enemy_spit",
+      "path": "assets/sfx/enemy_spit.wav",
+      "looping": false
+    },
+    {
+      "name": "enemy_swing_1",
+      "path": "assets/sfx/enemy_swing_1.wav",
+      "looping": false
+    },
+    {
+      "name": "enemy_swing_2",
+      "path": "assets/sfx/enemy_swing_2.wav",
+      "looping": false
+    },
+    {
+      "name": "pickup_ammo",
+      "path": "assets/sfx/pickup_ammo.wav",
+      "looping": false
+    },
+    {
+      "name": "pickup_health",
+      "path": "assets/sfx/pickup_health.wav",
+      "looping": false
+    },
+    {
+      "name": "pickup_weapon",
+      "path": "assets/sfx/pickup_weapon.wav",
+      "looping": false
+    },
+    {
+      "name": "player_down",
+      "path": "assets/sfx/player_down.wav",
+      "looping": false
+    },
+    {
+      "name": "player_hurt_1",
+      "path": "assets/sfx/player_hurt_1.wav",
+      "looping": false
+    },
+    {
+      "name": "player_hurt_2",
+      "path": "assets/sfx/player_hurt_2.wav",
+      "looping": false
+    },
+    {
+      "name": "player_hurt_3",
+      "path": "assets/sfx/player_hurt_3.wav",
+      "looping": false
+    },
+    {
+      "name": "reload",
+      "path": "assets/sfx/reload.wav",
+      "looping": false
+    },
+    {
+      "name": "ricochet_1",
+      "path": "assets/sfx/ricochet_1.wav",
+      "looping": false
+    },
+    {
+      "name": "ricochet_2",
+      "path": "assets/sfx/ricochet_2.wav",
+      "looping": false
+    },
+    {
+      "name": "ricochet_3",
+      "path": "assets/sfx/ricochet_3.wav",
+      "looping": false
+    },
+    {
+      "name": "shell_1",
+      "path": "assets/sfx/shell_1.wav",
+      "looping": false
+    },
+    {
+      "name": "shell_2",
+      "path": "assets/sfx/shell_2.wav",
+      "looping": false
+    },
+    {
+      "name": "shell_3",
+      "path": "assets/sfx/shell_3.wav",
+      "looping": false
+    },
+    {
+      "name": "shot_pistol_1",
+      "path": "assets/sfx/shot_pistol_1.wav",
+      "looping": false
+    },
+    {
+      "name": "shot_pistol_2",
+      "path": "assets/sfx/shot_pistol_2.wav",
+      "looping": false
+    },
+    {
+      "name": "shot_pistol_3",
+      "path": "assets/sfx/shot_pistol_3.wav",
+      "looping": false
+    },
+    {
+      "name": "shot_rifle_1",
+      "path": "assets/sfx/shot_rifle_1.wav",
+      "looping": false
+    },
+    {
+      "name": "shot_rifle_2",
+      "path": "assets/sfx/shot_rifle_2.wav",
+      "looping": false
+    },
+    {
+      "name": "shot_rifle_3",
+      "path": "assets/sfx/shot_rifle_3.wav",
+      "looping": false
+    },
+    {
+      "name": "shot_rifle_4",
+      "path": "assets/sfx/shot_rifle_4.wav",
+      "looping": false
+    },
+    {
+      "name": "shot_shotgun_1",
+      "path": "assets/sfx/shot_shotgun_1.wav",
+      "looping": false
+    },
+    {
+      "name": "shot_shotgun_2",
+      "path": "assets/sfx/shot_shotgun_2.wav",
+      "looping": false
+    },
+    {
+      "name": "shotgun_pump",
+      "path": "assets/sfx/shotgun_pump.wav",
+      "looping": false
+    },
+    {
+      "name": "spit_burst_1",
+      "path": "assets/sfx/spit_burst_1.wav",
+      "looping": false
+    },
+    {
+      "name": "spit_burst_2",
+      "path": "assets/sfx/spit_burst_2.wav",
+      "looping": false
+    },
+    {
+      "name": "step_metal_1",
+      "path": "assets/sfx/step_metal_1.wav",
+      "looping": false
+    },
+    {
+      "name": "step_metal_2",
+      "path": "assets/sfx/step_metal_2.wav",
+      "looping": false
+    },
+    {
+      "name": "step_metal_3",
+      "path": "assets/sfx/step_metal_3.wav",
+      "looping": false
+    },
+    {
+      "name": "step_metal_4",
+      "path": "assets/sfx/step_metal_4.wav",
+      "looping": false
+    },
+    {
+      "name": "switch",
+      "path": "assets/sfx/switch.wav",
       "looping": false
     },
     {
       "name": "ui_choose",
       "path": "assets/sfx/ui_choose.wav",
+      "looping": false
+    },
+    {
+      "name": "ui_move",
+      "path": "assets/sfx/ui_move.wav",
       "looping": false
     }
   ],
@@ -188,6 +418,19 @@
         "pattern": "assets/conduit_hive.tour.json",
         "title": "紹介の動画の道筋（自動の操縦が歩いて撃つ）",
         "schema": "assets/tour.schema.json",
+        "role": "tuning"
+      },
+      {
+        "id": "sounds",
+        "pattern": "assets/conduit_hive.sounds.json",
+        "title": "音の鳴らし方（変化・音ごとの量・薬莢と跳弾・敵の唸りと叫び・部屋ごとの環境音）",
+        "schema": "assets/sounds.schema.json",
+        "role": "tuning"
+      },
+      {
+        "id": "mixer",
+        "pattern": "assets/conduit_hive.mixer.json",
+        "title": "音の通り道（銃・敵・自分・環境・UI のバス・ダッキング・cooldown）",
         "role": "tuning"
       }
     ]

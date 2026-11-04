@@ -1,6 +1,6 @@
 // テストの共通の道具: 小さな迷路の Doc・その迷路の描く元（腕と銃の glb は無し）・刻み dt の遊びの時計・遊んでいる場面の値の取り出し。
 mod TestSupport {
-    use fge::{Camera3d, Clock}
+    use fge::{AudioMixer, Camera3d, Clock}
 
     /// マス目の行と start の印（列・行・向き）から小さな迷路の Doc（区画の行は書かない = 全部通路・高さ 4 m・1 マス 4 m）。
     pub def mazeOf(rows: List[String], startCol: Int32, startRow: Int32, yaw: Float64): MazeDoc.Doc =
@@ -16,6 +16,7 @@ mod TestSupport {
                     walk = WalkDoc.defaults(), look = LookDoc.defaults(), maze = maze,
                     weapons = WeaponsDoc.defaults(), viewmodel = FpViewmodelDoc.defaults(), particles = Particles3dDoc.defaults(),
                     player = PlayerDoc.defaults(), enemies = EnemiesDoc.defaults(), spawns = noWaves(), pickups = PickupsDoc.defaults(), tour = TourDoc.defaults(),
+                    sounds = SoundsDoc.defaults(), mixer = AudioMixer.defaults(),
                     stage = None, viewmodels = Map.empty(), creatures = Map.empty(), pickupModels = Map.empty() })
 
     /// wave の無い spawns の Doc（既定の wave は最後の部屋 H のもので、小さな迷路に H は無い。湧かせるテストは Res.withSpawns で wave を書く）。

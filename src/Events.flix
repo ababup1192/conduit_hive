@@ -1,6 +1,7 @@
 // Events — 1 コマの中で起きた事（純粋な値）。遊んでいる場面の事は Session が、画面をまたぐ事（遊び始めた・ポーズ・タイトルへ…）は World が
 // このコマの分だけを持ち、音（Sounds）と、後の段の画面の演出が写す。
 // 前後の World の差から出来事を推し量らない（同じ欄が 1 コマに 2 回変わると取りこぼす）。
+// 後の時刻に起きる事（薬莢・先台）は Session の pending に時刻つきで控え、その時刻を迎えたコマの events へ出す。
 mod Events {
     use Creatures.Kind
 
@@ -8,6 +9,12 @@ mod Events {
     pub enum Event with Eq, ToString {
         // 撃った（構えていた武器）。
         case Fired(WeaponsDoc.Weapon)
+        // 撃った武器の薬莢が床に落ちた（撃ってから SoundsDoc の shellDelay の後）。
+        case ShellLanded(WeaponsDoc.Weapon)
+        // 散弾銃の先台を引いた（撃ってから SoundsDoc の pumpDelay の後）。
+        case Pumped
+        // 弾が壁や柱で跳ねた（当たった回のうち SoundsDoc の ricochetChance の割合）。
+        case Ricochet
         // 弾が敵に当たった（型・当たった所）。
         case EnemyHit(Kind, Hitscan.Part)
         // 敵が倒れた。

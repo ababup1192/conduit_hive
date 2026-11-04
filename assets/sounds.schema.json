@@ -1,0 +1,280 @@
+{
+  "//": "conduit_hive.sounds.json の形（Studio の sections 方言）。既定は src/SoundsDoc.flix の defaults() が正。",
+  "version": 1,
+  "sections": {
+    "maxPerFamily": {
+      "kind": "field",
+      "type": "int",
+      "label": "同じ種類の音を 1 コマに鳴らす数の上限",
+      "order": 1,
+      "default": 2,
+      "min": 1,
+      "max": 8,
+      "group": "鳴らし方"
+    },
+    "pumpDelay": {
+      "kind": "field",
+      "type": "float",
+      "label": "散弾銃を撃ってから先台を引くまで（秒）",
+      "order": 2,
+      "default": 0.3,
+      "min": 0,
+      "max": 2,
+      "group": "鳴らし方"
+    },
+    "ricochetChance": {
+      "kind": "field",
+      "type": "float",
+      "label": "壁や柱に当たった 1 回が跳弾を鳴らす割合",
+      "order": 3,
+      "default": 0.3,
+      "min": 0,
+      "max": 1,
+      "group": "鳴らし方"
+    },
+    "screamChance": {
+      "kind": "field",
+      "type": "float",
+      "label": "攻撃を始めた敵が叫ぶ割合",
+      "order": 4,
+      "default": 0.4,
+      "min": 0,
+      "max": 1,
+      "group": "敵の声"
+    },
+    "screamRange": {
+      "kind": "field",
+      "type": "float",
+      "label": "叫びが聞こえる距離（m）",
+      "order": 5,
+      "default": 18.0,
+      "min": 0,
+      "max": 80,
+      "group": "敵の声"
+    },
+    "growlVoices": {
+      "kind": "field",
+      "type": "int",
+      "label": "唸りを鳴らす近い敵の数（変化の数まで）",
+      "order": 6,
+      "default": 3,
+      "min": 0,
+      "max": 3,
+      "group": "敵の声"
+    },
+    "growlNear": {
+      "kind": "field",
+      "type": "float",
+      "label": "唸りの量が 1 の距離（m）",
+      "order": 7,
+      "default": 3.0,
+      "min": 0,
+      "max": 40,
+      "group": "敵の声"
+    },
+    "growlFar": {
+      "kind": "field",
+      "type": "float",
+      "label": "唸りの量が 0 になる距離（m）",
+      "order": 8,
+      "default": 20.0,
+      "min": 1,
+      "max": 80,
+      "group": "敵の声"
+    },
+    "growlVolume": {
+      "kind": "field",
+      "type": "float",
+      "label": "唸りの量",
+      "order": 9,
+      "default": 0.8,
+      "min": 0,
+      "max": 1,
+      "group": "敵の声"
+    },
+    "growlPitchSpread": {
+      "kind": "field",
+      "type": "float",
+      "label": "唸りの高さのばらつき（1 からの差）",
+      "order": 10,
+      "default": 0.08,
+      "min": 0,
+      "max": 0.5,
+      "group": "敵の声"
+    },
+    "ambienceRadius": {
+      "kind": "field",
+      "type": "float",
+      "label": "足元の周りのこの半径（m）の区画の環境音を混ぜる",
+      "order": 11,
+      "default": 3.0,
+      "min": 0,
+      "max": 10,
+      "group": "環境音"
+    },
+    "menuAmbience": {
+      "kind": "field",
+      "type": "float",
+      "label": "タイトルとクリアの画面の環境音（部屋の既定に掛ける倍率）",
+      "order": 12,
+      "default": 0.35,
+      "min": 0,
+      "max": 1,
+      "group": "環境音"
+    },
+    "shellDelay": {
+      "kind": "record",
+      "label": "撃ってから薬莢が床で鳴るまで（秒）",
+      "order": 13,
+      "fields": {
+        "pistol": {
+          "type": "float",
+          "label": "拳銃",
+          "order": 1,
+          "default": 0.3,
+          "min": 0,
+          "max": 2
+        },
+        "shotgun": {
+          "type": "float",
+          "label": "散弾銃",
+          "order": 2,
+          "default": 0.6,
+          "min": 0,
+          "max": 2
+        },
+        "rifle": {
+          "type": "float",
+          "label": "連射銃",
+          "order": 3,
+          "default": 0.25,
+          "min": 0,
+          "max": 2
+        }
+      }
+    },
+    "room": {
+      "kind": "record",
+      "label": "部屋の環境音の量",
+      "order": 14,
+      "fields": {
+        "machine": {
+          "type": "float",
+          "label": "機械のうなり（amb_machine）",
+          "order": 1,
+          "default": 0.8,
+          "min": 0,
+          "max": 1
+        },
+        "vent": {
+          "type": "float",
+          "label": "換気の風（amb_vent）",
+          "order": 2,
+          "default": 0.4,
+          "min": 0,
+          "max": 1
+        },
+        "pipes": {
+          "type": "float",
+          "label": "配管の流れ（amb_pipes）",
+          "order": 3,
+          "default": 0.3,
+          "min": 0,
+          "max": 1
+        }
+      }
+    },
+    "corridor": {
+      "kind": "record",
+      "label": "通路の環境音の量",
+      "order": 15,
+      "fields": {
+        "machine": {
+          "type": "float",
+          "label": "機械のうなり（amb_machine）",
+          "order": 1,
+          "default": 0.3,
+          "min": 0,
+          "max": 1
+        },
+        "vent": {
+          "type": "float",
+          "label": "換気の風（amb_vent）",
+          "order": 2,
+          "default": 0.8,
+          "min": 0,
+          "max": 1
+        },
+        "pipes": {
+          "type": "float",
+          "label": "配管の流れ（amb_pipes）",
+          "order": 3,
+          "default": 0.5,
+          "min": 0,
+          "max": 1
+        }
+      }
+    },
+    "zones": {
+      "kind": "catalog",
+      "label": "区画ごとの環境音の量（鍵 = 区画の文字）",
+      "order": 16,
+      "fields": {
+        "machine": {
+          "type": "float",
+          "label": "機械のうなり（amb_machine）",
+          "order": 1,
+          "default": 0.3,
+          "min": 0,
+          "max": 1
+        },
+        "vent": {
+          "type": "float",
+          "label": "換気の風（amb_vent）",
+          "order": 2,
+          "default": 0.8,
+          "min": 0,
+          "max": 1
+        },
+        "pipes": {
+          "type": "float",
+          "label": "配管の流れ（amb_pipes）",
+          "order": 3,
+          "default": 0.5,
+          "min": 0,
+          "max": 1
+        }
+      }
+    },
+    "variants": {
+      "kind": "catalog",
+      "label": "変化の数（鍵 = 名前の頭。project.json の <頭>_<番号> と同じ数）",
+      "order": 17,
+      "fields": {
+        "count": {
+          "type": "int",
+          "label": "数",
+          "order": 1,
+          "default": 1,
+          "min": 1,
+          "max": 16
+        }
+      }
+    },
+    "levels": {
+      "kind": "catalog",
+      "label": "音ごとの量（鍵 = 名前の頭。バスの音量に掛かる）",
+      "order": 18,
+      "fields": {
+        "volume": {
+          "type": "float",
+          "label": "倍率",
+          "order": 1,
+          "default": 1.0,
+          "min": 0,
+          "max": 2
+        }
+      }
+    }
+  }
+}

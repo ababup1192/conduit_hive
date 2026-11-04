@@ -1,0 +1,40 @@
+{
+  "version": 1,
+  "note": "音の通り道（形は engine の docs/mixer.schema.json）。gun = 銃声・薬莢・跳弾・先台・持ち替え、enemy = 敵の声と攻撃と体液、player = 自分の傷・足音・拾う音、ambient = 環境音のループと警報と扉、ui = メニューとクリア。銃声が鳴ると環境音を下げる（ダッキング）。cooldowns = 同じ名前がこの秒の内に続いたら鳴らさない。音ごとの量（素材の大きさの違い）は conduit_hive.sounds.json の levels。",
+  "defaultBus": "player",
+  "transitionSeconds": 0.3,
+  "buses": [
+    { "name": "gun", "volume": 0.42, "lowpassGainHF": 1.0 },
+    { "name": "enemy", "volume": 0.32, "lowpassGainHF": 1.0 },
+    { "name": "player", "volume": 0.38, "lowpassGainHF": 1.0 },
+    { "name": "ambient", "volume": 0.4, "lowpassGainHF": 1.0 },
+    { "name": "ui", "volume": 0.4, "lowpassGainHF": 1.0 }
+  ],
+  "routes": [
+    { "bus": "gun", "prefixes": ["shot_", "shell", "ricochet", "shotgun_pump", "reload", "dryfire", "switch"] },
+    { "bus": "enemy", "prefixes": ["enemy_", "spit_burst"] },
+    { "bus": "player", "prefixes": ["player_", "step_", "pickup_"] },
+    { "bus": "ambient", "prefixes": ["amb_", "alarm", "door"] },
+    { "bus": "ui", "prefixes": ["ui_", "clear"] }
+  ],
+  "ducks": [
+    { "bus": "ambient", "by": ["gun"], "depth": 0.55, "attackSeconds": 0.02, "holdSeconds": 0.08, "releaseSeconds": 0.6 }
+  ],
+  "cooldowns": [
+    { "prefix": "shell", "seconds": 0.06 },
+    { "prefix": "ricochet", "seconds": 0.25 },
+    { "prefix": "enemy_hit", "seconds": 0.08 },
+    { "prefix": "enemy_down", "seconds": 0.15 },
+    { "prefix": "enemy_swing", "seconds": 0.12 },
+    { "prefix": "enemy_scream", "seconds": 1.5 },
+    { "prefix": "enemy_spit", "seconds": 0.2 },
+    { "prefix": "spit_burst", "seconds": 0.12 },
+    { "prefix": "player_hurt", "seconds": 0.3 },
+    { "prefix": "step_metal", "seconds": 0.12 },
+    { "prefix": "pickup_", "seconds": 0.1 },
+    { "prefix": "alarm", "seconds": 3.0 },
+    { "prefix": "door", "seconds": 1.0 },
+    { "prefix": "ui_move", "seconds": 0.04 }
+  ],
+  "snapshots": []
+}

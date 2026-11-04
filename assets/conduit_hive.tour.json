@@ -15,7 +15,7 @@
   "giveUpSeconds": 15.0,
   "minHealth": 45.0,
   "minAmmo": 20,
-  "finalWaves": 2,
+  "finalWaves": 1,
   "points": [
     {
       "name": "room_a",

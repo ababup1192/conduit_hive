@@ -21,8 +21,10 @@ mod Game {
             |> App.withHudView(Resources.view(View.hudFrame))
             |> Resources.addClock({ clockOf = w -> w#play, withClock = (c, w) -> { play = c | w }, paceOf = (_, w) -> World.paceOf(w) })
             |> App.withDocTable(Controls.docTable())
-            // このコマに起きた事の音（Sounds が World の events を写す）。
-            |> App.withAudio(ws -> Sounds.events(ws#after#world))
+            // このコマに起きた事の音（Sounds が World の events と前後の歩数・敵の攻撃を写す）・環境音と近い敵の唸り・バスと音ごとの量とダッキング。
+            |> App.withAudio(ws -> Resources.read((r, w) -> Sounds.events(r, ws#before#world, w), ws#after))
+            |> App.withSustained(Resources.read(Sounds.sustained))
+            |> App.withMixer(Resources.read((r, _) -> r#mixer))
             // 3D の粒のビルボードの絵を GPU へ上げる（鍵が同じ間は上げ直さない）。
             |> App.withSpriteAtlases(Resources.read((r, _) -> { texture = Particles3d.textureName(), key = Particles3d.textureKey(), baked = r#particleTexture } :: Nil))
             // 窓を押すとマウスをキャプチャして視点を回す（Esc で放す。放している時の Esc は終了の確認で、既定の Esc の終了は使わない）。

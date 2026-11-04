@@ -141,12 +141,13 @@ mod TestCombat {
                                         :: Events.Event.EnemyHit(Kind.Melee, Hitscan.Part.Body) :: Events.Event.EnemyDown(Kind.Melee) :: Nil),
             eventsIn(shot))
 
-    /// 撃ったコマに鳴らす音は撃った音 1 つ。
+    /// 部屋に入ったコマに撃つと、扉の音と、拳銃の 1 つ目の変化の音が鳴る（最初の 1 発は撃った回数 0 番）。
     @Test
     def testFiringSoundsTheShot(): Unit \ Assert =
         let r = resWith(twoRoomMaze());
-        let shot = World.step(r, { trigger = { pressed = true, held = true } | idle() }, at(0.05, 0.05, World.initial(r)));
-        Assert.assertEq(expected = "shot_pistol" :: Nil, Sounds.events(shot))
+        let start = at(0.05, 0.05, World.initial(r));
+        let shot = World.step(r, { trigger = { pressed = true, held = true } | idle() }, start);
+        Assert.assertEq(expected = "door" :: Sounds.variantOf(SoundsDoc.rec(r#sounds), "shot_pistol", 0) :: Nil, Sounds.events(r, start, shot))
 
     // ── 連射の間隔 ──
 

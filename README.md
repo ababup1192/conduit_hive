@@ -25,12 +25,12 @@ SF の施設の迷路を一人称で進み、群れで迫るクリーチャー�
 | `make bench-horde BENCH_SETS=horde50` | 50 体の群れの 1 コマの重さを測る（`plans/bench-horde.md`） |
 | `make bench-horde BENCH_SETS=horde-waves` | 最後の部屋で wave を湧かせ続け、自動の操縦が 3 分間倒し続ける間の 1 コマの重さ（GC は `JAVA_TOOL_OPTIONS="-Xlog:gc:file=…"`） |
 | `make flow FLOW=e2e/walk.flow`・`e2e/title.flow` | 手順書を画面なしで実機と同じ道に流す（title.flow はタイトル → 遊ぶ → ポーズ → タイトル） |
-| `make video` | 遊んでいる様子の紹介の動画（約 70 秒・1920×1080・60 fps・音つき）を `debug/video/play.mp4` に撮る（手順 `e2e/video.flow`・道筋 `assets/conduit_hive.tour.json` を `START=tour` の自動の操縦が歩いて撃つ。git には入れない） |
+| `make video` | 遊んでいる様子の紹介の動画（約 2 分・1920×1080・60 fps・音つき）を `debug/video/play.mp4` に撮る（手順 `e2e/video.flow`・道筋 `assets/conduit_hive.tour.json` を `START=tour` の自動の操縦が歩いて撃つ。git には入れない） |
 
 ## 読む順
 
 1. **遊ぶ** — `make run`（タイトルから。Enter で最初の部屋 A に立つ。部屋に入るとその部屋の wave が順に湧き（通路に入ると後ろや横の部屋から流れ込む wave もある）、倒れた敵は時々弾や回復を落とす。床の拾う物に近づくと拾う。最後の部屋 H の wave を全部倒すとクリア）。
-2. **`src/Game.flix`** — App の組み立て。毎フレーム 入力（`Controls.step`）→ 規則（`World.step`）→ 描く（`View`）。音は `Sounds`。
+2. **`src/Game.flix`** — App の組み立て。毎フレーム 入力（`Controls.step`）→ 規則（`World.step`）→ 描く（`View`）。音は `Sounds`（起きた事・足音・敵の叫びを一発の音へ、環境音と近い敵の唸りを鳴り続ける音へ写す。バスとダッキングは mixer）。
 3. **`src/World.flix`** — 遊びの状態と 1 コマの規則。画面は `Screen`（`Title`・`Play`・`Clear`）で、遊んでいる場面の値は `Session`（ポーズもその中）。
    1 コマは 歩く（`Walker`）→ 部屋に入る → 拾う（`Pickups`）→ 撃つか空撃ち（`Arsenal`・`Hitscan`）→ 群れ（`Horde`）→ 体力（`Health`）→ 倒した数とクリア。起きた事は `Events`。
 4. **敵** — `src/Horde.flix`（群れの 1 コマ・追う・振る・吐く・撃たれる）→ `FlowField`（共有する距離の地図）・
@@ -54,6 +54,8 @@ SF の施設の迷路を一人称で進み、群れで迫るクリーチャー�
 | `conduit_hive.particles3d.json` | 3D の粒（マズルフラッシュ・火花・体液・projectile の玉） | `Particles3dDoc` |
 | `conduit_hive.walk.json`・`conduit_hive.look.json` | 歩く手触り・ステージの絵の切り替えと lightmap の倍率・施設の色と光と霧 | `WalkDoc`・`LookDoc` |
 | `conduit_hive.uitext.json`・`conduit_hive.theme.json`・`player.keys.json` | 画面の文言・色・キー割り当て | `UiTextDoc`・`ThemeDoc`・`KeysDoc` |
+| `conduit_hive.sounds.json` | 音の鳴らし方（変化の数・音ごとの量・薬莢と先台の遅れ・跳弾の割合・敵の唸りと叫び・部屋ごとの環境音の混ぜ方） | `SoundsDoc` |
+| `conduit_hive.mixer.json` | 音の通り道（銃・敵・自分・環境・UI のバス・銃声で環境音を下げるダッキング・cooldown。形は engine の AudioMixerDoc） | `Controls.mixerPath` |
 
 それぞれ schema が並び、`project.json` の `editor.resources` が Studio に宣言している。
 モデル（`assets/models/*.glb`）は `modeling/` の Blender のスクリプトが作る。ステージは `modeling/stage.py`（約 130 秒）・確かめは `modeling/stage_check.py`。
@@ -63,3 +65,9 @@ glb の `DOCHASH_<16 桁>` は迷路の rows と zones だけから取るハッ�
 
 画風は `AGENTS.local.md` の「このゲームの画風」。生成した `gallery/` と `reference/*.png` は git に入れず、
 退行は `reference/SHA256SUMS.txt` で見る（`make reference-check`）。
+
+## 音
+
+効果音は Freesound の CC0 の素材から `tools/sfx_build.py` が `assets/sfx/*.wav` を作る（出どころは `assets/sfx/CREDITS.md`。作り直しも必ずこの道具を通す）。
+メニュー・持ち替え・クリアの音だけは合成（`art/sfx.snd.star`）。名前の末尾の `_<番号>` は変化で、数は `conduit_hive.sounds.json` の variants。
+音の名前と wav と project.json のずれは `bin/fge audio` で見る。

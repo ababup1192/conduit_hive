@@ -137,4 +137,23 @@ mod TestDocs {
     def testTourAutoWeaponIsNone(): Unit \ Assert =
         let text = "{\"points\": [{\"x\": 1.0, \"z\": 2.0, \"weapon\": \"auto\"}]}";
         Assert.assertEq(expected = Some(None), TourDoc.fromJson(text) |> Option.flatMap(d -> List.head(TourDoc.rec(d)#points)) |> Option.map(p -> p#weapon))
+
+    @Test
+    def testSoundsBrokenJsonIsNone(): Unit \ Assert =
+        Assert.assertEq(expected = true, Option.isEmpty(SoundsDoc.fromJson("{ broken")))
+
+    /// 跳弾の割合だけを上書きすると、ほかの欄と音ごとの量は既定のまま。
+    @Test
+    def testSoundsOverrideOneField(): Unit \ Assert =
+        let d = SoundsDoc.rec(SoundsDoc.defaults());
+        Assert.assertEq(expected = Some((0.9, d#pumpDelay, d#levels)),
+            SoundsDoc.fromJson("{\"ricochetChance\": 0.9}") |> Option.map(x -> (SoundsDoc.rec(x)#ricochetChance, SoundsDoc.rec(x)#pumpDelay, SoundsDoc.rec(x)#levels)))
+
+    /// variants と zones の行に追随する（zones は 1 文字の鍵だけ・書かない量は通路の既定）。
+    @Test
+    def testSoundsCatalogsFollowTheRows(): Unit \ Assert =
+        let d = SoundsDoc.rec(SoundsDoc.defaults());
+        Assert.assertEq(expected = Some((Map#{"shell" => 2}, Map#{'B' => (0.5, d#corridor#vent, d#corridor#pipes)})),
+            SoundsDoc.fromJson("{\"variants\": {\"shell\": {\"count\": 2}}, \"zones\": {\"B\": {\"machine\": 0.5}, \"BB\": {}}}")
+                |> Option.map(x -> (SoundsDoc.rec(x)#variants, SoundsDoc.rec(x)#zones |> Map.map(z -> (z#machine, z#vent, z#pipes)))))
 }

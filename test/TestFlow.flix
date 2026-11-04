@@ -133,11 +133,11 @@ mod TestFlow {
 
     // ── 画面をまたぐ事と音 ──
 
-    /// タイトルで Enter を押したコマに起きた事は「遊び始めた」で、決める音が鳴る。
+    /// タイトルで Enter を押したコマに起きた事は「遊び始めた」で、決める音と、最初の部屋に入った扉の音が鳴る。
     @Test
     def testStartingReportsStartedAndSounds(): Unit \ Assert =
         let started = Controls.step(pressing(Key.Enter), res(), World.title());
-        Assert.assertEq(expected = (Event.Started :: Nil, "ui_choose" :: Nil), (World.screenEventsOf(started), Sounds.events(started)))
+        Assert.assertEq(expected = (Event.Started :: Nil, "ui_choose" :: "door" :: Nil), (World.screenEventsOf(started), Sounds.events(res(), World.title(), started)))
 
     /// ポーズで矢印の下を押すと項目が動き（動かす音）、Enter で「タイトルへ」を決める: 決めた・タイトルへ の順。
     @Test
@@ -146,7 +146,7 @@ mod TestFlow {
         let moved = Controls.step(pressing(Key.Down), res(), paused);
         let chosen = Controls.step(pressing(Key.Enter), res(), moved);
         Assert.assertEq(expected = (Event.Paused :: Nil, "ui_move" :: Nil, Event.MenuChosen :: Event.ToTitle :: Nil, true),
-            (World.screenEventsOf(paused), Sounds.events(moved), World.screenEventsOf(chosen), World.isOnTitle(chosen)))
+            (World.screenEventsOf(paused), Sounds.events(res(), paused, moved), World.screenEventsOf(chosen), World.isOnTitle(chosen)))
 
     /// 前のコマの画面をまたぐ事は、次のコマには残らない。
     @Test

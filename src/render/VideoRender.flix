@@ -4,7 +4,7 @@
 //
 // 手順は e2e/video.flow（e2e と同じ flow の実行器）で、1 フレームずつ World を進める。歩いて撃つのは `start tour` の自動の操縦（Pilot）。
 // 撮るのは mark in_<名前> から out_<名前> までの区間だけで、並んだ順につなぐ。手順は 60 fps で流し、VIDEO_FPS ごとに間引いて描く。
-// 音は撮るフレームごとに鳴った音の名前（App.withAudio と同じ Sounds.events）を、project.json の sounds の wav で混ぜる（AudioMixdown）。
+// 音は撮るフレームごとに鳴った音の名前と鳴り続ける音（App.withAudio・withSustained と同じ Sounds）を、project.json の sounds の wav で、遊ぶ時と同じミキサー（Res の mixer）を通して混ぜる（AudioMixdown）。
 // wav を差し替えれば同じ口で撮り直せる。
 //
 // 環境変数: VIDEO_FPS（既定 60。60 を割り切る数）・VIDEO_FLOW（手順。既定 e2e/video.flow）・VIDEO_OUT（debug/video/<名前>。既定 play）・
@@ -12,7 +12,7 @@
 //           FGE_GPU / FGE_VIDEO_PAINT / FFMPEG（VideoOut.settingsOf）
 mod VideoRender {
     use fge::{
-        App, AudioMixdown, AudioMixer, DocJson, Flow, FontAtlas, HeadlessFont, HeadlessLoad, HeadlessRender, JsonCodec,
+        App, AudioMixdown, DocJson, Flow, FontAtlas, HeadlessFont, HeadlessLoad, HeadlessRender, JsonCodec,
         PxSpriteAtlas, Render, Resources, VideoOut
     }
 
@@ -126,7 +126,7 @@ mod VideoRender {
             let (name, file, looping) = e;
             if (looping) AudioMixdown.loadLoopStart(sampleRate(), file) |> Option.map(at -> (name, at)) else None
         }) |> List.toMap;
-        let frames = steps |> List.map(st -> { plays = st#sounds, sustained = st#sustained, mixer = AudioMixer.defaults() });
+        let frames = steps |> List.map(st -> { plays = st#sounds, sustained = st#sustained, mixer = Resources.read((r, _) -> r#mixer, st#after) });
         let mixed = AudioMixdown.mixdownStereo(sampleRate(), Int32.toFloat64(playFps()), sounds, loops, frames);
         let out = new DataOutputStream(new BufferedOutputStream(new FileOutputStream(path)));
         let n = Int32.min(Vector.length(mixed#left), Vector.length(mixed#right));

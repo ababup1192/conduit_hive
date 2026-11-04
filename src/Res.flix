@@ -3,7 +3,7 @@
 // 遊びの状態は World が持ち、App の w は Resources.With[Res, World] の組（Game）。
 // Res は World を使わない（使う向きは World → Res だけ。lint/rules.flix の module-cycle）。
 mod Res {
-    use fge::{CollisionShape3d, CollisionWorld3d, PxSpriteAtlas, Rect2, Scene3d, Texture3d}
+    use fge::{AudioMixer, CollisionShape3d, CollisionWorld3d, PxSpriteAtlas, Rect2, Scene3d, Texture3d}
 
     /// 起動時と描き出しが同じ形で読む Doc の束と、ステージ・腕と銃・敵・拾う武器の glb（Controls.loadDocs）。
     pub type alias Docs = {
@@ -21,6 +21,9 @@ mod Res {
         spawns = SpawnsDoc.Doc,
         pickups = PickupsDoc.Doc,
         tour = TourDoc.Doc,
+        sounds = SoundsDoc.Doc,
+        // 音の通り道（conduit_hive.mixer.json。音ごとの量は sounds の levels から Res が足す）。
+        mixer = AudioMixer.Mixer,
         // ベイクしたステージ（読めなければ None・灰色の箱で描く）。
         stage = Option[StageModel.Stage],
         viewmodels = FpViewmodel.Viewmodels,
@@ -45,6 +48,10 @@ mod Res {
         pickups = PickupsDoc.Doc,
         // 紹介の動画で自動の操縦が歩いて撃つ道筋。
         tour = TourDoc.Doc,
+        // 音の鳴らし方と、音の通り道（mixerDoc = conduit_hive.mixer.json のまま・mixer = それに sounds の levels を足した物で、鳴らす時に通す）。
+        sounds = SoundsDoc.Doc,
+        mixerDoc = AudioMixer.Mixer,
+        mixer = AudioMixer.Mixer,
         // ベイクしたステージ（読めなければ None）。迷路と見た目の Doc を読み直した時に、区画の絵をここから組み直す。
         stage = Option[StageModel.Stage],
         viewmodels = FpViewmodel.Viewmodels,
@@ -80,7 +87,8 @@ mod Res {
         let stage = stageOf(docs#maze, docs#look, docs#stage);
         withPlans({ uiText = docs#uiText, keys = docs#keys, theme = docs#theme, walk = docs#walk, look = docs#look, mazeDoc = docs#maze,
           weapons = docs#weapons, viewmodel = docs#viewmodel, particles = docs#particles, player = docs#player, enemies = docs#enemies,
-          spawns = docs#spawns, pickups = docs#pickups, tour = docs#tour, stage = docs#stage, viewmodels = docs#viewmodels, creatures = docs#creatures, timing = Creatures.timingOf(docs#creatures),
+          spawns = docs#spawns, pickups = docs#pickups, tour = docs#tour,
+          sounds = docs#sounds, mixerDoc = docs#mixer, mixer = SoundsDoc.mixerOf(docs#mixer, docs#sounds), stage = docs#stage, viewmodels = docs#viewmodels, creatures = docs#creatures, timing = Creatures.timingOf(docs#creatures),
           spawnPoints = stage#spawnPoints, wavePlans = Map.empty(), tourWavePlans = Map.empty(), pickupPoints = Pickups.pointsOf(stage#maze, docs#pickups),
           pickupArt = PickupModels.build(LookDoc.rec(docs#look), docs#pickups, docs#pickupModels), maze = stage#maze, collision = stage#collision, openCells = stage#openCells, props = stage#props, hitTargets = stage#hitTargets,
           art = stage#art, propArt = stage#propArt, stageTextures = stage#textures, particleTexture = Particles3d.textureOf() })
@@ -160,6 +168,10 @@ mod Res {
     pub def withSpawns(spawns: SpawnsDoc.Doc, res: Res): Res = withPlans({ spawns = spawns | res })
 
     pub def withTour(tour: TourDoc.Doc, res: Res): Res = withPlans({ tour = tour | res })
+
+    pub def withSounds(sounds: SoundsDoc.Doc, res: Res): Res = { sounds = sounds, mixer = SoundsDoc.mixerOf(res#mixerDoc, sounds) | res }
+
+    pub def withMixer(mixer: AudioMixer.Mixer, res: Res): Res = { mixerDoc = mixer, mixer = SoundsDoc.mixerOf(mixer, res#sounds) | res }
 
     pub def withPickups(pickups: PickupsDoc.Doc, res: Res): Res =
         { pickups = pickups, pickupPoints = Pickups.pointsOf(res#maze, pickups),
