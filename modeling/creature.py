@@ -155,15 +155,22 @@ def clips_melee():
     hit = [(0, {}), (4, {"spine": {"r": (-14, 0, 4)}, "chest": {"r": (-10, 0, 0)}, "head": {"r": (-18, 0, 8)}, "jaw": {"r": (18, 0, 0)},
                          "hips": {"t": (0, 0.04, -0.02)}, "upperarm.L": {"r": (22, 0, 18)}, "upperarm.R": {"r": (14, 0, -24)},
                          **both("forearm", {"r": (-25, 0, 0)})}), (15, {})]
-    buckle = {"hips": {"t": (0, 0.05, -0.42), "r": (14, 0, 0)}, "thigh.L": {"r": (-28, 0, 4)}, "thigh.R": {"r": (-14, 0, -4)},
-              **both("shin", {"r": (98, 0, 0)}), **both("foot", {"r": (-30, 0, 0)}), "spine": {"r": (22, 0, 0)}, "head": {"r": (12, 0, 6)}, "jaw": {"r": (20, 0, 0)},
-              **both("upperarm", {"r": (12, 0, 10)})}
-    down = {"hips": {"t": (0, -0.18, -0.86), "r": (66, 0, -6)}, "thigh.L": {"r": (54, 0, 6)}, "thigh.R": {"r": (52, 0, -10)},
-            **both("shin", {"r": (-62, 0, 0)}), **both("foot", {"r": (84, 0, 0)}), "spine": {"r": (-2, 0, 0)}, "chest": {"r": (-6, 0, 0)},
-            "neck": {"r": (-10, 0, 0)}, "head": {"r": (-8, 0, 40)}, "jaw": {"r": (24, 0, 0)},
-            "upperarm.L": {"r": (-150, 0, 22)}, "forearm.L": {"r": (21, 0, 0)}, "upperarm.R": {"r": (16, 0, -24)}, "forearm.R": {"r": (28, 0, 0)}}
-    die = [(0, {}), (8, {"spine": {"r": (-14, 0, 0)}, "head": {"r": (-22, 0, 0)}, **both("upperarm", {"r": (20, 0, 14)}), "jaw": {"r": (22, 0, 0)}}),
-           (28, buckle), (36, V.lerp_spec(buckle, down, 0.4)), (42, V.lerp_spec(buckle, down, 0.75)), (48, V.lerp_spec(down, buckle, 0.0)), (56, V.lerp_spec(down, buckle, -0.04)), (72, down)]
+    # 死ぬ: 膝が床へ落ち、膝を軸に前へ倒れ込んで、うつ伏せで止まる。
+    # 腕は倒れる間ずっと胴より上に置く（手が先に床へ着くと、一番低い所をそろえる時に体が持ち上がって跳ねる）
+    recoil = {"spine": {"r": (-14, 0, 0)}, "head": {"r": (-22, 0, 0)}, **both("upperarm", {"r": (20, 0, 14)}), "jaw": {"r": (22, 0, 0)}}
+    kneel = {"hips": {"t": (0, 0.02, -0.5), "r": (10, 0, 0)}, "thigh.L": {"r": (-4, 0, 4)}, "thigh.R": {"r": (2, 0, -4)},
+             **both("shin", {"r": (74, 0, 0)}), **both("foot", {"r": (80, 0, 0)}), "spine": {"r": (16, 0, 0)}, "chest": {"r": (6, 0, 0)},
+             "head": {"r": (16, 0, 6)}, "jaw": {"r": (22, 0, 0)}, **both("upperarm", {"r": (-40, 0, 16)}), **both("forearm", {"r": (-75, 0, 0)}), **both("hand", {"r": (-20, 0, 0)})}
+    tip = {"hips": {"t": (0, -0.1, -0.7), "r": (40, 0, -3)}, "thigh.L": {"r": (8, 0, 5)}, "thigh.R": {"r": (12, 0, -6)},
+           **both("shin", {"r": (34, 0, 0)}), **both("foot", {"r": (80, 0, 0)}), "spine": {"r": (10, 0, 0)}, "chest": {"r": (2, 0, 0)},
+           "neck": {"r": (-12, 0, 0)}, "head": {"r": (-6, 0, 20)}, "jaw": {"r": (24, 0, 0)},
+           "upperarm.L": {"r": (-105, 0, 20)}, "forearm.L": {"r": (-30, 0, 0)}, "upperarm.R": {"r": (40, 0, -40)}, "forearm.R": {"r": (-40, 0, 0)}}
+    down = {"hips": {"t": (0, -0.22, -0.86), "r": (88, 0, -6)}, "thigh.L": {"r": (16, 0, 8)}, "thigh.R": {"r": (12, 0, -10)},
+            "shin.L": {"r": (-12, 0, 0)}, "shin.R": {"r": (-6, 0, 0)}, **both("foot", {"r": (10, 0, 0)}), "spine": {"r": (-20, 0, 0)}, "chest": {"r": (-12, 0, 0)},
+            "neck": {"r": (-14, 0, 0)}, "head": {"r": (-14, 0, 40)}, "jaw": {"r": (24, 0, 0)},
+            "upperarm.L": {"r": (-150, 0, 22)}, "forearm.L": {"r": (10, 0, 0)}, "upperarm.R": {"r": (34, 0, -40)}, "forearm.R": {"r": (16, 0, 0)}}
+    die = [(0, {}), (8, recoil), (14, V.lerp_spec(recoil, kneel, 0.4)), (19, V.lerp_spec(recoil, kneel, 0.8)), (24, kneel), (32, V.lerp_spec(kneel, tip, 0.25)), (40, tip),
+           (44, V.lerp_spec(tip, down, 0.55)), (48, V.lerp_spec(down, tip, -0.04)), (56, V.lerp_spec(down, tip, 0.05)), (72, down)]
     return {"idle": idle, "walk": walk, "attack": attack, "hit": hit, "die": die}
 
 
@@ -265,8 +272,10 @@ def clips_ranged():
                               "shin.L": {"r": (34, 0, 0)}, "shin.R": {"r": (52, 0, 0)}, **both("foot", {"r": (-10, 0, 0)}), "spine": {"r": (-4, 0, 0)},
                               "chest": {"r": (-4, 0, 0)}, "neck": {"r": (-10, 0, 0)}, "head": {"r": (-14, 0, -30)}, "jaw": {"r": (30, 0, 0)},
                               **both("upperarm", {"r": (-30, 0, 50)}), **both("forearm", {"r": (-20, 0, 0)})})
+    # 転がる途中も膝を曲げたままにする（脚が伸びると足が先に床へ着き、尻が浮いて跳ねる）
+    roll = merge(V.lerp_spec(sit, flat, 0.5), {**both("shin", {"r": (96, 0, 0)}), **both("foot", {"r": (-26, 0, 0)})})
     die = [(0, {}), (8, merge(puff(1.2), {"spine": {"r": (-14, 0, 0)}, "head": {"r": (-22, 0, 0)}, "jaw": {"r": (26, 0, 0)}})),
-           (30, sit), (42, V.lerp_spec(sit, flat, 0.5)), (52, flat), (60, V.lerp_spec(flat, sit, 0.05)), (84, flat)]
+           (30, sit), (42, roll), (52, flat), (60, V.lerp_spec(flat, sit, 0.05)), (84, flat)]
     return {"idle": idle, "walk": walk, "attack": attack, "hit": hit, "die": die}
 
 
