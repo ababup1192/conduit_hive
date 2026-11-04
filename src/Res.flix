@@ -20,6 +20,7 @@ mod Res {
         enemies = EnemiesDoc.Doc,
         spawns = SpawnsDoc.Doc,
         pickups = PickupsDoc.Doc,
+        tour = TourDoc.Doc,
         // ベイクしたステージ（読めなければ None・灰色の箱で描く）。
         stage = Option[StageModel.Stage],
         viewmodels = FpViewmodel.Viewmodels,
@@ -42,6 +43,8 @@ mod Res {
         enemies = EnemiesDoc.Doc,
         spawns = SpawnsDoc.Doc,
         pickups = PickupsDoc.Doc,
+        // 紹介の動画で自動の操縦が歩いて撃つ道筋。
+        tour = TourDoc.Doc,
         // ベイクしたステージ（読めなければ None）。迷路と見た目の Doc を読み直した時に、区画の絵をここから組み直す。
         stage = Option[StageModel.Stage],
         viewmodels = FpViewmodel.Viewmodels,
@@ -73,7 +76,7 @@ mod Res {
         let stage = stageOf(docs#maze, docs#look, docs#spawns, docs#stage);
         { uiText = docs#uiText, keys = docs#keys, theme = docs#theme, walk = docs#walk, look = docs#look, mazeDoc = docs#maze,
           weapons = docs#weapons, viewmodel = docs#viewmodel, particles = docs#particles, player = docs#player, enemies = docs#enemies,
-          spawns = docs#spawns, pickups = docs#pickups, stage = docs#stage, viewmodels = docs#viewmodels, creatures = docs#creatures, timing = Creatures.timingOf(docs#creatures),
+          spawns = docs#spawns, pickups = docs#pickups, tour = docs#tour, stage = docs#stage, viewmodels = docs#viewmodels, creatures = docs#creatures, timing = Creatures.timingOf(docs#creatures),
           spawnPoints = stage#spawnPoints, pickupPoints = Pickups.pointsOf(stage#maze, docs#pickups),
           pickupArt = PickupModels.build(LookDoc.rec(docs#look), docs#pickups, docs#pickupModels), maze = stage#maze, collision = stage#collision, props = stage#props, hitTargets = stage#hitTargets,
           art = stage#art, propArt = stage#propArt, stageTextures = stage#textures, particleTexture = Particles3d.textureOf() }
@@ -142,6 +145,8 @@ mod Res {
     pub def withEnemies(enemies: EnemiesDoc.Doc, res: Res): Res = { enemies = enemies | res }
 
     pub def withSpawns(spawns: SpawnsDoc.Doc, res: Res): Res = { spawns = spawns, spawnPoints = Spawner.pointsOf(res#maze, spawns) | res }
+
+    pub def withTour(tour: TourDoc.Doc, res: Res): Res = { tour = tour | res }
 
     pub def withPickups(pickups: PickupsDoc.Doc, res: Res): Res =
         { pickups = pickups, pickupPoints = Pickups.pointsOf(res#maze, pickups),

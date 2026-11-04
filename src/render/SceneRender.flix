@@ -7,9 +7,9 @@ mod SceneRender {
 
     import java.io.File
 
-    def design(): Vec2.Vec2 = { x = World.width(), y = World.height() }
+    pub def design(): Vec2.Vec2 = { x = World.width(), y = World.height() }
 
-    def ttf(): String = "assets/Xolonium-Regular.ttf"
+    pub def ttf(): String = "assets/Xolonium-Regular.ttf"
 
     def cfgOf(outDir: String, atlas: FontAtlas, bg: Color): HeadlessRender.RenderConfig =
         { design = design(), scale = 2, background = bg,

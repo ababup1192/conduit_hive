@@ -12,6 +12,7 @@
     {"name": "weapon", "kind": "text", "doc": "構えている武器（Pistol・Shotgun・Rifle）"},
     {"name": "shots", "kind": "num", "doc": "撃った回数の合計"},
     {"name": "health", "kind": "num", "doc": "プレイヤーの体力"},
+    {"name": "pilot", "kind": "text", "doc": "自動の操縦が向かっている点の名前（start tour の時だけ。歩き終えたら空）"},
     {"name": "enemies", "kind": "num", "doc": "倒れていない敵の数"}
   ],
   "drives": [],
@@ -19,6 +20,7 @@
     {"name": "title", "doc": "タイトルの画面（起動の既定）", "args": {}},
     {"name": "play", "doc": "迷路の start の印に立って遊び始めた所", "args": {}},
     {"name": "at", "doc": "遊び始めて、体を x・z（m）に置き、yaw（度。0 が北・90 が東）を向いた所", "args": {"x": "0", "yaw": "0", "z": "0"}},
+    {"name": "tour", "doc": "紹介の動画の道筋（conduit_hive.tour.json）を自動の操縦が歩いて撃ち始める所（迷路の start の印から）", "args": {}},
     {"name": "shot:corridor", "doc": "ギャラリーの場面（gallery/corridor.png）", "args": {}},
     {"name": "shot:hall", "doc": "ギャラリーの場面（gallery/hall.png）", "args": {}},
     {"name": "shot:fire", "doc": "ギャラリーの場面（gallery/fire.png）", "args": {}},

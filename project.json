@@ -182,6 +182,13 @@
         "schema": "project.schema.json",
         "title": "ゲームの題・画面",
         "role": "tuning"
+      },
+      {
+        "id": "tour",
+        "pattern": "assets/conduit_hive.tour.json",
+        "title": "紹介の動画の道筋（自動の操縦が歩いて撃つ）",
+        "schema": "assets/tour.schema.json",
+        "role": "tuning"
       }
     ]
   }

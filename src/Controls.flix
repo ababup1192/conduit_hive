@@ -114,7 +114,7 @@ mod Controls {
           walk = WalkDoc.load(WalkDoc.path()), look = LookDoc.load(LookDoc.path()), maze = MazeDoc.load(MazeDoc.path()),
           weapons = WeaponsDoc.load(WeaponsDoc.path()), viewmodel = FpViewmodelDoc.load(FpViewmodelDoc.path()),
           particles = Particles3dDoc.load(Particles3dDoc.path()), player = PlayerDoc.load(PlayerDoc.path()), enemies = EnemiesDoc.load(EnemiesDoc.path()),
-          spawns = SpawnsDoc.load(SpawnsDoc.path()), pickups = PickupsDoc.load(PickupsDoc.path()), stage = StageModel.load(),
+          spawns = SpawnsDoc.load(SpawnsDoc.path()), pickups = PickupsDoc.load(PickupsDoc.path()), tour = TourDoc.load(TourDoc.path()), stage = StageModel.load(),
           viewmodels = FpViewmodel.load(), creatures = Creatures.load(), pickupModels = PickupModels.load() }
 
     def restartPlay(res: Res.Res, w: World.World): World.World =
@@ -140,6 +140,8 @@ mod Controls {
 
     def reloadPickups(res: Res.Res): Res.Res \ Fs.FileRead = Res.withPickups(PickupsDoc.load(PickupsDoc.path()), res)
 
+    def reloadTour(res: Res.Res): Res.Res \ Fs.FileRead = Res.withTour(TourDoc.load(TourDoc.path()), res)
+
     def reloadWalk(res: Res.Res): Res.Res \ Fs.FileRead = Res.withWalk(WalkDoc.load(WalkDoc.path()), res)
 
     def reloadLook(res: Res.Res): Res.Res \ Fs.FileRead = Res.withLook(LookDoc.load(LookDoc.path()), res)
@@ -162,6 +164,7 @@ mod Controls {
             :: Resources.reloadRow("enemies", EnemiesDoc.path(), reloadEnemies, unchanged)
             :: Resources.reloadRow("spawns", SpawnsDoc.path(), reloadSpawns, unchanged)
             :: Resources.reloadRow("pickups", PickupsDoc.path(), reloadPickups, unchanged)
+            :: Resources.reloadRow("tour", TourDoc.path(), reloadTour, unchanged)
             :: Resources.reloadRow("walk", WalkDoc.path(), reloadWalk, unchanged)
             :: Resources.reloadRow("look", LookDoc.path(), reloadLook, unchanged)
             :: Resources.reloadRow("maze", MazeDoc.path(), reloadMaze, restartPlay)

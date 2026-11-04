@@ -15,7 +15,7 @@ mod TestSupport {
         ({ uiText = UiTextDoc.defaults(), keys = KeysDoc.defaults(), theme = ThemeDoc.defaults(),
                     walk = WalkDoc.defaults(), look = LookDoc.defaults(), maze = maze,
                     weapons = WeaponsDoc.defaults(), viewmodel = FpViewmodelDoc.defaults(), particles = Particles3dDoc.defaults(),
-                    player = PlayerDoc.defaults(), enemies = EnemiesDoc.defaults(), spawns = SpawnsDoc.defaults(), pickups = PickupsDoc.defaults(),
+                    player = PlayerDoc.defaults(), enemies = EnemiesDoc.defaults(), spawns = SpawnsDoc.defaults(), pickups = PickupsDoc.defaults(), tour = TourDoc.defaults(),
                     stage = None, viewmodels = Map.empty(), creatures = Map.empty(), pickupModels = Map.empty() })
 
     // ── 遊んでいる場面の値（ほかの画面なら None） ──

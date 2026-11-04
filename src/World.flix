@@ -88,7 +88,8 @@ mod World {
 
     /// 歩いている間の中身: 体・マウスの視点・F3 の診断を出すか・武器・見回しの遅れ（度。ビューモデルの揺れ）・3D の粒・
     /// 敵の群れ・体力・やり直す所・最後にいた区画（壁の中の None は数えない）・このコマに起きた事・
-    /// ポーズ・拾った物の番号・拾った時の知らせ・倒した数・始めた時刻・クリアした時刻。
+    /// ポーズ・拾った物の番号・拾った時の知らせ・倒した数・始めた時刻・クリアした時刻・
+    /// 紹介の動画の自動の操縦（`start tour` の時だけ Some。キーとマウスの代わりに歩いて撃ち、体力と弾を TourDoc の下限より下げない）。
     pub type alias SessionRec = {
         walker = Walker.Walker,
         look = Look,
@@ -106,7 +107,8 @@ mod World {
         notice = Option[Notice],
         kills = Int32,
         startedAt = Float64,
-        clearedAt = Option[Float64]
+        clearedAt = Option[Float64],
+        pilot = Option[Pilot.State]
     }
 
     /// 歩いている間の中身。作るのは World の中だけ。読む口は Session を受ける関数・書く口は mapSession。
@@ -150,7 +152,7 @@ mod World {
           horde = Horde.empty(), health = Health.full(PlayerDoc.rec(res#player)),
           checkpoint = { x = s#x, z = s#z, yawDeg = s#yaw, zone = None, arsenal = Arsenal.initial(res#weapons), kills = 0, taken = Set.empty() },
           lastZone = None, events = Nil,
-          pause = Pause.Running, taken = Set.empty(), notice = None, kills = 0, startedAt = t, clearedAt = None }
+          pause = Pause.Running, taken = Set.empty(), notice = None, kills = 0, startedAt = t, clearedAt = None, pilot = None }
 
     /// 遊びから始める状態（迷路の start の印に立ち、始めた時刻は 0 秒）。
     pub def initial(res: Res.Res): World =
@@ -162,6 +164,13 @@ mod World {
     /// 今の時計のまま、迷路の start の印から遊び直す（始めた時刻は今。タイトルにいた時間をかかった時間に足さない）。
     pub def restart(res: Res.Res, w: World): World =
         { screen = Screen.Play(SessionOf.SessionOf(freshSession(res, seconds(w)))), quit = Quit.Playing | w }
+
+    /// 遊んでいる場面に自動の操縦を付ける（紹介の動画の `start tour`）。
+    pub def withPilot(w: World): World = mapSession(s -> { pilot = Some(Pilot.start()), look = Look.Captured | s }, w)
+
+    /// 自動の操縦が向かっている点の名前（付いていない・歩き終えたら空）。
+    pub def pilotPoint(res: Res.Res, w: World): String =
+        sessionOf(w) |> Option.flatMap(s -> rec(s)#pilot) |> Option.map(Pilot.pointName(TourDoc.rec(res#tour))) |> Option.getWithDefault("")
 
     /// このコマに起きた画面をまたぐ事。
     pub def screenEventsOf(w: World): List[Event] = w#events
@@ -308,11 +317,25 @@ mod World {
     pub def step(res: Res.Res, input: Input, w: World): World = match w#screen {
         case Screen.Play(s) if w#quit != Quit.Playing or rec(s)#pause != Pause.Running => mapSession(r -> { events = Nil | r }, w)
         case Screen.Play(s) =>
-            let next = stepSession(res, input, w#play, rec(s));
+            let (command, pilot) = pilotInput(res, w#play, input, rec(s));
+            let next = guarded(res, { pilot = pilot | stepSession(res, command, w#play, rec(s)) });
             if (isClearDue(res, w#play, next)) withEvent(Event.ClearShown, { screen = Screen.Clear(tallyAt(w#play, next)) | w })
             else { screen = Screen.Play(SessionOf.SessionOf(next)) | w }
         case _ => w
     }
+
+    /// 自動の操縦が付いていれば、その入力と次の状態（付いていなければ手の入力のまま）。
+    def pilotInput(res: Res.Res, clock: Clock.Clock[PlayClock.Play], input: Input, s: SessionRec): (Input, Option[Pilot.State]) =
+        let at = { t = Clock.secondsOf(Clock.nowOf(clock)), dt = Num.clamp(0.0, 0.05, Clock.dtOf(clock)),
+                   walker = s#walker, arsenal = s#arsenal, horde = s#horde };
+        s#pilot |> Option.map(p -> { let (command, next) = Pilot.drive(res, at, p); (command, Some(next)) })
+                |> Option.getWithDefault((input, None))
+
+    /// 自動の操縦の間だけ、体力を TourDoc の下限より下げず、弾が下限を切ったら上限まで足す。
+    def guarded(res: Res.Res, s: SessionRec): SessionRec =
+        let tour = TourDoc.rec(res#tour);
+        if (Option.isEmpty(s#pilot)) s
+        else { health = Health.atLeast(tour#minHealth, s#health), arsenal = Arsenal.refilledBelow(res#weapons, tour#minAmmo, s#arsenal) | s }
 
     /// クリアしてから clearSeconds が過ぎたか。
     def isClearDue(res: Res.Res, clock: Clock.Clock[PlayClock.Play], s: SessionRec): Bool =

@@ -1,0 +1,16 @@
+# 紹介の動画（make video → debug/video/play.mp4）の手順。道筋は assets/conduit_hive.tour.json（自動の操縦が歩いて撃つ）。
+# タイトル（Enter で遊び始める所まで）→ 迷路の start の印から自動の操縦: 通路 → 散弾銃 → 群れ → 連射銃 → 最後の部屋 H の群れ → クリアの画面。
+# タイトルの Enter と自動の操縦の幕は同じ start の印・同じ向きから始まるので、つないでも絵は飛ばない。
+fps 60
+
+start title
+mark in_title
+wait 2.5
+tap confirm
+mark out_title
+
+start tour
+mark in_tour
+until screen=Clear max 240
+wait 3.5
+mark out_tour

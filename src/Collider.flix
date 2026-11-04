@@ -3,7 +3,7 @@
 // 天井はマスごとの板（弾を止めるだけ。体は天井に届かない）。
 // 体を箱の中で動かす規則は engine の CharacterBody3d。弾の当たりは Hitscan が同じ箱を的にする。
 mod Collider {
-    use fge::{CollisionShape3d, CollisionWorld3d, Vec3}
+    use fge::{CollisionShape3d, CollisionWorld3d, Ray3d, Vec3}
 
     /// 床の板の厚さ（m）。
     def slab(): Float64 = 1.0
@@ -54,4 +54,13 @@ mod Collider {
     /// 迷路の当たり判定の集まり（格子の 1 マスは迷路の 1 マスと同じ幅）。props = 床に立てた物（撃つ的の柱など）。
     pub def worldOf(m: Maze.Maze, props: List[CollisionShape3d.Box3d]): CollisionWorld3d.CollisionWorld3d =
         CollisionWorld3d.build(m#cellSize, List.append(wallBoxes(m), floorBox(m) :: props))
+
+    /// origin から destination まで、箱に遮られずに線が引けるか（敵の見通し・自動の操縦が狙える敵を選ぶ）。
+    pub def isLineClear(world: CollisionWorld3d.CollisionWorld3d, origin: Vec3.Vec3, destination: Vec3.Vec3): Bool =
+        let toward = Vec3.sub(destination, origin);
+        let length = Vec3.length(toward);
+        let ray = Ray3d.ray3d(origin, toward);
+        let middle = Vec3.add(origin, Vec3.mul(toward, 0.5));
+        CollisionWorld3d.boxesNear(world, middle, length * 0.5 + 0.5)
+            |> List.forAll(b -> Option.isEmpty(Ray3d.hitBox(ray, length, b)))
 }

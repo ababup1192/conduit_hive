@@ -1,0 +1,190 @@
+{
+  "//": "conduit_hive.tour.json の形（Studio の sections 方言）。既定は src/TourDoc.flix の defaults() が正。",
+  "version": 1,
+  "sections": {
+    "turnRate": {
+      "kind": "field",
+      "type": "float",
+      "label": "向きを変える速さの上限（度/秒）",
+      "order": 1,
+      "default": 220.0,
+      "min": 10,
+      "max": 720,
+      "group": "向き"
+    },
+    "lookEase": {
+      "kind": "field",
+      "type": "float",
+      "label": "狙いへ寄る勢い（ずれが消える秒）",
+      "order": 2,
+      "default": 0.16,
+      "min": 0.01,
+      "max": 2,
+      "group": "向き"
+    },
+    "turnSmooth": {
+      "kind": "field",
+      "type": "float",
+      "label": "向きの速さがなじむ秒",
+      "order": 3,
+      "default": 0.1,
+      "min": 0.0,
+      "max": 1,
+      "group": "向き"
+    },
+    "aimRange": {
+      "kind": "field",
+      "type": "float",
+      "label": "狙う melee の距離（m）",
+      "order": 4,
+      "default": 14.0,
+      "min": 1,
+      "max": 80,
+      "group": "撃つ"
+    },
+    "rangedAimRange": {
+      "kind": "field",
+      "type": "float",
+      "label": "狙う ranged の距離（m）",
+      "order": 5,
+      "default": 45.0,
+      "min": 1,
+      "max": 80,
+      "group": "撃つ"
+    },
+    "fireCone": {
+      "kind": "field",
+      "type": "float",
+      "label": "撃ち始める狙いのずれ（度）",
+      "order": 6,
+      "default": 3.0,
+      "min": 0.1,
+      "max": 30,
+      "group": "撃つ"
+    },
+    "aimHeight": {
+      "kind": "field",
+      "type": "float",
+      "label": "狙う高さ（敵の足元から m）",
+      "order": 7,
+      "default": 1.15,
+      "min": 0,
+      "max": 3,
+      "group": "撃つ"
+    },
+    "shotgunRange": {
+      "kind": "field",
+      "type": "float",
+      "label": "auto で散弾銃へ替える距離（m）",
+      "order": 8,
+      "default": 7.0,
+      "min": 0,
+      "max": 40,
+      "group": "撃つ"
+    },
+    "switchHold": {
+      "kind": "field",
+      "type": "float",
+      "label": "持ち替えてから次に替えるまで（秒）",
+      "order": 9,
+      "default": 1.6,
+      "min": 0,
+      "max": 10,
+      "group": "撃つ"
+    },
+    "arriveRadius": {
+      "kind": "field",
+      "type": "float",
+      "label": "点に着いたとみなす距離（m）",
+      "order": 10,
+      "default": 0.8,
+      "min": 0.1,
+      "max": 5,
+      "group": "歩く"
+    },
+    "giveUpSeconds": {
+      "kind": "field",
+      "type": "float",
+      "label": "1 つの点へ向かうのを諦める秒",
+      "order": 11,
+      "default": 15.0,
+      "min": 1,
+      "max": 120,
+      "group": "歩く"
+    },
+    "minHealth": {
+      "kind": "field",
+      "type": "float",
+      "label": "動画の口の間だけ下げない体力",
+      "order": 12,
+      "default": 45.0,
+      "min": 0,
+      "max": 1000,
+      "group": "動画の口"
+    },
+    "minAmmo": {
+      "kind": "field",
+      "type": "int",
+      "label": "動画の口の間だけ、これを切ったら上限まで足す弾",
+      "order": 13,
+      "default": 20,
+      "min": 0,
+      "max": 999,
+      "group": "動画の口"
+    },
+    "points": {
+      "kind": "list",
+      "label": "通る点",
+      "order": 14,
+      "fields": {
+        "name": {
+          "type": "string",
+          "order": 1,
+          "label": "名前"
+        },
+        "x": {
+          "type": "float",
+          "order": 2,
+          "label": "x（m）"
+        },
+        "z": {
+          "type": "float",
+          "order": 3,
+          "label": "z（m）"
+        },
+        "wait": {
+          "type": "float",
+          "order": 4,
+          "label": "着いてから待つ秒"
+        },
+        "run": {
+          "type": "bool",
+          "order": 5,
+          "label": "走る"
+        },
+        "weapon": {
+          "type": {
+            "enum": [
+              "auto",
+              "pistol",
+              "shotgun",
+              "rifle"
+            ]
+          },
+          "order": 6,
+          "label": "構える武器（auto は敵との距離で選ぶ）"
+        },
+        "lookYaw": {
+          "type": "float",
+          "order": 7,
+          "label": "待つ間に向く向き（度。0 が北・90 が東。無ければ替えない）"
+        },
+        "clear": {
+          "type": "bool",
+          "order": 8,
+          "label": "狙える敵がいる間は次へ進まない"
+        }
+      }
+    }
+  }
+}

@@ -43,7 +43,9 @@ mod GameLint {
                 |> allowIn(Fn.E2e_vocab, "Makefile の口（make flow-vocab）と bin/headless-run が名前で呼ぶ入口")
                 |> allowIn(Fn.E2e_jobs, "描き出しの常駐（HEADLESS_RESIDENT=1）が名前で呼ぶ入口の束")
                 |> allowIn(Fn.Palette_write, "Makefile の口（make palette）が flix run --entrypoint で呼ぶ入口")
-                |> allowIn(Fn.HordeBench_main, "Makefile の口（make bench-horde）が headless-run --window で呼ぶ入口"),
+                |> allowIn(Fn.HordeBench_main, "Makefile の口（make bench-horde）が headless-run --window で呼ぶ入口")
+                |> allowIn(Fn.VideoRender_frames, "Makefile の口（make video）が名前で呼ぶ入口")
+                |> allowIn(Fn.VideoRender_jobs, "描き出しの常駐（HEADLESS_RESIDENT=1）が名前で呼ぶ入口の束"),
             customRule({ id = "test-calc", check = testCalc })
                 |> allowIn(Fn.TestStarts_testEveryShotBuildsFromTheApp, "性質テストの決まり（どの場面も shot:<名前> の始まりで組める）。組めない場面の名前だけを集める"),
             customRule({ id = "test-branch", check = testBranch })

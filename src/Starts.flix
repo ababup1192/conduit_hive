@@ -7,7 +7,8 @@ mod Starts {
     pub def all(): List[Resources.Start[Res.Res, World.World]] =
         { name = "title", doc = "タイトルの画面（起動の既定）", args = Map.empty(), build = (_, w, _) -> Ok(w) } ::
         { name = "play", doc = "迷路の start の印に立って遊び始めた所", args = Map.empty(), build = (res, w, _) -> Ok(playing(res, w)) } ::
-        { name = "at", doc = "遊び始めて、体を x・z（m）に置き、yaw（度。0 が北・90 が東）を向いた所", args = Map#{"x" => "0", "z" => "0", "yaw" => "0"}, build = at } :: Nil
+        { name = "at", doc = "遊び始めて、体を x・z（m）に置き、yaw（度。0 が北・90 が東）を向いた所", args = Map#{"x" => "0", "z" => "0", "yaw" => "0"}, build = at } ::
+        { name = "tour", doc = "紹介の動画の道筋（conduit_hive.tour.json）を自動の操縦が歩いて撃ち始める所（迷路の start の印から）", args = Map.empty(), build = (res, w, _) -> Ok(World.withPilot(playing(res, w))) } :: Nil
 
     /// 遊び始めた所（時計は w のまま・始めた時刻は今）。
     def playing(res: Res.Res, w: World.World): World.World = World.restart(res, w)

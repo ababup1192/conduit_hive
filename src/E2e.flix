@@ -40,6 +40,7 @@ mod E2e {
               { name = "weapon", doc = "構えている武器（Pistol・Shotgun・Rifle）", read = Flow.Probe.Text(Resources.read((_, w) -> World.sessionOf(w) |> Option.map(s -> "${World.arsenalOf(s)#current}") |> Option.getWithDefault("-"))) } ::
               { name = "shots", doc = "撃った回数の合計", read = Flow.Probe.Num(Resources.read((_, w) -> playing(w, s -> Int32.toFloat64(World.arsenalOf(s)#shots)))) } ::
               { name = "health", doc = "プレイヤーの体力", read = Flow.Probe.Num(Resources.read((_, w) -> playing(w, s -> World.healthOf(s)#points))) } ::
+              { name = "pilot", doc = "自動の操縦が向かっている点の名前（start tour の時だけ。歩き終えたら空）", read = Flow.Probe.Text(Resources.read((res, w) -> World.pilotPoint(res, w))) } ::
               { name = "enemies", doc = "倒れていない敵の数", read = Flow.Probe.Num(Resources.read((_, w) -> playing(w, s -> Int32.toFloat64(Horde.aliveCount(World.hordeOf(s)))))) } :: Nil
           | Flow.emptyTable() }
 

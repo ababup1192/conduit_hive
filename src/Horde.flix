@@ -77,6 +77,9 @@ mod Horde {
     /// 倒れていない敵の数。
     pub def aliveCount(h: Horde): Int32 = h#enemies |> List.count(isAlive)
 
+    /// 倒れていない敵。
+    pub def aliveEnemies(h: Horde): List[Enemy] = h#enemies |> List.filter(isAlive)
+
     /// 湧く予定が残っているか、倒れていない敵がいる部屋。
     pub def zonesInPlay(h: Horde): Set[Char] =
         List.append(h#enemies |> List.filter(isAlive) |> List.map(e -> e#home), h#pending |> List.map(p -> p#home)) |> List.toSet
@@ -292,13 +295,7 @@ mod Horde {
 
     /// 敵の口からプレイヤーの目まで、壁の箱に遮られずに線が引けるか。
     def hasSight(res: Res.Res, e: Enemy, p: PlayerBody.PlayerBody): Bool =
-        let mouth = Mat4.apply(worldOf(e), Creatures.hitboxOf(e#kind)#mouth);
-        let toward = Vec3.sub(p#eye, mouth);
-        let length = Vec3.length(toward);
-        let ray = Ray3d.ray3d(mouth, toward);
-        let middle = Vec3.add(mouth, Vec3.mul(toward, 0.5));
-        CollisionWorld3d.boxesNear(res#collision, middle, length * 0.5 + 0.5)
-            |> List.forAll(b -> Option.isEmpty(Ray3d.hitBox(ray, length, b)))
+        Collider.isLineClear(res#collision, Mat4.apply(worldOf(e), Creatures.hitboxOf(e#kind)#mouth), p#eye)
 
     /// 振る・吐く: 始めてから hitTime を過ぎた最初のコマに 1 回だけ当てる・吐く（コマが長くても飛ばさない）。
     /// クリップが終われば追うへ戻る（次を始められるのは cooldown の後）。

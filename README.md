@@ -24,6 +24,7 @@ SF の施設の迷路を一人称で進み、群れで迫るクリーチャー�
 | `make render-all` / `make reference-update` / `make reference-check` | ギャラリーを全部描き出す / 基準を更新 / 基準と比べる |
 | `make bench-horde BENCH_SETS=horde50` | 50 体の群れの 1 コマの重さを測る（`plans/bench-horde.md`） |
 | `make flow FLOW=e2e/walk.flow`・`e2e/title.flow` | 手順書を画面なしで実機と同じ道に流す（title.flow はタイトル → 遊ぶ → ポーズ → タイトル） |
+| `make video` | 遊んでいる様子の紹介の動画（約 70 秒・1920×1080・60 fps・音つき）を `debug/video/play.mp4` に撮る（手順 `e2e/video.flow`・道筋 `assets/conduit_hive.tour.json` を `START=tour` の自動の操縦が歩いて撃つ。git には入れない） |
 
 ## 読む順
 

@@ -127,4 +127,14 @@ mod TestDocs {
         let controls = UiTextDoc.fromJson("{\"controls\": [{\"key\": \"F\", \"action\": \"USE\"}, {\"action\": \"NOTHING\"}]}") |> Option.map(x -> UiTextDoc.rec(x)#controls);
         Assert.assertEq(expected = Some((1, Some(("F", "USE")))),
             controls |> Option.map(cs -> (List.length(cs), List.head(cs) |> Option.map(c -> (c#key, c#action)))))
+
+    @Test
+    def testTourBrokenJsonIsNone(): Unit \ Assert =
+        Assert.assertEq(expected = true, Option.isEmpty(TourDoc.fromJson("{ broken")))
+
+    /// 点の weapon の auto は、敵との距離で選ぶ（None）。
+    @Test
+    def testTourAutoWeaponIsNone(): Unit \ Assert =
+        let text = "{\"points\": [{\"x\": 1.0, \"z\": 2.0, \"weapon\": \"auto\"}]}";
+        Assert.assertEq(expected = Some(None), TourDoc.fromJson(text) |> Option.flatMap(d -> List.head(TourDoc.rec(d)#points)) |> Option.map(p -> p#weapon))
 }

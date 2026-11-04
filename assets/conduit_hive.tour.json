@@ -1,0 +1,140 @@
+{
+  "version": 1,
+  "title": "紹介の動画の道筋",
+  "note": "make video（e2e/video.flow の start tour）で自動の操縦が歩いて撃つ道筋。始めの部屋 A → 通路 → B で散弾銃を拾い、湧いた群れを散弾銃で倒す → 通路 → E で連射銃を拾って倒す → 最後の部屋 H で群れを撃ち続ける。points = 通る点（x/z = 足元 m・wait = 着いてから待つ秒・run = 走るか・weapon = 構える武器 pistol・shotgun・rifle（auto は敵との距離で選ぶ）・lookYaw = 待つ間に向く向き（度。0 が北・90 が東）・clear = 待ち終えても狙える敵がいる間は次へ進まない）。turnRate = 向きを変える速さの上限（度/秒）・lookEase = 狙いへ寄る勢い（秒）・turnSmooth = 向きの速さがなじむ秒・aimRange / rangedAimRange = 狙う melee / ranged の距離（m）・fireCone = 撃ち始める狙いのずれ（度）・aimHeight = 狙う高さ（敵の足元から m）・shotgunRange = auto で散弾銃へ替える距離（m）・switchHold = 持ち替えてから次に替えるまで（秒）・arriveRadius = 着いたとみなす距離（m）・giveUpSeconds = 1 つの点へ向かうのを諦める秒・minHealth = 動画の口の間だけ体力をこれより下げない・minAmmo = 動画の口の間だけ弾がこれを切ったら上限まで足す（どちらも手で遊ぶ時は効かない）。",
+  "turnRate": 220.0,
+  "lookEase": 0.16,
+  "turnSmooth": 0.1,
+  "aimRange": 14.0,
+  "rangedAimRange": 45.0,
+  "fireCone": 3.0,
+  "aimHeight": 1.15,
+  "shotgunRange": 7.0,
+  "switchHold": 1.6,
+  "arriveRadius": 0.8,
+  "giveUpSeconds": 15.0,
+  "minHealth": 45.0,
+  "minAmmo": 20,
+  "points": [
+    {
+      "name": "room_a",
+      "x": 24.0,
+      "z": 22.0,
+      "wait": 0.3,
+      "run": false,
+      "weapon": "auto",
+      "clear": false
+    },
+    {
+      "name": "corridor_a",
+      "x": 50.0,
+      "z": 22.0,
+      "wait": 0.0,
+      "run": true,
+      "weapon": "auto",
+      "clear": false
+    },
+    {
+      "name": "shotgun",
+      "x": 66.0,
+      "z": 26.0,
+      "wait": 0.0,
+      "run": true,
+      "weapon": "auto",
+      "clear": false
+    },
+    {
+      "name": "room_b",
+      "x": 64.0,
+      "z": 27.0,
+      "wait": 1.5,
+      "run": false,
+      "weapon": "shotgun",
+      "clear": true
+    },
+    {
+      "name": "door_d",
+      "x": 66.0,
+      "z": 40.0,
+      "wait": 0.0,
+      "run": true,
+      "weapon": "auto",
+      "clear": false
+    },
+    {
+      "name": "corridor_d",
+      "x": 66.0,
+      "z": 63.0,
+      "wait": 0.0,
+      "run": true,
+      "weapon": "auto",
+      "clear": false
+    },
+    {
+      "name": "rifle",
+      "x": 70.0,
+      "z": 77.5,
+      "wait": 0.0,
+      "run": true,
+      "weapon": "auto",
+      "clear": false
+    },
+    {
+      "name": "room_e",
+      "x": 72.0,
+      "z": 84.0,
+      "wait": 1.0,
+      "run": false,
+      "weapon": "rifle",
+      "clear": true
+    },
+    {
+      "name": "door_j",
+      "x": 74.0,
+      "z": 96.0,
+      "wait": 0.0,
+      "run": true,
+      "weapon": "auto",
+      "clear": false
+    },
+    {
+      "name": "corridor_j",
+      "x": 74.0,
+      "z": 110.0,
+      "wait": 0.0,
+      "run": true,
+      "weapon": "auto",
+      "clear": false
+    },
+    {
+      "name": "hive_door",
+      "x": 74.0,
+      "z": 118.0,
+      "wait": 8.0,
+      "run": false,
+      "weapon": "auto",
+      "lookYaw": 40.0,
+      "clear": false
+    },
+    {
+      "name": "hive_left",
+      "x": 67.0,
+      "z": 120.0,
+      "wait": 8.0,
+      "run": false,
+      "weapon": "auto",
+      "lookYaw": 20.0,
+      "clear": false
+    },
+    {
+      "name": "hive_right",
+      "x": 80.0,
+      "z": 121.0,
+      "wait": 600.0,
+      "run": false,
+      "weapon": "auto",
+      "lookYaw": 45.0,
+      "clear": true
+    }
+  ]
+}

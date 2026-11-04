@@ -67,3 +67,23 @@ bench-horde:
 	  test -f debug/bench/horde-$$s.txt || { echo "[bench] $$s の結果が無い（debug/bench/horde-$$s.log）"; exit 1; }; \
 	done
 	@for s in $(BENCH_SETS); do cat debug/bench/horde-$$s.txt; echo; done
+
+# 遊んでいる様子の紹介の動画 = debug/video/play.mp4（1920×1080・60 fps・音つき。git には入れない）。
+# 手順は e2e/video.flow（撮るのは mark in_ / out_ の間だけ）・道筋は assets/conduit_hive.tour.json（`start tour` の自動の操縦が歩いて撃つ）。
+# 音は撮るフレームに鳴った音の名前を project.json の sounds の wav で混ぜる（wav を差し替えれば同じ口で撮り直せる）。
+# 手順と出力の名前と大きさは替えられる: make video FLOW=e2e/video.flow OUT=play VIDEO_SCALE=2（960×540）
+VIDEO_FLOW = $(or $(FLOW),e2e/video.flow)
+VIDEO_OUT = $(or $(OUT),play)
+VIDEO_FPS ?= 60
+VIDEO_SCALE ?= 4
+VIDEO_X264 ?= -c:v libx264 -preset medium -crf 18 -pix_fmt yuv420p
+.PHONY: video
+video:
+	rm -rf debug/video/$(VIDEO_OUT) debug/video/$(VIDEO_OUT).mp4
+	VIDEO_FPS=$(VIDEO_FPS) VIDEO_SCALE=$(VIDEO_SCALE) VIDEO_FLOW=$(VIDEO_FLOW) VIDEO_OUT=$(VIDEO_OUT) VIDEO_X264="$(VIDEO_X264)" $(HEADLESS_RUN) VideoRender.frames
+	@if [ -f debug/video/$(VIDEO_OUT)/f0000.png ]; then \
+	  ffmpeg -y -loglevel error -framerate $(VIDEO_FPS) -i debug/video/$(VIDEO_OUT)/f%04d.png \
+	    -f f64be -ar 44100 -ac 2 -i debug/video/$(VIDEO_OUT)/audio.f64 $(VIDEO_X264) -c:a aac -b:a 192k -shortest \
+	    -movflags +faststart debug/video/$(VIDEO_OUT).mp4; fi
+	@test -f debug/video/$(VIDEO_OUT).mp4 || { echo "[video] mp4 ができなかった（debug/video/$(VIDEO_OUT)/）"; exit 1; }
+	@echo "[video] debug/video/$(VIDEO_OUT).mp4"

@@ -22,6 +22,10 @@ mod Health {
         if (isDown(h) or amount <= 0.0 or h#points >= d#health) None
         else Some({ points = Float64.min(d#health, h#points + amount) | h })
 
+    /// 体力を points より下げない（倒れていても起こす。紹介の動画の自動の操縦だけが使う）。
+    pub def atLeast(points: Float64, h: Health): Health =
+        if (h#points >= points and not isDown(h)) h else { points = Float64.max(points, h#points), downAt = None | h }
+
     /// 倒れているか。
     pub def isDown(h: Health): Bool = Option.nonEmpty(h#downAt)
 

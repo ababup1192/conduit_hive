@@ -74,6 +74,15 @@ mod Arsenal {
         if (stats#infinite or amount <= 0 or now >= stats#maxAmmo) None
         else Some({ ammo = Map.insert(w, Int32.min(stats#maxAmmo, now + amount), a#ammo) | a })
 
+    /// 持っている武器の弾が n を切ったら上限まで足す（無限の武器はそのまま。紹介の動画の自動の操縦だけが使う）。
+    /// WhyNot: n で止めない — HUD の弾の数が n のまま動かず、撃っているのに減らない絵になる。
+    pub def refilledBelow(doc: WeaponsDoc.Doc, n: Int32, a: Arsenal): Arsenal =
+        let low = a#owned |> Set.toList |> List.filter(w -> not WeaponsDoc.statsOf(w, doc)#infinite and ammoIn(w, a) < n);
+        { ammo = low |> List.foldLeft((ammo, w) -> Map.insert(w, WeaponsDoc.statsOf(w, doc)#maxAmmo, ammo), a#ammo) | a }
+
+    /// 武器 w に撃てる弾があるか（持っていない武器は偽）。
+    pub def isUsable(doc: WeaponsDoc.Doc, w: Weapon, a: Arsenal): Bool = owns(w, a) and isLoaded(doc, w, a)
+
     /// 時刻 t に武器 w を拾う: 持っていなければ加えて弾を amount 足し（maxAmmo で止める）、その場で持ち替える。
     /// もう持っていれば弾を足すだけ（addAmmo と同じ・上限なら None）。
     pub def arm(doc: WeaponsDoc.Doc, vm: FpViewmodelDoc.Rec, t: Float64, w: Weapon, amount: Int32, a: Arsenal): Option[Arsenal] =
