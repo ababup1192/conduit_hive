@@ -167,3 +167,15 @@ engine へ気づいた事（足す相談ではない）:
 - `CollisionWorld3d.boxesNear` が引くたびに `Map.size(r#cells)` を数え直していて（Flix の Map.size は木を全部たどって作る）、`boxesNear` の割り当ての大半がここ
   （直した後も `Separation.pushedOut`・`Collider.isLineClear`・`Projectiles.wallHit` で合わせて 5% ほど）。マスの数は build の時に決まるので控えておける。
 
+
+## GC の比べ（2026-11-05・horde-waves・3 分・M4 Pro）
+
+| | G1（既定） | 世代別 ZGC（`-XX:+UseZGC -XX:+ZGenerational`） |
+|---|---|---|
+| work 中央値 / p95 | 5.55 / 6.61 ms | 5.74 / 6.86 ms |
+| GC の止まり | 中央値 0.9 ms。3 ms 超は起動から 3 秒の 7 回だけ | 止まりの行なし（並行で集める） |
+| 集める前のヒープ | 約 0.9 GB | 約 7.4 GB |
+| 一番重いコマ | 37.9 ms（7 秒目付近・submit 34 ms） | 41.2 ms（同じ所） |
+
+作る量を減らした後は G1 で足りる。ZGC は 1 コマが少し遅く、ヒープを 8 倍使うので替えない。7 秒目付近の submit の跳ねは GC と関係なく、どちらでも同じ位置に出る（未調査）。
+測り方: `HEADLESS_JAVA_OPTS="<旗> -Xlog:gc:file=<ログ>" make bench-horde BENCH_SETS=horde-waves`。
