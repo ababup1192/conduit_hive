@@ -339,13 +339,26 @@ def harden_normals(o, sharp_deg=50.0):
 
 
 # ── 動き: 骨ごとの「休みの形からのずれ」を armature の軸で書く ──
-# {"r": (rx, ry, rz) 度（骨の頭のまわり・armature の軸・XYZ の順）, "t": (x, y, z) m}。
+# {"r": (rx, ry, rz) 度（骨の頭のまわり・armature の軸・XYZ の順）, "t": (x, y, z) m, "s": (sx, sy, sz) 骨の頭のまわりの倍率（省くと 1）}。
 # 子の骨のずれは、親が動いた後の座標で（休みの形の軸で書いた物を親ごと運ぶ）。名前の無い骨は休みの形。
 def delta_matrix(head, spec):
     r = spec.get("r", (0, 0, 0))
     t = Vector(spec.get("t", (0, 0, 0)))
     R = Euler([math.radians(a) for a in r], "XYZ").to_matrix().to_4x4()
-    return Matrix.Translation(head + t) @ R @ Matrix.Translation(-head)
+    S = Matrix.Diagonal((*spec.get("s", (1, 1, 1)), 1.0))
+    return Matrix.Translation(head + t) @ R @ S @ Matrix.Translation(-head)
+
+
+def set_pose(arm, spec):
+    """姿勢 spec を骨へ置く（キーは打たない）。"""
+    for pb in arm.pose.bones:
+        B = pb.bone.matrix_local
+        D = delta_matrix(B.to_translation(), spec.get(pb.name, {}))
+        loc, rot, scl = (B.inverted() @ D @ B).decompose()
+        pb.rotation_mode = "QUATERNION"
+        pb.location = loc
+        pb.rotation_quaternion = rot
+        pb.scale = scl if "s" in spec.get(pb.name, {}) else (1, 1, 1)
 
 
 def key(arm, action_name, frames):
@@ -354,15 +367,8 @@ def key(arm, action_name, frames):
     arm.animation_data_create()
     arm.animation_data.action = act
     for frame, spec in frames:
+        set_pose(arm, spec)
         for pb in arm.pose.bones:
-            B = pb.bone.matrix_local
-            D = delta_matrix(B.to_translation(), spec.get(pb.name, {}))
-            basis = B.inverted() @ D @ B
-            loc, rot, _ = basis.decompose()
-            pb.rotation_mode = "QUATERNION"
-            pb.location = loc
-            pb.rotation_quaternion = rot
-            pb.scale = (1, 1, 1)
             pb.keyframe_insert("location", frame=frame)
             pb.keyframe_insert("rotation_quaternion", frame=frame)
             pb.keyframe_insert("scale", frame=frame)
@@ -370,9 +376,7 @@ def key(arm, action_name, frames):
     track.name = action_name
     track.strips.new(action_name, int(frames[0][0]), act)
     arm.animation_data.action = None
-    for pb in arm.pose.bones:
-        pb.location = (0, 0, 0)
-        pb.rotation_quaternion = (1, 0, 0, 0)
+    set_pose(arm, {})
     return act
 
 
@@ -381,7 +385,8 @@ def lerp_spec(a, b, t):
     out = {}
     for name in set(a) | set(b):
         sa, sb = a.get(name, {}), b.get(name, {})
-        out[name] = {k: tuple(x + (y - x) * t for x, y in zip(sa.get(k, (0, 0, 0)), sb.get(k, (0, 0, 0)))) for k in ("r", "t")}
+        out[name] = {k: tuple(x + (y - x) * t for x, y in zip(sa.get(k, z), sb.get(k, z)))
+                     for k, z in (("r", (0, 0, 0)), ("t", (0, 0, 0)), ("s", (1, 1, 1))) if k in sa or k in sb or k != "s"}
     return out
 
 

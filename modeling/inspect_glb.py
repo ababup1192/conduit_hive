@@ -65,7 +65,7 @@ for path in sys.argv[1:]:
         problems.append("KHR_texture_transform")
     print("  extensionsUsed:", doc.get("extensionsUsed", []), " engine で引っかかる物:", sorted(set(problems)) or "なし")
     for i, n in enumerate(doc["nodes"]):
-        if n.get("name") == "MUZZLE":
+        if n.get("name") in ("MUZZLE", "MOUTH"):
             par = next((names[j] for j, p in enumerate(doc["nodes"]) if i in p.get("children", [])), None)
-            print("  MUZZLE parent=%s translation=%s rotation=%s" % (par, [round(x, 4) for x in n.get("translation", [0, 0, 0])],
+            print("  %s parent=%s translation=%s rotation=%s" % (n["name"], par, [round(x, 4) for x in n.get("translation", [0, 0, 0])],
                                                                    [round(x, 4) for x in n.get("rotation", [0, 0, 0, 1])]))

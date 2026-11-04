@@ -2,7 +2,10 @@
 #   cd modeling && devbox run -- blender -b --factory-startup --python preview.py -- viewmodel_pistol [fovY 度]
 #   ビューモデル: <名前>_cam.png（目の位置からの構図・16:9）・<名前>_poses.png（各クリップの何コマか）・<名前>_orbit.png（斜めから全体）
 #   ピックアップ: <名前>_orbit.png（床に置いた形を 2 方向から）
+#   クリーチャー（名前が creature_ で始まる）: <名前>_orbit.png（斜め 3 方向）・<名前>_poses.png（各クリップの何コマか・横から）・
+#     <名前>_dark.png（灯りをほぼ消した通路で発光だけ見る）。名前を 2 つ以上渡すと lineup.png（並べたシルエットと暗がり）
 import bpy, os, sys, math
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import numpy as np
 from mathutils import Vector, Euler
 
@@ -11,7 +14,8 @@ MODELS = os.path.join(HERE, "..", "assets", "models")
 DEBUG = os.path.join(HERE, "..", "debug", "modeling")
 args = sys.argv[sys.argv.index("--") + 1:]
 NAME = args[0]
-FOVY = float(args[1]) if len(args) > 1 else 55.0
+CREATURES = [a for a in args if a.startswith("creature_")]
+FOVY = float(args[1]) if len(args) > 1 and not CREATURES else 55.0
 W, H = 640, 360
 
 bpy.ops.wm.read_factory_settings(use_empty=True)
@@ -22,10 +26,12 @@ sc.cycles.samples = 24
 sc.cycles.use_denoising = True
 sc.render.fps = 60
 sc.view_settings.view_transform = "Standard"
-bpy.ops.import_scene.gltf(filepath=os.path.join(MODELS, NAME + ".glb"))
-arm = next((o for o in sc.objects if o.type == "ARMATURE"), None)
-meshes = [o for o in sc.objects if o.type == "MESH" and not o.hide_render and not o.hide_get() and len(o.data.vertices) > 64]
-print("meshes:", [(o.name, o.hide_render, len(o.data.vertices)) for o in sc.objects if o.type == "MESH"])
+arm, meshes = None, []
+if not CREATURES:
+    bpy.ops.import_scene.gltf(filepath=os.path.join(MODELS, NAME + ".glb"))
+    arm = next((o for o in sc.objects if o.type == "ARMATURE"), None)
+    meshes = [o for o in sc.objects if o.type == "MESH" and not o.hide_render and not o.hide_get() and len(o.data.vertices) > 64]
+    print("meshes:", [(o.name, o.hide_render, len(o.data.vertices)) for o in sc.objects if o.type == "MESH"])
 
 # 光: 薄暗い通路。上の前から冷たい灯り・後ろの左から弱い縁の光・ほのかな地の光
 w = bpy.data.worlds.new("w")
@@ -88,7 +94,8 @@ def save_px(px, path):
     bpy.data.images.remove(im)
 
 
-def set_pose(action, frame):
+def set_pose(action, frame, arm=None):
+    arm = arm or globals()["arm"]
     if arm is None:
         return
     arm.animation_data_create()
@@ -111,6 +118,128 @@ def bounds():
     a = np.array([tuple(p) for p in pts])
     return Vector(a.min(0)), Vector(a.max(0))
 
+
+def floor_and_lights(dark):
+    """通路の床と灯り。dark = 灯りをほぼ消し、発光だけで形が分かるかを見る。"""
+    bpy.ops.mesh.primitive_plane_add(size=30, location=(0, 0, 0))
+    fm = bpy.data.materials.new("floor")
+    fm.use_nodes = True
+    fm.node_tree.nodes["Principled BSDF"].inputs["Base Color"].default_value = (0.03, 0.034, 0.04, 1)
+    fm.node_tree.nodes["Principled BSDF"].inputs["Roughness"].default_value = 0.5
+    bpy.context.active_object.data.materials.append(fm)
+    k = 0.06 if dark else 1.0
+    w.node_tree.nodes["Background"].inputs["Strength"].default_value = 0.4 if dark else 1.0
+    light("key", "AREA", (1.6, -2.2, 3.4), (40, 0, 35), 260 * k, (0.75, 0.9, 1.0), 1.5)
+    light("rim", "AREA", (-1.8, 2.2, 2.6), (-50, 0, 215), 160 * k, (0.55, 0.8, 1.0), 1.0)
+
+
+def import_creature(name, x):
+    before = set(sc.objects)
+    bpy.ops.import_scene.gltf(filepath=os.path.join(MODELS, name + ".glb"))
+    new = [o for o in sc.objects if o not in before]
+    a = next(o for o in new if o.type == "ARMATURE")
+    a.location.x += x
+    return a, [o for o in new if o.type == "MESH"]
+
+
+def creature_bounds(ms):
+    deps = bpy.context.evaluated_depsgraph_get()
+    pts = np.array([tuple(o.evaluated_get(deps).matrix_world @ v.co) for o in ms for v in o.evaluated_get(deps).data.vertices])
+    return Vector(pts.min(0)), Vector(pts.max(0))
+
+
+def view(ctr, yaw, pitch, ortho, dist=12.0):
+    a, p = math.radians(yaw), math.radians(pitch)
+    d = Vector((math.sin(a) * math.cos(p), -math.cos(a) * math.cos(p), math.sin(p)))
+    return camera(ctr + d * dist, (90 - pitch, 0, yaw), None, ortho)
+
+
+# 攻撃が当たる・吐くコマ（creature.py のクリップと合わせる）
+IMPACT = {"creature_melee": 30, "creature_ranged": 36}
+
+
+def creature_sheets(names):
+    tmp = os.path.join(DEBUG, "_tmp.png")
+    if len(names) > 1:
+        rigs = []
+        for i, n in enumerate(names):
+            a, ms = import_creature(n, (i - (len(names) - 1) / 2) * 1.6)
+            set_pose("idle", 0, a)
+            rigs.append(ms)
+        allm = [m for ms in rigs for m in ms]
+        lo, hi = creature_bounds(allm)
+        ctr = (lo + hi) / 2
+        floor_and_lights(False)
+        tiles = []
+        for yaw in (-25, -60):
+            c = view(ctr, yaw, 8, max(hi.z - lo.z, hi.x - lo.x) * 1.25)
+            render(tmp, 560, 420)
+            tiles.append(load_px(tmp))
+            bpy.data.objects.remove(c, do_unlink=True)
+        for o in list(sc.objects):
+            if o.type == "LIGHT":
+                bpy.data.objects.remove(o, do_unlink=True)
+        floor_and_lights(True)
+        c = view(ctr, -25, 8, max(hi.z - lo.z, hi.x - lo.x) * 1.25)
+        render(tmp, 560, 420)
+        tiles.append(load_px(tmp))
+        save_px(np.concatenate(tiles, axis=1), os.path.join(DEBUG, "lineup.png"))
+        os.remove(tmp)
+        return
+    name = names[0]
+    a, ms = import_creature(name, 0.0)
+    print("actions:", [(x.name, tuple(x.frame_range)) for x in bpy.data.actions])
+    floor_and_lights(False)
+    set_pose("idle", 0, a)
+    lo, hi = creature_bounds(ms)
+    ctr = Vector((0, 0, (hi.z) / 2))
+    tiles = []
+    for yaw in (-35, -90, 150):
+        c = view(ctr, yaw, 12, hi.z * 1.25)
+        render(tmp, 420, 560)
+        tiles.append(load_px(tmp))
+        bpy.data.objects.remove(c, do_unlink=True)
+    save_px(np.concatenate(tiles, axis=1), os.path.join(DEBUG, name + "_orbit.png"))
+    acts = {x.name: x for x in bpy.data.actions}
+    rows = []
+    for clip in ("idle", "walk", "attack", "hit", "die"):
+        if clip not in acts:
+            continue
+        end = int(acts[clip].frame_range[1])
+        hit = IMPACT.get(name, end // 2)
+        picks = {"attack": [0, hit - 12, hit - 5, hit, hit + 8, end]}.get(clip, [round(end * k / 5) for k in range(6)])
+        tl = []
+        for f in picks:
+            set_pose(clip, f, a)
+            c = view(Vector((0, -0.55, 1.2)), -90, 6, 3.6)
+            render(tmp, 260, 300)
+            tl.append(load_px(tmp))
+            bpy.data.objects.remove(c, do_unlink=True)
+        rows.append(np.concatenate(tl, axis=1))
+        print("poses", clip, picks)
+    save_px(np.concatenate(rows[::-1], axis=0), os.path.join(DEBUG, name + "_poses.png"))
+    for o in list(sc.objects):
+        if o.type == "LIGHT":
+            bpy.data.objects.remove(o, do_unlink=True)
+    for o in list(sc.objects):
+        if o.type == "MESH" and o.name.startswith("Plane"):
+            bpy.data.objects.remove(o, do_unlink=True)
+    floor_and_lights(True)
+    tiles = []
+    for clip, f, yaw in (("idle", 0, -35), ("walk", 0, 160)):
+        set_pose(clip, f, a)
+        c = view(ctr, yaw, 12, hi.z * 1.25)
+        render(tmp, 420, 560)
+        tiles.append(load_px(tmp))
+        bpy.data.objects.remove(c, do_unlink=True)
+    save_px(np.concatenate(tiles, axis=1), os.path.join(DEBUG, name + "_dark.png"))
+    os.remove(tmp)
+
+
+if CREATURES:
+    creature_sheets(CREATURES)
+    print("preview written:", CREATURES)
+    sys.exit(0)
 
 print("actions:", [(a.name, tuple(a.frame_range)) for a in bpy.data.actions])
 tmp = os.path.join(DEBUG, "_tmp.png")
