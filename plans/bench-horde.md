@@ -133,3 +133,37 @@ p95 は 16.9 ms と荒れた（別の担当の Blender のベイクが CPU を 9
 - 測る間の GC（`JAVA_TOOL_OPTIONS="-Xlog:gc*:file=debug/bench/gc-horde50.log:uptime"`）: 若い世代の止まりが 0.35〜0.6 秒ごとに 3〜7 ms（1 回に約 2.7 GB を捨てる = 毎秒 6〜7 GB を作っている）。
   最初の 6 秒（慣らしの間）は 20〜50 ms の止まりがあり、前の 25.6 ms はこの残りと見る。シェーダーと絵の上げ直しは最大のコマに無い。
 - 直していない: どこが作っているか（描く物の木・姿勢の行列・群れの規則）はまだ測っていない（段 5 の前に allocation の profile を 1 回取る）。遊ぶ前に絵を上げておく手は効かない（上げ直しが原因ではない）。
+
+## wave で湧かせ続けて倒し続ける（horde-waves・2026-11-05）
+
+人の注文「一度に最大 50 体・全体で数百体」に合わせ、`make bench-horde BENCH_SETS=horde-waves` を足した。
+最後の部屋 H の真ん中に立ち、H の wave を湧かせ続け（melee 40・ranged 10 の wave を 40 回・同時は maxAlive の 50 まで・0.15 秒に 1 体）、
+紹介の動画の自動の操縦（Pilot）がその場で振り向いて撃ち続ける（測りの組だけ武器は 1 粒で倒す威力・敵の威力は 0）。実時間 3 分（BENCH_SECONDS）。
+GC は `JAVA_TOOL_OPTIONS="-Djava.awt.headless=true -Xlog:gc:file=debug/bench/gc-waves.log:uptime"` を付けて取り、測る間の 165 秒だけを数えた。
+機械は段 0.5 と同じ（M4 Pro・960×540）。
+
+| | 倒した数 | 間隔 | work | submit | GC の若い世代の止まり（中央値 / p95 / 最大） | 止まりの間 | 作る量 | GC の後のヒープ |
+|---|---|---|---|---|---|---|---|---|
+| 直す前 | 791 | 6.61 / 10.71 / 37.88 | 6.33 / 8.15 / 37.71 | 2.98 / 4.18 / 34.30 | 0.73 / 0.87 / 3.90 ms | 0.20 秒 | 2.9 GB/秒 | 274〜293 MB（伸びない） |
+| **直した後** | 608 | **6.04 / 7.32** / 36.90 | **5.74 / 6.77** / 36.74 | 3.19 / 4.19 / 33.31 | 1.03 / 1.65 / 5.02 ms | 0.37 秒 | **2.1 GB/秒** | 379〜413 MB（伸びない） |
+
+（ms。中央値 / p95 / 最大。倒した数は自動の操縦の狙いの揺れで回ごとに違う）
+
+- 何が多く作っていたか（JFR の `jdk.ObjectAllocationSample` を、スタックの一番手前のゲームの関数で束ねた。読み込みと窓の前の測りは除く）:
+  `Creatures.poseOf` 24%・`Creatures.localOf` 16%・`Creatures.drawnOf` 14%・`Separation.walled` 10%・ゲームの関数を通らない engine の描く所 24%。
+- 直した物:
+  1. `Creatures.poseOf` が `Map.get(鍵, 共有) |> Option.getWithDefault(Pose3d.compute(..))` で、共有の姿勢がある敵の分も毎コマ姿勢を作り直していた
+     （Flix は引数を先に計算する）。`localOf` の `Option.getWithDefault(Skin3d.restPose(..))` も同じ。match で引く形に直した（`sharedOr`・`sampledOr`）。
+  2. `Separation.walled` が生きている敵の全員に毎コマ `CollisionWorld3d.boxesNear` を引いていた。周りの 8 マスが床で立てた物も無いマス
+     （`Collider.openCellsOf`。読み込みで 1 回作る）にいる敵は箱を引かない。
+- 直した後の残り: `Creatures.drawnOf` 27%（共有の鍵ごとの `Pose3d.compute`。engine の `Mat4.mul`・`Skin3d.jointWorlds`）・ゲームの関数を通らない engine の描く所。
+- 伸び続けてはいけない列（3 分の後）: 敵 54（生きている 50 + 倒れた体）・projectile 2・3D の粒 26・落とした物 5。どれも伸びない
+  （湧くのを待つ列 1342 はこの組が 40 wave を続けて並べるため。遊びの Doc では 1 区画の wave の分まで）。
+- 最大の 37 ms のコマは GC ではない（測る間の GC の止まりは最大 5 ms）。そのコマは submit が 33 ms で、シェーダーも絵の上げ直しも 0。
+  測り始めの数コマと 2 回目の中ほどに 1 回ずつ出る。中は測っていない。
+
+engine へ気づいた事（足す相談ではない）:
+
+- `CollisionWorld3d.boxesNear` が引くたびに `Map.size(r#cells)` を数え直していて（Flix の Map.size は木を全部たどって作る）、`boxesNear` の割り当ての大半がここ
+  （直した後も `Separation.pushedOut`・`Collider.isLineClear`・`Projectiles.wallHit` で合わせて 5% ほど）。マスの数は build の時に決まるので控えておける。
+

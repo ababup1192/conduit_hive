@@ -8,9 +8,10 @@ mod Separation {
     pub type alias Disc = { id = Int32, x = Float64, z = Float64, radius = Float64 }
 
     /// 押し離した後の足元（discs と同じ並び）。
-    pub def separate(m: Maze.Maze, world: CollisionWorld3d.CollisionWorld3d, p: PlayerBody.PlayerBody, discs: List[Disc]): List[(Float64, Float64)] =
+    /// open = 開いたマス（Collider.openCellsOf。開いたマスの円は箱を引かずに壁を飛ばす）。
+    pub def separate(m: Maze.Maze, world: CollisionWorld3d.CollisionWorld3d, open: Vector[Bool], p: PlayerBody.PlayerBody, discs: List[Disc]): List[(Float64, Float64)] =
         let byCell = discs |> List.foldLeft((acc, d) -> Map.insertWith((a, b) -> List.append(b, a), cellKey(m, d), d :: Nil, acc), Map.empty());
-        discs |> List.map(d -> walled(world, apart(m, p, byCell, d)))
+        discs |> List.map(d -> walled(m, world, open, apart(m, p, byCell, d)))
 
     def cellKey(m: Maze.Maze, d: Disc): (Int32, Int32) =
         let c = Maze.cellAt(m, d#x, d#z);
@@ -38,7 +39,11 @@ mod Separation {
         else ((dx / d) * (reach - d) * share, (dz / d) * (reach - d) * share)
 
     /// 壁と立てた物の箱から押し出す（足元の円を腰の高さの球で見る）。
-    def walled(world: CollisionWorld3d.CollisionWorld3d, d: Disc): (Float64, Float64) =
+    def walled(m: Maze.Maze, world: CollisionWorld3d.CollisionWorld3d, open: Vector[Bool], d: Disc): (Float64, Float64) =
+        if (Collider.isOpenAt(m, open, d#x, d#z)) (d#x, d#z) else pushedOut(world, d)
+
+    /// 壁と立てた物の箱から押し出した足元。
+    def pushedOut(world: CollisionWorld3d.CollisionWorld3d, d: Disc): (Float64, Float64) =
         let center = Vec3.v3(d#x, 1.0, d#z);
         let moved = CollisionWorld3d.boxesNear(world, center, d#radius + 0.1) |> List.foldLeft((at, b) ->
             CollisionShape3d.pushOutHorizontal(b, at, d#radius) |> Option.map(Vec3.add(at)) |> Option.getWithDefault(at), center);

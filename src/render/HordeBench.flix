@@ -3,7 +3,9 @@
 // 立つのは最後の部屋の真ん中（東を向く）。ステージは遊びと同じ絵（Res の区画の絵 = ベイクしたステージの glb と lightmap）。
 // 本物のクリーチャー（Creatures）を部屋に散らして置き、本物の規則（World.step → Horde.step）で
 // 追わせ・押し合わせ・振らせ・吐かせる。プレイヤーは動かず撃たない。測る間に倒れないよう、敵の威力だけを 0 にした Doc で回す。
-// 測る組は環境変数で決める（BENCH_LABEL・BENCH_ENEMIES・BENCH_WARMUP・BENCH_FRAMES）。
+// 測る組は環境変数で決める（BENCH_LABEL・BENCH_ENEMIES・BENCH_WARMUP・BENCH_FRAMES・BENCH_WAVES・BENCH_SECONDS）。
+// BENCH_WAVES=1 の組は、敵を最初に置かず、最後の部屋に入った所から wave を湧かせ続け（maxAlive の上限まで）、紹介の動画の自動の操縦（Pilot）が
+// その場で撃ち続けて倒し続ける（弾と体力は TourDoc の下限で足す）。BENCH_SECONDS の間（実時間）測る。
 // 数は 2 つの道で取る:
 //   窓の前の CPU だけの測り … 規則の 1 コマ（World.step）と、描く物の木を組む（View.passPlan。敵の姿勢を作るのもここ）を nanoTime で 1 コマずつ
 //   窓の測り             … 1 コマの間隔（frame#realNow の差）と FrameDiagnostics（GL へ送る・swap・GPU・3D の数）
@@ -14,8 +16,8 @@ mod HordeBench {
     import java.io.File
     import java.lang.System
 
-    /// 測る組。
-    type alias Config = { label = String, enemies = Int32 }
+    /// 測る組。waves = 最後の部屋の wave を湧かせ続けて倒し続ける・seconds = 測る実時間（0 なら frames のコマ数）。
+    type alias Config = { label = String, enemies = Int32, waves = Bool, seconds = Float64 }
 
     /// 測る間に変わらない物。
     type alias Kit = {
@@ -32,8 +34,9 @@ mod HordeBench {
     /// 窓の 1 コマの記録。intervalNs = 前のコマからの間隔・diag = 前のコマを描いた時の診断。
     type alias Sample = { intervalNs = Int64, diag = FrameDiagnostics.Diagnostics }
 
-    /// 測りの状態。game = 遊びの状態・lastAt = 前のコマの実時間（秒。まだ無ければ負）。
-    type alias State = { game = World.World, frame = Int32, lastAt = Float64, samples = List[Sample] }
+    /// 測りの状態。game = 遊びの状態・lastAt = 前のコマの実時間（秒。まだ無ければ負）・measured = 測った実時間の合計（秒）・
+    /// peakAlive = 測る間に同時に生きていた敵の最大・doneAt = 測り終えたコマ（まだなら None）。
+    type alias State = { game = World.World, frame = Int32, lastAt = Float64, samples = List[Sample], measured = Float64, peakAlive = Int32, doneAt = Option[Int32] }
 
     def outDir(): String = "debug/bench"
 
@@ -62,7 +65,8 @@ mod HordeBench {
 
     def configOf(env: Map[String, String]): Config =
         let text = (name, fallback) -> Map.getWithDefault(name, fallback, env);
-        { label = text("BENCH_LABEL", "bench"), enemies = numOr(env, "BENCH_ENEMIES", 50) }
+        { label = text("BENCH_LABEL", "bench"), enemies = numOr(env, "BENCH_ENEMIES", 50), waves = text("BENCH_WAVES", "0") == "1",
+          seconds = Map.get("BENCH_SECONDS", env) |> Option.flatMap(Float64.fromString) |> Option.getWithDefault(0.0) }
 
     /// 敵の威力だけを 0 にした Doc（測る間にプレイヤーが倒れて群れが消えないように）。
     def harmless(d: EnemiesDoc.Doc): EnemiesDoc.Doc =
@@ -72,12 +76,14 @@ mod HordeBench {
     def loadKit(env: Map[String, String]): Result[String, Kit] \ IO =
         let cfg = configOf(env);
         let docs = run { HeadlessLoad.handle(Controls.loadDocs) } with Fs.FileRead.runWithIO;
-        let res = Res.build({ enemies = harmless(docs#enemies) | docs });
-        let zone = res#maze#finalZone;
-        Maze.middleCellOf(res#maze, zone) |> Option.toOk("最後の部屋 ${zone} が迷路に無い") |> Result.map(cell -> {
-            let (x, z) = Maze.centerOf(res#maze, cell);
-            let placed = World.settleZone(res, World.placeWalker(res, { x = x, z = z }, 90.0, -4.0, World.initial(res)));
-            let start = World.withHorde(Horde.spawnNow(res, crowdOf(res, cfg#enemies, x, z), Horde.empty()), placed);
+        let base = Res.build({ enemies = harmless(docs#enemies) | docs });
+        let zone = base#maze#finalZone;
+        Maze.middleCellOf(base#maze, zone) |> Option.toOk("最後の部屋 ${zone} が迷路に無い") |> Result.map(cell -> {
+            let (x, z) = Maze.centerOf(base#maze, cell);
+            let res = if (cfg#waves) endless(zone, x, z, base) else base;
+            let placed = World.placeWalker(res, { x = x, z = z }, 90.0, -4.0, World.initial(res));
+            let start = if (cfg#waves) World.withPilot(placed)
+                        else World.withHorde(Horde.spawnNow(res, crowdOf(res, cfg#enemies, x, z), Horde.empty()), World.settleZone(res, placed));
             { res = res, cfg = cfg, start = start,
               warmup = numOr(env, "BENCH_WARMUP", 120), frames = numOr(env, "BENCH_FRAMES", 360),
               out = "${outDir()}/horde-${cfg#label}.txt", micro = Nil }
@@ -98,7 +104,20 @@ mod HordeBench {
                   yaw = Num.atan2(px - x, pz - z), home = m#finalZone }
             }))
 
-    def initial(kit: Kit): State = { game = kit#start, frame = 0, lastAt = -1.0, samples = Nil }
+    /// 倒し続ける組の描く元: 最後の部屋の wave を 40 回（melee 40・ranged 10。残り 30 体か 4 秒で次）・自動の操縦は部屋の真ん中で待ち続けて、速く振り向いて撃つ・
+    /// 散弾銃と連射銃を弾を満たして持ち、どの武器も 1 粒で倒す威力（湧く速さに倒す速さを追いつかせ、湧いては倒れる入れ替わりを測る）。
+    def endless(zone: Char, x: Float64, z: Float64, res: Res.Res): Res.Res =
+        let wave = { zone = zone, melee = 40, ranged = 10, source = None, after = 4.0, whenLeft = 30 };
+        let spawns = SpawnsDoc.Doc.Doc({ waves = List.repeat(40, wave) | SpawnsDoc.rec(res#spawns) });
+        let t = TourDoc.rec(res#tour);
+        let tour = TourDoc.Doc.Doc({ finalWaves = 0, minHealth = 100.0, minAmmo = 60, turnRate = 900.0, lookEase = 0.04, turnSmooth = 0.02, fireCone = 6.0,
+                                     points = { name = "hold", x = x, z = z, wait = 1.0e9, sprint = false, weapon = None, lookYaw = None, clear = false } :: Nil | t });
+        let w = WeaponsDoc.rec(res#weapons);
+        let weapons = WeaponsDoc.Doc.Doc({ pistol = { damage = 1000.0 | w#pistol }, shotgun = { owned = true, ammo = w#shotgun#maxAmmo, damage = 1000.0 | w#shotgun },
+                                           rifle = { owned = true, ammo = w#rifle#maxAmmo, damage = 1000.0 | w#rifle } | w });
+        { weapons = weapons | res } |> Res.withSpawns(spawns) |> Res.withTour(tour)
+
+    def initial(kit: Kit): State = { game = kit#start, frame = 0, lastAt = -1.0, samples = Nil, measured = 0.0, peakAlive = 0, doneAt = None }
 
     // ── App ──
 
@@ -111,17 +130,25 @@ mod HordeBench {
             |> App.withSpriteAtlases(_ -> { texture = Particles3d.textureName(), key = Particles3d.textureKey(), baked = kit#res#particleTexture } :: Nil)
             |> App.withDiagnostics
             |> App.addOutput({ keyOf = s -> if (isDone(kit, s)) kit#cfg#label else "", write = s -> writeReport(kit, s), onJump = App.OnJump.Skip })
-            |> App.quitWhen((_, s) -> s#frame >= kit#warmup + kit#frames + 4)
+            |> App.quitWhen((_, s) -> s#doneAt |> Option.exists(at -> s#frame >= at + 4))
 
-    def isDone(kit: Kit, s: State): Bool = s#frame > kit#warmup + kit#frames
+    def isDone(kit: Kit, s: State): Bool =
+        if (kit#cfg#seconds > 0.0) s#frame > kit#warmup and s#measured >= kit#cfg#seconds else s#frame > kit#warmup + kit#frames
+
+    def isMeasuring(kit: Kit, s: State): Bool =
+        if (kit#cfg#seconds > 0.0) s#frame > kit#warmup and s#measured < kit#cfg#seconds else s#frame > kit#warmup and s#frame <= kit#warmup + kit#frames
 
     /// 1 コマ: 前のコマの間隔と診断を記録し、群れを進める。
     // WhyNot: 系で frame#diagnostics を読む（ゲームの系ではしない）— この入口は測るだけで、記録の再生（make flow）に載らない。
     def step(kit: Kit, frame: App.Frame, s: State): State =
         let now = Clock.secondsOf(frame#realNow);
-        let measuring = s#frame > kit#warmup and s#frame <= kit#warmup + kit#frames and s#lastAt >= 0.0;
+        let measuring = isMeasuring(kit, s) and s#lastAt >= 0.0;
         let sample = if (measuring) frame#diagnostics |> Option.map(d -> { intervalNs = nanosOf(now - s#lastAt), diag = d }) else None;
-        { game = World.step(kit#res, World.walking(Walker.idle()), s#game), frame = s#frame + 1, lastAt = now, samples = List.append(Option.toList(sample), s#samples) | s }
+        let game = World.step(kit#res, World.walking(Walker.idle()), s#game);
+        { game = game, frame = s#frame + 1, lastAt = now, samples = List.append(Option.toList(sample), s#samples),
+          measured = if (measuring) s#measured + (now - s#lastAt) else s#measured,
+          peakAlive = if (measuring) Int32.max(s#peakAlive, Horde.aliveCount(hordeIn(game))) else s#peakAlive,
+          doneAt = if (Option.isEmpty(s#doneAt) and isDone(kit, s)) Some(s#frame) else s#doneAt | s }
 
     def nanosOf(seconds: Float64): Int64 = Float64.round(seconds * 1.0e9) |> Float64.tryToInt64 |> Option.getWithDefault(0i64)
 
@@ -154,6 +181,17 @@ mod HordeBench {
     def posesOf(kit: Kit, w: World.World): Int32 =
         let posed = hordeIn(w)#enemies |> List.map(e -> { kind = e#kind, group = e#id, anim = e#anim, world = Horde.worldOf(e) });
         Creatures.drawnOf(kit#res#creatures, kit#res#timing, EnemiesDoc.rec(kit#res#enemies)#blendSeconds, World.seconds(w), posed)#poses
+
+    /// 倒した数（遊んでいる場面でなければ 0）。
+    def killsIn(w: World.World): Int32 = World.sessionOf(w) |> Option.map(World.killsOf) |> Option.getWithDefault(0)
+
+    /// 伸び続けてはいけない列の、測り終えた時の長さ（敵・projectile・湧くのを待つ敵・3D の粒・落とした物）。
+    def listsOf(w: World.World): String =
+        World.sessionOf(w) |> Option.map(s -> {
+            let h = World.hordeOf(s);
+            "lists_at_end enemies=${List.length(h#enemies)} projectiles=${List.length(h#projectiles)} queue=${Horde.queuedCount(h)} " +
+            "particles=${List.length(World.particlesOf(s))} drops=${List.length(World.dropsOf(s))}"
+        }) |> Option.getWithDefault("")
 
     /// 遊んでいる場面の群れ（ほかの画面なら空）。
     def hordeIn(w: World.World): Horde.Horde = World.sessionOf(w) |> Option.map(World.hordeOf) |> Option.getWithDefault(Horde.empty())
@@ -202,7 +240,8 @@ mod HordeBench {
         let gpu = xs |> List.filterMap(x -> x#diag#gpuNs) |> List.map(ms);
         let lines =
             "label ${cfg#label}" ::
-            "config enemies=${cfg#enemies} stage=${stageKindOf(kit#res)} alive_at_end=${Horde.aliveCount(hordeIn(s#game))}" ::
+            "config enemies=${cfg#enemies} waves=${cfg#waves} stage=${stageKindOf(kit#res)} alive_at_end=${Horde.aliveCount(hordeIn(s#game))}" ::
+            "play          seconds=${fmt(s#measured)} kills=${killsIn(s#game)} peak_alive=${s#peakAlive} ${listsOf(s#game)}" ::
             "frames ${List.length(xs)}" ::
             "interval_ms   ${spread(xs |> List.map(x -> ms(x#intervalNs)))}" ::
             "work_ms       ${spread(xs |> List.map(x -> ms(x#intervalNs - x#diag#swapNs)))}" ::

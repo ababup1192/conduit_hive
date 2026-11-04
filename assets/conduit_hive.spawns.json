@@ -1,26 +1,212 @@
 {
-  "version": 1,
-  "title": "spawn の群れ",
-  "note": "群れの種類ごとの数。迷路の Doc（maze.stage.json）の spawn の印の name がここの groups の鍵を指す（引けない名前の印は置かない）。部屋に入ると、その部屋の印から 1 回だけ湧く。melee・ranged = 1 つの印から湧く数・interval = 1 体ごとの間隔（秒）・scatter = 印のマスの中で散らす幅（m）。 minDistance = 部屋に入った時、プレイヤーからこの距離（m）より近い印からは湧かせない（入った瞬間に目の前に湧かない）。",
-  "minDistance": 10.0,
-  "groups": {
-    "pack": {
-      "melee": 3,
+  "version": 2,
+  "title": "spawn の wave",
+  "note": "区画ごとの wave。zone = 入ると始まる区画（迷路の Doc maze.stage.json の区画の文字。部屋でも通路でもよい）・from = 湧く spawn の印の区画（無ければ zone と同じ。通路に入ると後ろや横の部屋から群れが流れ込む）・melee / ranged = その wave の数・after = 前の wave が始まってからこの秒で次が始まる（最初の wave は区画に入ってから）・whenLeft = その区画の残り（生きている数 + 湧くのを待っている数）がこの数以下になっても次が始まる（最初の wave には効かない）。区画ごとに並びの順に始まる。maxAlive = 同時に生きている敵の上限（倒れた体は数えない。上限の間は湧かずに待ち、倒すと次が湧く）・spawnInterval = 1 体湧いてから次が湧くまで（秒）・minDistance = プレイヤーからこの距離（m）より近い印からは湧かせない（見えていない遠い印を選ぶ。遠い印が無ければその区画で一番遠い印）・scatter = 印のマスの中で散らす幅（m）。最後の部屋（finalZone）は全部の wave を倒すとクリア。",
+  "minDistance": 14.0,
+  "maxAlive": 50,
+  "spawnInterval": 0.15,
+  "scatter": 2.4,
+  "waves": [
+    {
+      "zone": "B",
+      "melee": 6,
       "ranged": 0,
-      "interval": 0.5,
-      "scatter": 2.4
+      "after": 1.5,
+      "whenLeft": 0
     },
-    "mixed": {
-      "melee": 3,
-      "ranged": 1,
-      "interval": 0.5,
-      "scatter": 2.4
+    {
+      "zone": "B",
+      "melee": 8,
+      "ranged": 0,
+      "after": 20,
+      "whenLeft": 2
     },
-    "hive": {
-      "melee": 5,
+    {
+      "zone": "B",
+      "melee": 8,
+      "ranged": 0,
+      "after": 20,
+      "whenLeft": 3
+    },
+    {
+      "zone": "d",
+      "from": "B",
+      "melee": 6,
+      "ranged": 0,
+      "after": 2.0,
+      "whenLeft": 0
+    },
+    {
+      "zone": "C",
+      "melee": 8,
       "ranged": 1,
-      "interval": 0.35,
-      "scatter": 2.4
+      "after": 1.5,
+      "whenLeft": 0
+    },
+    {
+      "zone": "C",
+      "melee": 9,
+      "ranged": 2,
+      "after": 20,
+      "whenLeft": 3
+    },
+    {
+      "zone": "C",
+      "melee": 10,
+      "ranged": 2,
+      "after": 20,
+      "whenLeft": 4
+    },
+    {
+      "zone": "D",
+      "melee": 8,
+      "ranged": 1,
+      "after": 1.5,
+      "whenLeft": 0
+    },
+    {
+      "zone": "D",
+      "melee": 9,
+      "ranged": 2,
+      "after": 20,
+      "whenLeft": 3
+    },
+    {
+      "zone": "D",
+      "melee": 10,
+      "ranged": 2,
+      "after": 20,
+      "whenLeft": 4
+    },
+    {
+      "zone": "E",
+      "melee": 8,
+      "ranged": 2,
+      "after": 1.5,
+      "whenLeft": 0
+    },
+    {
+      "zone": "E",
+      "melee": 10,
+      "ranged": 2,
+      "after": 20,
+      "whenLeft": 4
+    },
+    {
+      "zone": "E",
+      "melee": 12,
+      "ranged": 2,
+      "after": 20,
+      "whenLeft": 4
+    },
+    {
+      "zone": "g",
+      "from": "E",
+      "melee": 6,
+      "ranged": 0,
+      "after": 2.0,
+      "whenLeft": 0
+    },
+    {
+      "zone": "F",
+      "melee": 8,
+      "ranged": 2,
+      "after": 1.5,
+      "whenLeft": 0
+    },
+    {
+      "zone": "F",
+      "melee": 10,
+      "ranged": 2,
+      "after": 20,
+      "whenLeft": 4
+    },
+    {
+      "zone": "F",
+      "melee": 12,
+      "ranged": 2,
+      "after": 20,
+      "whenLeft": 4
+    },
+    {
+      "zone": "G",
+      "melee": 8,
+      "ranged": 2,
+      "after": 1.5,
+      "whenLeft": 0
+    },
+    {
+      "zone": "G",
+      "melee": 10,
+      "ranged": 2,
+      "after": 20,
+      "whenLeft": 4
+    },
+    {
+      "zone": "G",
+      "melee": 12,
+      "ranged": 2,
+      "after": 20,
+      "whenLeft": 4
+    },
+    {
+      "zone": "j",
+      "from": "E",
+      "melee": 8,
+      "ranged": 0,
+      "after": 1.0,
+      "whenLeft": 0
+    },
+    {
+      "zone": "i",
+      "from": "G",
+      "melee": 8,
+      "ranged": 0,
+      "after": 1.0,
+      "whenLeft": 0
+    },
+    {
+      "zone": "n",
+      "from": "H",
+      "melee": 8,
+      "ranged": 0,
+      "after": 1.0,
+      "whenLeft": 0
+    },
+    {
+      "zone": "H",
+      "melee": 22,
+      "ranged": 4,
+      "after": 2.0,
+      "whenLeft": 0
+    },
+    {
+      "zone": "H",
+      "melee": 26,
+      "ranged": 5,
+      "after": 25,
+      "whenLeft": 8
+    },
+    {
+      "zone": "H",
+      "melee": 28,
+      "ranged": 6,
+      "after": 25,
+      "whenLeft": 10
+    },
+    {
+      "zone": "H",
+      "melee": 30,
+      "ranged": 6,
+      "after": 25,
+      "whenLeft": 10
+    },
+    {
+      "zone": "H",
+      "melee": 34,
+      "ranged": 8,
+      "after": 25,
+      "whenLeft": 12
     }
-  }
+  ]
 }

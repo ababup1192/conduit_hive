@@ -132,10 +132,20 @@
       "max": 999,
       "group": "動画の口"
     },
+    "finalWaves": {
+      "kind": "field",
+      "type": "int",
+      "label": "動画の口の間だけ、最後の部屋の wave をこの数までにする（0 は全部）",
+      "order": 14,
+      "default": 0,
+      "min": 0,
+      "max": 50,
+      "group": "動画の口"
+    },
     "points": {
       "kind": "list",
       "label": "通る点",
-      "order": 14,
+      "order": 15,
       "fields": {
         "name": {
           "type": "string",

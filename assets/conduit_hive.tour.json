@@ -1,7 +1,7 @@
 {
   "version": 1,
   "title": "紹介の動画の道筋",
-  "note": "make video（e2e/video.flow の start tour）で自動の操縦が歩いて撃つ道筋。始めの部屋 A → 通路 → B で散弾銃を拾い、湧いた群れを散弾銃で倒す → 通路 → E で連射銃を拾って倒す → 最後の部屋 H で群れを撃ち続ける。points = 通る点（x/z = 足元 m・wait = 着いてから待つ秒・run = 走るか・weapon = 構える武器 pistol・shotgun・rifle（auto は敵との距離で選ぶ）・lookYaw = 待つ間に向く向き（度。0 が北・90 が東）・clear = 待ち終えても狙える敵がいる間は次へ進まない）。turnRate = 向きを変える速さの上限（度/秒）・lookEase = 狙いへ寄る勢い（秒）・turnSmooth = 向きの速さがなじむ秒・aimRange / rangedAimRange = 狙う melee / ranged の距離（m）・fireCone = 撃ち始める狙いのずれ（度）・aimHeight = 狙う高さ（敵の足元から m）・shotgunRange = auto で散弾銃へ替える距離（m）・switchHold = 持ち替えてから次に替えるまで（秒）・arriveRadius = 着いたとみなす距離（m）・giveUpSeconds = 1 つの点へ向かうのを諦める秒・minHealth = 動画の口の間だけ体力をこれより下げない・minAmmo = 動画の口の間だけ弾がこれを切ったら上限まで足す（どちらも手で遊ぶ時は効かない）。",
+  "note": "make video（e2e/video.flow の start tour）で自動の操縦が歩いて撃つ道筋。始めの部屋 A → 通路 → B で散弾銃を拾い、湧いた群れを散弾銃で倒す → 通路 → E で連射銃を拾って倒す → 最後の部屋 H で群れを撃ち続ける。points = 通る点（x/z = 足元 m・wait = 着いてから待つ秒・run = 走るか・weapon = 構える武器 pistol・shotgun・rifle（auto は敵との距離で選ぶ）・lookYaw = 待つ間に向く向き（度。0 が北・90 が東）・clear = 待ち終えても狙える敵がいる間は次へ進まない）。turnRate = 向きを変える速さの上限（度/秒）・lookEase = 狙いへ寄る勢い（秒）・turnSmooth = 向きの速さがなじむ秒・aimRange / rangedAimRange = 狙う melee / ranged の距離（m）・fireCone = 撃ち始める狙いのずれ（度）・aimHeight = 狙う高さ（敵の足元から m）・shotgunRange = auto で散弾銃へ替える距離（m）・switchHold = 持ち替えてから次に替えるまで（秒）・arriveRadius = 着いたとみなす距離（m）・giveUpSeconds = 1 つの点へ向かうのを諦める秒・minHealth = 動画の口の間だけ体力をこれより下げない・minAmmo = 動画の口の間だけ弾がこれを切ったら上限まで足す・finalWaves = 動画の口の間だけ最後の部屋の wave をこの数までにする（0 は全部。3 つとも手で遊ぶ時は効かない）。",
   "turnRate": 220.0,
   "lookEase": 0.16,
   "turnSmooth": 0.1,
@@ -15,6 +15,7 @@
   "giveUpSeconds": 15.0,
   "minHealth": 45.0,
   "minAmmo": 20,
+  "finalWaves": 2,
   "points": [
     {
       "name": "room_a",

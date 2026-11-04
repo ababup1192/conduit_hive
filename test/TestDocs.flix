@@ -85,13 +85,13 @@ mod TestDocs {
             EnemiesDoc.fromJson("{\"melee\": {\"speed\": 5.0}}")
                 |> Option.map(x -> (EnemiesDoc.rec(x)#melee#speed, EnemiesDoc.rec(x)#melee#health, EnemiesDoc.rec(x)#ranged#speed)))
 
-    /// 群れの種類は書いた名前だけになり（既定の名前は混ざらない）、書かない欄は既定の pack の値。
+    /// wave は書いた行だけになり（既定の wave は混ざらない）、区画が 1 文字でない行は捨て、書かない欄は 0 と None。
     @Test
-    def testSpawnsGroupsFollowTheDocNames(): Unit \ Assert =
-        let pack = Map.get("pack", SpawnsDoc.rec(SpawnsDoc.defaults())#groups);
-        Assert.assertEq(expected = pack |> Option.map(g -> (1, Some((7, g#ranged)))),
-            SpawnsDoc.fromJson("{\"groups\": {\"swarm\": {\"melee\": 7}}}")
-                |> Option.map(x -> (Map.size(SpawnsDoc.rec(x)#groups), Map.get("swarm", SpawnsDoc.rec(x)#groups) |> Option.map(g -> (g#melee, g#ranged)))))
+    def testSpawnsWavesFollowTheRows(): Unit \ Assert =
+        Assert.assertEq(expected = Some((1, Some(('B', 7, 0, Some('A'), 0.0, 0)))),
+            SpawnsDoc.fromJson("{\"waves\": [{\"zone\": \"B\", \"from\": \"A\", \"melee\": 7}, {\"zone\": \"BB\", \"melee\": 3}]}")
+                |> Option.map(x -> SpawnsDoc.rec(x)#waves)
+                |> Option.map(waves -> (List.length(waves), List.head(waves) |> Option.map(w -> (w#zone, w#melee, w#ranged, w#source, w#after, w#whenLeft)))))
 
     @Test
     def testPlayerBrokenJsonIsNone(): Unit \ Assert =
@@ -114,12 +114,12 @@ mod TestDocs {
         Assert.assertEq(expected = Some((2.0, d#hover, d#amounts)),
             PickupsDoc.fromJson("{\"radius\": 2.0}") |> Option.map(x -> (PickupsDoc.rec(x)#radius, PickupsDoc.rec(x)#hover, PickupsDoc.rec(x)#amounts)))
 
-    /// items の行の数に追随する（2 行なら名前 2 つ・量のない行は捨てる）。
+    /// items と dropItems の行の数に追随する（items は量のない行を捨てる・dropItems は 1 行なら 1 つで、書かない量は 0）。
     @Test
     def testPickupsItemsFollowTheRows(): Unit \ Assert =
-        Assert.assertEq(expected = Some(Map#{"health_small" => 10, "ammo_rifle" => 30}),
-            PickupsDoc.fromJson("{\"items\": {\"health_small\": {\"amount\": 10}, \"ammo_rifle\": {\"amount\": 30}, \"weapon_rifle\": {}}}")
-                |> Option.map(x -> PickupsDoc.rec(x)#amounts))
+        Assert.assertEq(expected = Some((Map#{"health_small" => 10, "ammo_rifle" => 30}, Map#{"ammo_rifle" => (2.0, 0)})),
+            PickupsDoc.fromJson("{\"items\": {\"health_small\": {\"amount\": 10}, \"ammo_rifle\": {\"amount\": 30}, \"weapon_rifle\": {}}, \"dropItems\": {\"ammo_rifle\": {\"weight\": 2.0}}}")
+                |> Option.map(x -> (PickupsDoc.rec(x)#amounts, PickupsDoc.rec(x)#dropItems |> Map.map(i -> (i#weight, i#amount)))))
 
     /// 操作の一覧は行の数に追随する（key の無い行は捨てる）。
     @Test

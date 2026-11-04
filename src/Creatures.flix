@@ -178,8 +178,7 @@ mod Creatures {
 
     /// 鍵の局所の姿勢（時刻 t のコマ）。クリップが無ければ休みの姿勢。
     def localOf(rig: Body, t: Float64, key: PoseKey): Vector[Skin3d.JointPose] =
-        let at = (c: Clip, time: Float64, looping: Bool) ->
-            Map.get(c, rig#clips) |> Option.map(clip -> AnimationClip3d.sample(rig#skin, clip, time, looping)) |> Option.getWithDefault(Skin3d.restPose(rig#skin));
+        let at = (c: Clip, time: Float64, looping: Bool) -> sampledOr(rig, c, time, looping);
         match key {
             case PoseKey.Loop(_, c, g) =>
                 let length = Map.get(c, rig#clips) |> Option.map(AnimationClip3d.duration) |> Option.getWithDefault(1.0);
@@ -218,12 +217,26 @@ mod Creatures {
 
     def bodyOfKey(models: Bodies, key: PoseKey): Option[Body] = Map.get(kindOfKey(key), models)
 
+    /// クリップ c の時刻 time の局所の姿勢（クリップが無ければ休みの姿勢）。
+    // WhyNot: Option.getWithDefault(Skin3d.restPose(..)) にしない — 既定の値は引数なので、クリップがある時も毎回休みの姿勢を作る。
+    def sampledOr(rig: Body, c: Clip, time: Float64, looping: Bool): Vector[Skin3d.JointPose] = match Map.get(c, rig#clips) {
+        case Some(clip) => AnimationClip3d.sample(rig#skin, clip, time, looping)
+        case None       => Skin3d.restPose(rig#skin)
+    }
+
+    /// 共有の姿勢から鍵 key の姿勢（無ければその場で作る）。
+    // WhyNot: Option.getWithDefault(Pose3d.compute(..)) にしない — 既定の値は引数なので、共有の姿勢がある敵の分も毎コマ姿勢を作り直す。
+    def sharedOr(body: Body, shared: Map[PoseKey, Pose3d.Pose3d], t: Float64, key: PoseKey): Pose3d.Pose3d = match Map.get(key, shared) {
+        case Some(pose) => pose
+        case None       => Pose3d.compute(body#skin, localOf(body, t, key))
+    }
+
     /// 1 体の姿勢: 混ぜている途中なら 2 つのクリップを混ぜて作り、ほかは共有の姿勢。
     def poseOf(body: Body, timing: Timing, shared: Map[PoseKey, Pose3d.Pose3d], blendSeconds: Float64, t: Float64, b: Posed): Pose3d.Pose3d =
         let nowKey = poseKeyOf(timing, b#kind, b#group, t, b#anim#now);
         match blendOf(blendSeconds, t, b#anim) {
             case Some((before, w)) =>
                 Pose3d.compute(body#skin, Pose3d.blend(localOf(body, t, poseKeyOf(timing, b#kind, b#group, t, before)), localOf(body, t, nowKey), w))
-            case None => Map.get(nowKey, shared) |> Option.getWithDefault(Pose3d.compute(body#skin, localOf(body, t, nowKey)))
+            case None => sharedOr(body, shared, t, nowKey)
         }
 }

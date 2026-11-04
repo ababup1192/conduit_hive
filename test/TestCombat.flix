@@ -7,7 +7,7 @@ mod TestCombat {
     // ── 迷路と道具 ──
 
     /// 部屋 A（x 4〜16 m）・通路 a（x 16〜20 m の上の行）・部屋 B（x 20〜32 m）。行 1 の z は 8〜12 m・行 2 は 4〜8 m。
-    /// start は A の西の端（x 6 m・z 10 m）で東を向く。B には pack の spawn の印が 1 つ（列 7・行 2）。
+    /// start は A の西の端（x 6 m・z 10 m）で東を向く。B には spawn の印が 1 つ（列 7・行 2）。
     def twoRoomMaze(): MazeDoc.Doc =
         MazeDoc.Doc.Doc({ version = 1, cellSize = 4.0, wallHeight = 4.0, finalZone = 'B',
                           rows = "#########" :: "#AAAaBBB#" :: "#AAA#BBB#" :: "#########" :: Nil,
@@ -15,16 +15,19 @@ mod TestCombat {
                                   :: { id = 'B', name = "east", kind = MazeDoc.ZoneKind.Room, height = 4.0 }
                                   :: { id = 'a', name = "A-B", kind = MazeDoc.ZoneKind.Corridor, height = 4.0 } :: Nil,
                           marks = { kind = MazeDoc.MarkKind.Start, name = "start", col = 1, row = 1, yaw = 90.0 }
-                                  :: { kind = MazeDoc.MarkKind.Spawn, name = "pack", col = 7, row = 2, yaw = 0.0 } :: Nil })
+                                  :: { kind = MazeDoc.MarkKind.Spawn, name = "spawn", col = 7, row = 2, yaw = 0.0 } :: Nil })
 
     def enemies(): EnemiesDoc.Rec = EnemiesDoc.rec(EnemiesDoc.defaults())
 
     def player(): PlayerDoc.Rec = PlayerDoc.rec(PlayerDoc.defaults())
 
-    /// 体力 5 の描く元（melee の 1 撃で倒れる）。部屋が 12 m 四方と狭いので、近い印からも湧かせる（minDistance 0）。
+    /// 体力 5 の描く元（melee の 1 撃で倒れる）。部屋 B に入るとすぐ melee 3 体の wave が 1 つ始まる。
+    /// 部屋が 12 m 四方と狭いので、近い印からも湧かせる（minDistance 0）。
     def fragileRes(): Res.Res =
         let base = resWith(twoRoomMaze());
-        { player = PlayerDoc.Doc.Doc({ health = 5.0 | player() }), spawns = SpawnsDoc.Doc.Doc({ minDistance = 0.0 | SpawnsDoc.rec(base#spawns) }) | base }
+        let bWave = { zone = 'B', melee = 3, ranged = 0, source = None, after = 0.0, whenLeft = 0 };
+        Res.withSpawns(SpawnsDoc.Doc.Doc({ minDistance = 0.0, waves = bWave :: Nil | SpawnsDoc.rec(base#spawns) }),
+                       { player = PlayerDoc.Doc.Doc({ health = 5.0 | player() }) | base })
 
     def idle(): World.Input = World.walking(Walker.idle())
 
@@ -90,6 +93,20 @@ mod TestCombat {
         let down = World.step(r, idle(), at(0.15 + hit, 0.05, swung));
         let back = World.step(r, idle(), at(0.15 + hit + player()#respawnSeconds, 0.05, down));
         Assert.assertEq(expected = Some((false, false)), hordeIn(back) |> Option.map(h -> (Horde.isTriggered('A', h), Horde.isTriggered('B', h))))
+
+    /// 部屋 A（wave 無し）を終えて部屋 B に入り、B の wave を 1 つ始めた所で倒れると、やり直した時に B は最初の wave の前に戻り、
+    /// 入る前に終えていた A は終えたまま（並びは 倒れたコマの B の wave の数・やり直したコマの B の wave の数・A に入ったままか）。
+    @Test
+    def testRespawnRestartsTheRoomWaves(): Unit \ Assert =
+        let r = fragileRes();
+        let hit = enemies()#melee#hitTime;
+        let inA = World.step(r, idle(), at(0.05, 0.05, World.initial(r)));
+        let inB = World.step(r, idle(), at(0.1, 0.05, World.placeWalker(r, { x = 22.0, z = 10.0 }, 90.0, 0.0, inA)));
+        let swung = World.step(r, idle(), at(0.15, 0.05, withMelee(r, 23.0, 10.0, Num.pi() * 1.5, 'B', inB)));
+        let down = World.step(r, idle(), at(0.15 + hit, 0.05, swung));
+        let back = World.step(r, idle(), at(0.15 + hit + player()#respawnSeconds, 0.05, down));
+        Assert.assertEq(expected = (Some(1), Some((0, true))),
+            (hordeIn(down) |> Option.map(Horde.wavesStarted('B')), hordeIn(back) |> Option.map(h -> (Horde.wavesStarted('B', h), Horde.isTriggered('A', h)))))
 
     // ── 部屋の入り直し ──
 

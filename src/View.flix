@@ -89,7 +89,7 @@ mod View {
 
     // ── 3D の場面 ──
 
-    /// 一人称の場面の値（時刻 t）: 照準のカメラ・今いる区画から見える区画の絵・その区画の敵と projectile と拾う物・粒・手前の腕と銃・撃った瞬間の灯り。
+    /// 一人称の場面の値（時刻 t）: 照準のカメラ・今いる区画から見える区画の絵・その区画の敵と projectile と拾う物（落とした物も）・粒・手前の腕と銃・撃った瞬間の灯り。
     def stageIn(res: Res.Res, t: Float64, s: World.Session): StageView.In =
         let body = World.walkerOf(s);
         let camera = World.cameraOf(res, t, s);
@@ -103,7 +103,9 @@ mod View {
         let seen = (x: Float64, y: Float64, z: Float64, radius: Float64) ->
             Maze.zoneAt(res#maze, x, z) |> Option.exists(id -> Set.memberOf(id, drawn)) and Frustum.intersectsSphere(frustum, Vec3.v3(x, y, z), radius);
         let shots = horde#projectiles |> List.filter(p -> seen(p#at#x, p#at#y, p#at#z, 1.0));
-        let items = pickupsIn(res, t, camera, drawn, World.takenOf(s));
+        let taken = World.takenOf(s);
+        let lying = List.append(res#pickupPoints |> List.filter(p -> not Set.memberOf(p#id, taken)), World.dropsOf(s) |> List.map(d -> d#point));
+        let items = pickupsIn(res, t, camera, drawn, lying);
         let props = if (Set.memberOf(res#maze#finalZone, drawn)) res#propArt else Nil;
         { t = t, camera = camera, look = LookDoc.rec(res#look),
           zones = drawn |> Set.toList |> List.filterMap(id -> Map.get(id, res#art)),
@@ -120,7 +122,7 @@ mod View {
     /// タイトルとクリアの背景: カメラから見える区画の迷路と拾う物だけ（敵・粒・腕と銃・的の柱は無し）。
     def showcaseIn(res: Res.Res, t: Float64, camera: Camera3d.Camera3d): StageView.In =
         let drawn = Maze.visibleFrom(res#maze, camera#eye#x, camera#eye#z);
-        let items = pickupsIn(res, t, camera, drawn, Set.empty());
+        let items = pickupsIn(res, t, camera, drawn, res#pickupPoints);
         { t = t, camera = camera, look = LookDoc.rec(res#look),
           zones = drawn |> Set.toList |> List.filterMap(id -> Map.get(id, res#art)),
           billboards = Nil, flash = Nil, creatures = Nil, pickups = items#instances, textures = List.append(res#stageTextures, res#pickupArt#textures),
@@ -150,12 +152,13 @@ mod View {
     def clearCamera(res: Res.Res, t: Float64, c: World.Tally): Camera3d.Camera3d =
         showcaseCamera(res, c#x, c#z, c#yaw + rad(showcaseTurn() * (t - c#endedAt)))
 
-    /// まだ拾っていない拾う物のうち、描く区画にある物: 視錐台に掛かる物の置いた物と、目に近い lights 個の弱い点光源。
-    def pickupsIn(res: Res.Res, t: Float64, camera: Camera3d.Camera3d, drawn: Set[Char], taken: Set[Int32]): Pickup3d =
+    /// 床にある拾う物（置いた物のまだ拾っていない物と、倒れた敵が落とした物）のうち、描く区画にある物:
+    /// 視錐台に掛かる物の置いた物と、目に近い lights 個の弱い点光源。
+    def pickupsIn(res: Res.Res, t: Float64, camera: Camera3d.Camera3d, drawn: Set[Char], lying: List[Pickups.Point]): Pickup3d =
         let doc = PickupsDoc.rec(res#pickups);
         let look = LookDoc.rec(res#look);
         let frustum = Camera3d.frustum(camera, World.width() / World.height());
-        let here = res#pickupPoints |> List.filter(p -> Set.memberOf(p#zone, drawn) and not Set.memberOf(p#id, taken));
+        let here = lying |> List.filter(p -> Set.memberOf(p#zone, drawn));
         let shown = here |> List.filter(p -> Frustum.intersectsSphere(frustum, Vec3.v3(p#x, doc#hover, p#z), 0.9));
         let distance = (p: Pickups.Point) -> { let (dx, dz) = (p#x - camera#eye#x, p#z - camera#eye#z); dx * dx + dz * dz };
         let lit = here |> List.sortBy(p -> (distance(p), p#id)) |> List.take(doc#lights);

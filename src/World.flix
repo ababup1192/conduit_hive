@@ -14,7 +14,7 @@
 // 弾の尽きた武器で引き金を引くと空撃ち（撃てない・間隔だけ空く）になり、弾のある武器へ自動で持ち替える（Arsenal.dryFire）。
 //
 // ── クリア ──
-// 最後の部屋が湧き終わり、その部屋で湧いた敵が全部倒れたらクリア（Event.Cleared）。clearSeconds の後に Clear の画面へ移る。
+// 最後の部屋の wave を全部始め、その wave の敵が全部倒れたらクリア（Event.Cleared）。clearSeconds の後に Clear の画面へ移る。
 //
 // ── 起きた事 ──
 // 1 コマに起きた事（撃った・当たった・倒れた・被弾…）は Session の events にそのコマの分だけ持つ。音（Sounds）はそれを写すだけ。
@@ -24,9 +24,10 @@
 // 壁に当たった所に火花・敵に当たった所に体液の飛沫・銃口にマズルフラッシュの粒を出す（Particles3d）。弾は飛ばない。
 //
 // ── 敵と体力 ──
-// 部屋（区画の種類が Room）に入ると、その入口を checkpoint に控え、まだ湧かせていない部屋なら群れを湧かせる（Horde.enter）。
+// 部屋（区画の種類が Room）に入ると、その入口を checkpoint に控え、まだ入っていない区画なら wave を始める（Horde.enter。通路も wave を持てる）。
 // 群れは毎コマ Horde.step で進み、プレイヤーが受けた傷は Health に足す。体力が 0 で倒れ、respawnSeconds の後に checkpoint から
-// やり直す（敵と projectile を消し、倒れた時に敵が残っていた部屋と checkpoint の部屋をもう一度湧かせられるようにする）。
+// やり直す（敵と projectile と落とした物を消し、wave の進みを checkpoint に控えた「終えた区画」だけに戻す。ほかの区画はもう一度入ると最初の wave から）。
+// 倒れた敵は時々弾や回復を落とす（Pickups.dropsOf）。紹介の動画の自動の操縦の間だけ、最後の部屋の wave を TourDoc の finalWaves までにする。
 mod World {
 
     use fge::{Camera3d, Clock, Num, Vec3}
@@ -82,13 +83,14 @@ mod World {
     /// クリアの記録: かかった時間（秒）・倒した数・最後に立っていた所と向き（ラジアン。結果の画面の背景がそこから見回す）・クリアした時刻。
     pub type alias Tally = { seconds = Float64, kills = Int32, x = Float64, z = Float64, yaw = Float64, endedAt = Float64 }
 
-    /// やり直す所: 部屋に入った時の足元と向き（度）と、その部屋と、その時の武器と弾・倒した数・拾った物の番号の写し
+    /// やり直す所: 部屋に入った時の足元と向き（度）と、その部屋と、その時の武器と弾・倒した数・拾った物の番号・終えた区画の wave の進みの写し
     /// （倒れてやり直すと、部屋の群れと一緒にこれらもその時へ戻る）。
-    pub type alias Checkpoint = { x = Float64, z = Float64, yawDeg = Float64, zone = Option[Char], arsenal = Arsenal.Arsenal, kills = Int32, taken = Set[Int32] }
+    pub type alias Checkpoint = { x = Float64, z = Float64, yawDeg = Float64, zone = Option[Char], arsenal = Arsenal.Arsenal, kills = Int32, taken = Set[Int32],
+                                  waves = Map[Char, Spawner.Progress] }
 
     /// 歩いている間の中身: 体・マウスの視点・F3 の診断を出すか・武器・見回しの遅れ（度。ビューモデルの揺れ）・3D の粒・
     /// 敵の群れ・体力・やり直す所・最後にいた区画（壁の中の None は数えない）・このコマに起きた事・
-    /// ポーズ・拾った物の番号・拾った時の知らせ・倒した数・始めた時刻・クリアした時刻・
+    /// ポーズ・拾った物の番号・倒れた敵が落とした物・拾った時の知らせ・倒した数・始めた時刻・クリアした時刻・
     /// 紹介の動画の自動の操縦（`start tour` の時だけ Some。キーとマウスの代わりに歩いて撃ち、体力と弾を TourDoc の下限より下げない）。
     pub type alias SessionRec = {
         walker = Walker.Walker,
@@ -104,6 +106,7 @@ mod World {
         events = List[Event],
         pause = Pause,
         taken = Set[Int32],
+        drops = List[Pickups.Drop],
         notice = Option[Notice],
         kills = Int32,
         startedAt = Float64,
@@ -150,9 +153,9 @@ mod World {
         { walker = startWalker(res), look = Look.Released, diagnosticsView = DiagnosticsView.Hidden,
           arsenal = Arsenal.initial(res#weapons), sway = { x = 0.0, y = 0.0 }, particles = Nil,
           horde = Horde.empty(), health = Health.full(PlayerDoc.rec(res#player)),
-          checkpoint = { x = s#x, z = s#z, yawDeg = s#yaw, zone = None, arsenal = Arsenal.initial(res#weapons), kills = 0, taken = Set.empty() },
+          checkpoint = { x = s#x, z = s#z, yawDeg = s#yaw, zone = None, arsenal = Arsenal.initial(res#weapons), kills = 0, taken = Set.empty(), waves = Map.empty() },
           lastZone = None, events = Nil,
-          pause = Pause.Running, taken = Set.empty(), notice = None, kills = 0, startedAt = t, clearedAt = None, pilot = None }
+          pause = Pause.Running, taken = Set.empty(), drops = Nil, notice = None, kills = 0, startedAt = t, clearedAt = None, pilot = None }
 
     /// 遊びから始める状態（迷路の start の印に立ち、始めた時刻は 0 秒）。
     pub def initial(res: Res.Res): World =
@@ -281,6 +284,9 @@ mod World {
     /// 拾った物の番号。
     pub def takenOf(s: Session): Set[Int32] = rec(s)#taken
 
+    /// 倒れた敵が落とした、まだ拾っていない物。
+    pub def dropsOf(s: Session): List[Pickups.Drop] = rec(s)#drops
+
     /// 最後に拾った時の知らせ（まだ拾っていなければ None）。
     pub def noticeOf(s: Session): Option[Notice] = rec(s)#notice
 
@@ -317,8 +323,9 @@ mod World {
     pub def step(res: Res.Res, input: Input, w: World): World = match w#screen {
         case Screen.Play(s) if w#quit != Quit.Playing or rec(s)#pause != Pause.Running => mapSession(r -> { events = Nil | r }, w)
         case Screen.Play(s) =>
-            let (command, pilot) = pilotInput(res, w#play, input, rec(s));
-            let next = guarded(res, { pilot = pilot | stepSession(res, command, w#play, rec(s)) });
+            let r = if (Option.isEmpty(rec(s)#pilot)) res else { wavePlans = res#tourWavePlans | res };
+            let (command, pilot) = pilotInput(r, w#play, input, rec(s));
+            let next = guarded(r, { pilot = pilot | stepSession(r, command, w#play, rec(s)) });
             if (isClearDue(res, w#play, next)) withEvent(Event.ClearShown, { screen = Screen.Clear(tallyAt(w#play, next)) | w })
             else { screen = Screen.Play(SessionOf.SessionOf(next)) | w }
         case _ => w
@@ -362,6 +369,7 @@ mod World {
             let equipped = Arsenal.equip(vm, t, input#choice, s#arsenal);
             let moved = { walker = Walker.step(res#collision, WalkDoc.rec(res#walk), input#drive, clock, s#walker),
                           sway = swayAfter(vm, input#drive, dt, s#sway), arsenal = equipped, particles = Particles3d.step(t, s#particles),
+                          drops = Pickups.keepDrops(t, PickupsDoc.rec(res#pickups)#dropLimit, s#drops),
                           events = switched(s#arsenal, equipped) | s };
             let picked = pickUp(res, t, enterZone(res, t, moved));
             let a = picked#arsenal;
@@ -377,17 +385,20 @@ mod World {
     def switched(before: Arsenal.Arsenal, after: Arsenal.Arsenal): List[Event] =
         if (after#current != before#current) Event.Switched(after#current) :: Nil else Nil
 
-    /// 足元の近くの物を拾い、拾った物の番号・知らせ・起きた事を足す。
+    /// 足元の近くの置いた物と落とした物を拾い、拾った物の番号・知らせ・起きた事を足す。
     def pickUp(res: Res.Res, t: Float64, s: SessionRec): SessionRec =
         let rules = { t = t, weapons = res#weapons, viewmodel = FpViewmodelDoc.rec(res#viewmodel), player = PlayerDoc.rec(res#player) };
-        let got = Pickups.collect(rules, PickupsDoc.rec(res#pickups)#radius, { x = s#walker#x, z = s#walker#z }, res#pickupPoints, s#taken,
-                                  { arsenal = s#arsenal, health = s#health });
-        if (List.isEmpty(got#picked)) s
+        let radius = PickupsDoc.rec(res#pickups)#radius;
+        let feet = { x = s#walker#x, z = s#walker#z };
+        let got = Pickups.collect(rules, radius, feet, res#pickupPoints, s#taken, { arsenal = s#arsenal, health = s#health });
+        let dropped = if (List.isEmpty(s#drops)) { carry = got#carry, drops = Nil, picked = Nil } else Pickups.collectDrops(rules, radius, feet, s#drops, got#carry);
+        let picked = List.append(got#picked, dropped#picked);
+        if (List.isEmpty(picked)) s
         else {
-            let events = got#picked |> List.map(p -> Event.PickedUp(p#kind));
-            { arsenal = got#carry#arsenal, health = got#carry#health, taken = got#taken,
-              notice = List.last(got#picked) |> Option.map(p -> { kind = p#kind, amount = p#amount, at = t }),
-              events = List.flatten(s#events :: events :: switched(s#arsenal, got#carry#arsenal) :: Nil) | s }
+            let events = picked |> List.map(p -> Event.PickedUp(p#kind));
+            { arsenal = dropped#carry#arsenal, health = dropped#carry#health, taken = got#taken, drops = dropped#drops,
+              notice = List.last(picked) |> Option.map(p -> { kind = p#kind, amount = p#amount, at = t }),
+              events = List.flatten(s#events :: events :: switched(s#arsenal, dropped#carry#arsenal) :: Nil) | s }
         }
 
     /// 弾の尽きた武器で引き金を引いた: 空撃ちして、弾のある武器があれば持ち替える。
@@ -405,24 +416,26 @@ mod World {
         { kills = s#kills + downs, clearedAt = if (cleared) Some(t) else s#clearedAt,
           events = if (cleared) List.append(s#events, Event.Cleared :: Nil) else s#events | s }
 
-    /// 最後の部屋が湧き終わり、その部屋で湧いた敵が残っていないか（まだ入っていなければ偽）。
-    def isFinalRoomClear(res: Res.Res, h: Horde.Horde): Bool =
-        let finalZone = res#maze#finalZone;
-        Horde.isTriggered(finalZone, h) and not Set.memberOf(finalZone, Horde.zonesInPlay(h))
+    /// 最後の部屋の wave を全部始め、その wave の敵が残っていないか（まだ入っていなければ偽）。
+    def isFinalRoomClear(res: Res.Res, h: Horde.Horde): Bool = Horde.isFinished(res, res#maze#finalZone, h)
 
-    /// 部屋に入った: 前にいた区画と違う部屋なら、やり直す所をその入口に控え（控えた部屋と同じなら書き換えない）、群れを湧かせる。
+    /// 区画に入った: 前にいた区画と違えば、まだ入っていない区画の wave を始める（通路は wave を持つ時だけ）。部屋なら、やり直す所をその入口に控える
+    /// （控えた部屋と同じなら書き換えない。控えるのは入る前の、終えた区画の wave の進み）。
     /// WhyNot: 壁ぎわで体の真ん中が壁のマスへ入った None を「区画を出た」と数えない — Some(A) → None → Some(A) で
     /// 部屋に入り直したことになり、戦いの最中の位置へやり直す所を書き換えてしまう。
     def enterZone(res: Res.Res, t: Float64, s: SessionRec): SessionRec =
         let b = s#walker;
         match Maze.zoneAt(res#maze, b#x, b#z) {
             case None => s
-            case Some(id) if Some(id) == s#lastZone or not isRoom(res, id) => { lastZone = Some(id) | s }
+            case Some(id) if Some(id) == s#lastZone => s
+            case Some(id) if not isRoom(res, id) =>
+                { lastZone = Some(id), horde = if (Map.memberOf(id, res#wavePlans)) Horde.enter(id, t, s#horde) else s#horde | s }
             case Some(id) =>
                 let fresh = not Horde.isTriggered(id, s#horde);
                 let checkpoint = if (s#checkpoint#zone == Some(id)) s#checkpoint
-                                 else { x = b#x, z = b#z, yawDeg = b#yaw * 180.0 / Num.pi(), zone = Some(id), arsenal = s#arsenal, kills = s#kills, taken = s#taken };
-                { lastZone = Some(id), checkpoint = checkpoint, horde = Horde.enter(res, id, t, { x = b#x, z = b#z }, s#horde),
+                                 else { x = b#x, z = b#z, yawDeg = b#yaw * 180.0 / Num.pi(), zone = Some(id), arsenal = s#arsenal, kills = s#kills, taken = s#taken,
+                                        waves = Horde.finishedOf(res, s#horde) };
+                { lastZone = Some(id), checkpoint = checkpoint, horde = Horde.enter(id, t, s#horde),
                   events = if (fresh) List.append(s#events, Event.RoomTriggered(id) :: Nil) else s#events | s }
         }
 
@@ -433,7 +446,7 @@ mod World {
     def playerOf(res: Res.Res, s: SessionRec): PlayerBody.PlayerBody =
         let walk = WalkDoc.rec(res#walk);
         let b = s#walker;
-        { x = b#x, feet = b#feet, z = b#z, eye = Walker.eyeOf(walk, b), radius = walk#radius, height = walk#height }
+        { x = b#x, feet = b#feet, z = b#z, eye = Walker.eyeOf(walk, b), yaw = b#yaw, radius = walk#radius, height = walk#height }
 
     /// 群れを 1 コマ進め、受けた傷を体力に足し、projectile が弾けた所に体液の飛沫を出す（散らし方の種は弾けた projectile の id）。
     def stepHorde(res: Res.Res, t: Float64, dt: Float64, s: SessionRec): SessionRec =
@@ -446,14 +459,14 @@ mod World {
         { horde = outcome#horde, health = health, particles = List.append(splashes, s#particles),
           events = List.flatten(s#events :: outcome#events :: hurtEvents :: downEvents :: Nil) | s }
 
-    /// やり直す: やり直す所に立ち、体力を満たし、敵を消して部屋をもう一度湧かせられるようにする（次のコマに部屋へ入り直して湧く）。
-    /// 武器と弾・倒した数・拾った物は部屋に入った時の写しへ戻す（湧き直す群れの分を二重に数えない・使った弾を取り戻せる）。
+    /// やり直す: やり直す所に立ち、体力を満たし、敵と落とした物を消して、wave の進みを部屋に入った時に終えていた区画だけへ戻す
+    /// （次のコマに部屋へ入り直し、その部屋は最初の wave から湧く）。
+    /// 武器と弾・倒した数・拾った物も部屋に入った時の写しへ戻す（湧き直す群れの分を二重に数えない・使った弾を取り戻せる）。
     def respawn(res: Res.Res, s: SessionRec): SessionRec =
         let c = s#checkpoint;
         let walker = Walker.settle(res#collision, WalkDoc.rec(res#walk), Walker.standing(c#x, 0.0, c#z, c#yawDeg));
-        let zones = Set.union(Horde.zonesInPlay(s#horde), c#zone |> Option.toList |> List.toSet);
-        { walker = walker, health = Health.full(PlayerDoc.rec(res#player)), horde = Horde.resetRooms(zones, s#horde),
-          arsenal = c#arsenal, kills = c#kills, taken = c#taken, notice = None,
+        { walker = walker, health = Health.full(PlayerDoc.rec(res#player)), horde = Horde.restore(c#waves, s#horde),
+          arsenal = c#arsenal, kills = c#kills, taken = c#taken, drops = Nil, notice = None,
           particles = Nil, lastZone = None, events = Event.Respawned :: Nil | s }
 
     /// 見回しの遅れ: このコマに回した角を足し、上限で切り、swayFollow 秒ほどで 0 へ戻す。
@@ -478,7 +491,9 @@ mod World {
         let ahead = pdoc#muzzle#size * 0.5;
         let flash = Particles3d.emit(res#particles, Particles3d.Kind.Muzzle, Particles3d.Space.Muzzle, Vec3.v3(0.0, 0.0, ahead), Vec3.v3(0.0, 0.0, 1.0), t, a#shots);
         let damaged = Horde.applyDamage(res, t, stats#damage, impacts, s#horde);
+        let fallen = damaged#fallen |> List.map(e -> { id = e#id, x = e#x, z = e#z, zone = Maze.zoneAt(res#maze, e#x, e#z) |> Option.getWithDefault(e#home) });
         { arsenal = Arsenal.fire(res#weapons, t, dt, a), horde = damaged#horde,
+          drops = List.append(s#drops, Pickups.dropsOf(res#pickups, t, fallen)),
           particles = List.append(flash, List.append(sparks, s#particles)),
           events = List.flatten(s#events :: (Event.Fired(a#current) :: Nil) :: damaged#events :: Nil) | s }
 

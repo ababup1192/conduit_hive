@@ -10,13 +10,16 @@ mod TestSupport {
     /// 既定の Doc に迷路だけを差し替えた描く元（腕と銃・敵の glb は無し。敵のクリップの長さは既定の長さ）。
     pub def resWith(maze: MazeDoc.Doc): Res.Res = Res.build(docsWith(maze))
 
-    /// 既定の Doc に迷路だけを差し替えた Doc の束（Game.app に渡す）。
+    /// 既定の Doc に迷路だけを差し替えた Doc の束（Game.app に渡す。wave は無し）。
     pub def docsWith(maze: MazeDoc.Doc): Res.Docs =
         ({ uiText = UiTextDoc.defaults(), keys = KeysDoc.defaults(), theme = ThemeDoc.defaults(),
                     walk = WalkDoc.defaults(), look = LookDoc.defaults(), maze = maze,
                     weapons = WeaponsDoc.defaults(), viewmodel = FpViewmodelDoc.defaults(), particles = Particles3dDoc.defaults(),
-                    player = PlayerDoc.defaults(), enemies = EnemiesDoc.defaults(), spawns = SpawnsDoc.defaults(), pickups = PickupsDoc.defaults(), tour = TourDoc.defaults(),
+                    player = PlayerDoc.defaults(), enemies = EnemiesDoc.defaults(), spawns = noWaves(), pickups = PickupsDoc.defaults(), tour = TourDoc.defaults(),
                     stage = None, viewmodels = Map.empty(), creatures = Map.empty(), pickupModels = Map.empty() })
+
+    /// wave の無い spawns の Doc（既定の wave は最後の部屋 H のもので、小さな迷路に H は無い。湧かせるテストは Res.withSpawns で wave を書く）。
+    def noWaves(): SpawnsDoc.Doc = SpawnsDoc.Doc.Doc({ waves = Nil | SpawnsDoc.rec(SpawnsDoc.defaults()) })
 
     // ── 遊んでいる場面の値（ほかの画面なら None） ──
 

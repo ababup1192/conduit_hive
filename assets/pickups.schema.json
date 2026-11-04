@@ -126,6 +126,59 @@
           "max": 999
         }
       }
+    },
+    "dropChance": {
+      "kind": "field",
+      "type": "float",
+      "label": "倒れた敵が物を落とす確率",
+      "order": 13,
+      "default": 0.22,
+      "min": 0,
+      "max": 1,
+      "group": "落とす物"
+    },
+    "dropSeconds": {
+      "kind": "field",
+      "type": "float",
+      "label": "落とした物が消えるまで（秒）",
+      "order": 14,
+      "default": 30.0,
+      "min": 1,
+      "max": 300,
+      "group": "落とす物"
+    },
+    "dropLimit": {
+      "kind": "field",
+      "type": "int",
+      "label": "落ちている物の上限（越えたら古い物から消える）",
+      "order": 15,
+      "default": 24,
+      "min": 0,
+      "max": 200,
+      "group": "落とす物"
+    },
+    "dropItems": {
+      "kind": "catalog",
+      "label": "落とす物（鍵 = 拾う物の種類の名前）",
+      "order": 16,
+      "fields": {
+        "weight": {
+          "type": "float",
+          "label": "選ばれやすさ（ほかとの比）",
+          "order": 1,
+          "default": 1.0,
+          "min": 0,
+          "max": 100
+        },
+        "amount": {
+          "type": "int",
+          "label": "量",
+          "order": 2,
+          "default": 0,
+          "min": 0,
+          "max": 999
+        }
+      }
     }
   }
 }

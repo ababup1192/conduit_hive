@@ -1,7 +1,7 @@
 {
   "version": 1,
   "title": "迷路（マス目）",
-  "note": "1 文字 = 1 マス（cellSize m 四方）。'#' は壁、ほかの文字は床で、その文字が区画（部屋と通路の塊）の名前。区画の名前・種類（room = 部屋で天井に灯りを吊る / corridor = 通路）・天井の高さは zones の行（行の無い文字は通路・wallHeight）。marks は x = 列・y = 行（左上が 0, 0）の印で、kind = start（歩き始める所・yaw は向きの度で 0 が上の行の向き・90 が右）/ spawn（敵が湧く所・name は群れの種類の名前で、数と型は conduit_hive.spawns.json の groups が正）/ pickup（name が拾う物の種類の名前で、量は conduit_hive.pickups.json の items が正）。印は種類の名前だけを持ち、湧く数と拾う物の量は別の Doc が正。finalZone は最後の広い部屋の文字。",
+  "note": "1 文字 = 1 マス（cellSize m 四方）。'#' は壁、ほかの文字は床で、その文字が区画（部屋と通路の塊）の名前。区画の名前・種類（room = 部屋で天井に灯りを吊る / corridor = 通路）・天井の高さは zones の行（行の無い文字は通路・wallHeight）。marks は x = 列・y = 行（左上が 0, 0）の印で、kind = start（歩き始める所・yaw は向きの度で 0 が上の行の向き・90 が右）/ spawn（敵が湧く所。name は見分けの名前だけで、何がいつ何体湧くかは conduit_hive.spawns.json の waves が正）/ pickup（name が拾う物の種類の名前で、量は conduit_hive.pickups.json の items が正）。印は湧く所と種類の名前だけを持ち、湧く数と拾う物の量は別の Doc が正。finalZone は最後の広い部屋の文字。",
   "cellSize": 4.0,
   "wallHeight": 4.0,
   "finalZone": "H",
@@ -191,123 +191,309 @@
     },
     {
       "kind": "spawn",
-      "name": "pack",
+      "name": "spawn",
       "x": 17,
       "y": 31
     },
     {
       "kind": "spawn",
-      "name": "pack",
+      "name": "spawn",
       "x": 16,
       "y": 35
     },
     {
       "kind": "spawn",
-      "name": "pack",
+      "name": "spawn",
       "x": 31,
       "y": 32
     },
     {
       "kind": "spawn",
-      "name": "pack",
+      "name": "spawn",
       "x": 33,
       "y": 36
     },
     {
       "kind": "spawn",
-      "name": "mixed",
+      "name": "spawn",
       "x": 3,
       "y": 17
     },
     {
       "kind": "spawn",
-      "name": "mixed",
+      "name": "spawn",
       "x": 7,
       "y": 21
     },
     {
       "kind": "spawn",
-      "name": "mixed",
+      "name": "spawn",
       "x": 20,
       "y": 17
     },
     {
       "kind": "spawn",
-      "name": "mixed",
+      "name": "spawn",
       "x": 15,
       "y": 22
     },
     {
       "kind": "spawn",
-      "name": "mixed",
+      "name": "spawn",
       "x": 32,
       "y": 18
     },
     {
       "kind": "spawn",
-      "name": "mixed",
+      "name": "spawn",
       "x": 28,
       "y": 22
     },
     {
       "kind": "spawn",
-      "name": "mixed",
+      "name": "spawn",
       "x": 3,
       "y": 4
     },
     {
       "kind": "spawn",
-      "name": "mixed",
+      "name": "spawn",
       "x": 8,
       "y": 7
     },
     {
       "kind": "spawn",
-      "name": "hive",
+      "name": "spawn",
       "x": 20,
       "y": 3
     },
     {
       "kind": "spawn",
-      "name": "hive",
+      "name": "spawn",
       "x": 26,
       "y": 2
     },
     {
       "kind": "spawn",
-      "name": "hive",
+      "name": "spawn",
       "x": 33,
       "y": 3
     },
     {
       "kind": "spawn",
-      "name": "hive",
+      "name": "spawn",
       "x": 36,
       "y": 6
     },
     {
       "kind": "spawn",
-      "name": "hive",
+      "name": "spawn",
       "x": 22,
       "y": 9
     },
     {
       "kind": "spawn",
-      "name": "hive",
+      "name": "spawn",
       "x": 30,
       "y": 10
     },
     {
       "kind": "spawn",
-      "name": "hive",
+      "name": "spawn",
       "x": 32,
       "y": 8
     },
     {
       "kind": "spawn",
-      "name": "hive",
+      "name": "spawn",
       "x": 28,
       "y": 6
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 13,
+      "y": 30
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 19,
+      "y": 30
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 13,
+      "y": 36
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 19,
+      "y": 36
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 27,
+      "y": 31
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 34,
+      "y": 31
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 27,
+      "y": 37
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 34,
+      "y": 37
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 2,
+      "y": 16
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 8,
+      "y": 16
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 2,
+      "y": 22
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 8,
+      "y": 22
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 14,
+      "y": 16
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 21,
+      "y": 16
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 14,
+      "y": 23
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 21,
+      "y": 23
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 27,
+      "y": 17
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 33,
+      "y": 17
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 27,
+      "y": 23
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 32,
+      "y": 23
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 3,
+      "y": 8
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 7,
+      "y": 3
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 8,
+      "y": 3
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 2,
+      "y": 8
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 15,
+      "y": 1
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 37,
+      "y": 1
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 15,
+      "y": 8
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 24,
+      "y": 1
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 31,
+      "y": 1
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 24,
+      "y": 11
+    },
+    {
+      "kind": "spawn",
+      "name": "spawn",
+      "x": 35,
+      "y": 11
     },
     {
       "kind": "pickup",
@@ -392,6 +578,90 @@
       "name": "ammo_shotgun",
       "x": 30,
       "y": 34
+    },
+    {
+      "kind": "pickup",
+      "name": "ammo_shotgun",
+      "x": 2,
+      "y": 19
+    },
+    {
+      "kind": "pickup",
+      "name": "ammo_shotgun",
+      "x": 21,
+      "y": 19
+    },
+    {
+      "kind": "pickup",
+      "name": "health_small",
+      "x": 14,
+      "y": 19
+    },
+    {
+      "kind": "pickup",
+      "name": "ammo_shotgun",
+      "x": 27,
+      "y": 20
+    },
+    {
+      "kind": "pickup",
+      "name": "health_small",
+      "x": 30,
+      "y": 17
+    },
+    {
+      "kind": "pickup",
+      "name": "ammo_shotgun",
+      "x": 5,
+      "y": 8
+    },
+    {
+      "kind": "pickup",
+      "name": "ammo_rifle",
+      "x": 18,
+      "y": 13
+    },
+    {
+      "kind": "pickup",
+      "name": "health_small",
+      "x": 12,
+      "y": 5
+    },
+    {
+      "kind": "pickup",
+      "name": "ammo_shotgun",
+      "x": 15,
+      "y": 3
+    },
+    {
+      "kind": "pickup",
+      "name": "ammo_rifle",
+      "x": 26,
+      "y": 11
+    },
+    {
+      "kind": "pickup",
+      "name": "health_large",
+      "x": 30,
+      "y": 1
+    },
+    {
+      "kind": "pickup",
+      "name": "ammo_shotgun",
+      "x": 36,
+      "y": 10
+    },
+    {
+      "kind": "pickup",
+      "name": "health_small",
+      "x": 21,
+      "y": 6
+    },
+    {
+      "kind": "pickup",
+      "name": "health_small",
+      "x": 13,
+      "y": 33
     }
   ]
 }

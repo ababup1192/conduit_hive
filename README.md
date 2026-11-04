@@ -1,7 +1,7 @@
 # Conduit Hive
 
 SF の施設の迷路を一人称で進み、群れで迫るクリーチャーを撃って倒すシューティング（flix_game_engine 0.85.0）。
-画面に出るのは腕と銃（ビューモデル）だけ。最後の広い部屋では 40〜50 体が同時に迫る。計画は `plans/conduit-hive-plan.md`。
+画面に出るのは腕と銃（ビューモデル）だけ。部屋ごとの wave で全体で約 400 体が湧き（同時に生きているのは 50 体まで）、最後の広い部屋では約 170 体が 5 つの wave で迫る。計画は `plans/conduit-hive-plan.md`。
 
 ## 遊ぶ
 
@@ -23,17 +23,18 @@ SF の施設の迷路を一人称で進み、群れで迫るクリーチャー�
 | `make render SHOT=horde` | 場面を `debug/horde.png` へ描き出す（場面の名前は `src/Shots.flix`） |
 | `make render-all` / `make reference-update` / `make reference-check` | ギャラリーを全部描き出す / 基準を更新 / 基準と比べる |
 | `make bench-horde BENCH_SETS=horde50` | 50 体の群れの 1 コマの重さを測る（`plans/bench-horde.md`） |
+| `make bench-horde BENCH_SETS=horde-waves` | 最後の部屋で wave を湧かせ続け、自動の操縦が 3 分間倒し続ける間の 1 コマの重さ（GC は `JAVA_TOOL_OPTIONS="-Xlog:gc:file=…"`） |
 | `make flow FLOW=e2e/walk.flow`・`e2e/title.flow` | 手順書を画面なしで実機と同じ道に流す（title.flow はタイトル → 遊ぶ → ポーズ → タイトル） |
 | `make video` | 遊んでいる様子の紹介の動画（約 70 秒・1920×1080・60 fps・音つき）を `debug/video/play.mp4` に撮る（手順 `e2e/video.flow`・道筋 `assets/conduit_hive.tour.json` を `START=tour` の自動の操縦が歩いて撃つ。git には入れない） |
 
 ## 読む順
 
-1. **遊ぶ** — `make run`（タイトルから。Enter で最初の部屋 A に立つ。部屋に入るとその部屋の spawn の印から群れが湧き、床の拾う物に近づくと拾う。最後の部屋 H を空にするとクリア）。
+1. **遊ぶ** — `make run`（タイトルから。Enter で最初の部屋 A に立つ。部屋に入るとその部屋の wave が順に湧き（通路に入ると後ろや横の部屋から流れ込む wave もある）、倒れた敵は時々弾や回復を落とす。床の拾う物に近づくと拾う。最後の部屋 H の wave を全部倒すとクリア）。
 2. **`src/Game.flix`** — App の組み立て。毎フレーム 入力（`Controls.step`）→ 規則（`World.step`）→ 描く（`View`）。音は `Sounds`。
 3. **`src/World.flix`** — 遊びの状態と 1 コマの規則。画面は `Screen`（`Title`・`Play`・`Clear`）で、遊んでいる場面の値は `Session`（ポーズもその中）。
    1 コマは 歩く（`Walker`）→ 部屋に入る → 拾う（`Pickups`）→ 撃つか空撃ち（`Arsenal`・`Hitscan`）→ 群れ（`Horde`）→ 体力（`Health`）→ 倒した数とクリア。起きた事は `Events`。
 4. **敵** — `src/Horde.flix`（群れの 1 コマ・追う・振る・吐く・撃たれる）→ `FlowField`（共有する距離の地図）・
-   `Separation`（押し合いと壁）・`Projectiles`（ranged の弾）・`Spawner`（印から湧く予定）・`Creatures`（glb・当たり判定の形・姿勢の共有）。
+   `Separation`（押し合いと壁）・`Projectiles`（ranged の弾）・`Spawner`（区画ごとの wave・次の wave を始めるか・見えていない遠い印を選ぶ）・`Creatures`（glb・当たり判定の形・姿勢の共有）。
 5. **武器と拾う物** — `src/Arsenal.flix`（連射・弾・持ち替え・拾った武器と弾・空撃ち）・`src/Pickups.flix`（印から置く・拾う規則・浮き方）・`src/PickupModels.flix`（拾う物の形）・`src/Hitscan.flix`（レイの当たり）・`src/FpViewmodel.flix`（腕と銃の glb）。
 6. **描く** — `src/View.flix`（入口で画面を選ぶ）→ `src/HudView.flix`（HUD）・`src/MenuView.flix`（タイトル・ポーズ・クリアのメニュー）→ `src/StageView.flix`（3D の場面とビューモデル）→ `src/PostView.flix`（ブルームと後処理）。
    迷路の絵は Blender でベイクしたステージ（`StageModel`。`assets/models/stage.glb` と区画ごとの lightmap）、確かめ用の灰色の箱は `MazeMesh`（look の `bakedStage` を false か、glb が迷路と合わない時）。形と当たり判定は `Maze`・`Collider`、粒は `Particles3d`。
@@ -43,10 +44,10 @@ SF の施設の迷路を一人称で進み、群れで迫るクリーチャー�
 
 | Doc | 中身 | 読む mod |
 |---|---|---|
-| `maze.stage.json` | 迷路のマス目・区画・印（start・spawn・pickup） | `MazeDoc` |
+| `maze.stage.json` | 迷路のマス目・区画・印（start・spawn・pickup。spawn の印は湧く所だけで、何が湧くかは spawns） | `MazeDoc` |
 | `conduit_hive.enemies.json` | 敵の型ごとの体力・速さ・攻撃の距離と時刻・projectile | `EnemiesDoc` |
-| `conduit_hive.spawns.json` | spawn の印の名前ごとの群れ（数・間隔・型）・近すぎる印から湧かせない距離 | `SpawnsDoc` |
-| `conduit_hive.pickups.json` | pickup の印の名前ごとの量・拾う距離・浮き方・光 | `PickupsDoc` |
+| `conduit_hive.spawns.json` | 区画ごとの wave（数・型・湧く印の区画・次の wave までの秒と残りの数）・同時に生きている数の上限・湧く間隔・近すぎる印から湧かせない距離 | `SpawnsDoc` |
+| `conduit_hive.pickups.json` | pickup の印の名前ごとの量・拾う距離・浮き方・光・倒れた敵が落とす確率と物 | `PickupsDoc` |
 | `conduit_hive.player.json` | プレイヤーの体力・被弾の赤み・やり直すまで・クリアから結果の画面まで | `PlayerDoc` |
 | `conduit_hive.weapons.json` | 武器ごとの威力・連射・ばらつき・弾と上限・反動 | `WeaponsDoc` |
 | `conduit_hive.viewmodel.json` | 腕と銃の見え方（画角・揺れ・持ち替え） | `FpViewmodelDoc` |

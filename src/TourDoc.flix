@@ -1,6 +1,6 @@
 // TourDoc — conduit_hive.tour.json（紹介の動画で自動の操縦が歩いて撃つ道筋）の宣言ドキュメント層。
 // 道筋は通る点の並び。点へどう歩くか・どの敵へどう向くか・いつ撃つかはコード（Pilot）。
-// 体力の下限と弾を足す所は動画の口（`start tour`）の間だけ効き、手で遊ぶ時は効かない（World）。
+// 体力の下限・弾を足す所・最後の部屋の wave の数は動画の口（`start tour`）の間だけ効き、手で遊ぶ時は効かない（World）。
 // fail-open — 読めない・壊れているときは defaults() へ落とし、欄が無ければその欄だけ既定。
 mod TourDoc {
     use fge::{DocJson, JsonCodec}
@@ -33,6 +33,8 @@ mod TourDoc {
         // 動画の口の間だけ、体力をこれより下げない・弾がこれを切ったら上限まで足す。
         minHealth = Float64,
         minAmmo = Int32,
+        // 動画の口の間だけ、最後の部屋の wave をこの数までにする（0 なら遊ぶ時と同じ全部。手で遊ぶ時は効かない）。
+        finalWaves = Int32,
         points = List[Point]
     }
     pub enum Doc(Rec)
@@ -43,7 +45,7 @@ mod TourDoc {
     /// コード側の既定値（道筋そのものは JSON が正なので、点は迷路の start の印の近くの 1 つだけ）。
     pub def defaults(): Doc =
         Doc.Doc({ version = 1, turnRate = 220.0, lookEase = 0.16, turnSmooth = 0.1, aimRange = 14.0, rangedAimRange = 45.0, fireCone = 3.0, aimHeight = 1.15,
-                  shotgunRange = 7.0, switchHold = 1.6, arriveRadius = 0.8, giveUpSeconds = 15.0, minHealth = 45.0, minAmmo = 20,
+                  shotgunRange = 7.0, switchHold = 1.6, arriveRadius = 0.8, giveUpSeconds = 15.0, minHealth = 45.0, minAmmo = 20, finalWaves = 0,
                   points = { name = "start", x = 18.0, z = 22.0, wait = 1.0, sprint = false, weapon = None, lookYaw = None, clear = false } :: Nil })
 
     pub def fromJson(text: String): Option[Doc] = DocJson.decodeObject(fromRoot, text)
@@ -70,6 +72,7 @@ mod TourDoc {
                   shotgunRange = f("shotgunRange", d#shotgunRange), switchHold = f("switchHold", d#switchHold),
                   arriveRadius = f("arriveRadius", d#arriveRadius), giveUpSeconds = f("giveUpSeconds", d#giveUpSeconds),
                   minHealth = f("minHealth", d#minHealth), minAmmo = JsonCodec.intOr("minAmmo", d#minAmmo, root),
+                  finalWaves = JsonCodec.intOr("finalWaves", d#finalWaves, root),
                   points = Map.get("points", root)
                       |> Option.flatMap(json -> JsonCodec.decodeList(JsonCodec.expectObject, json))
                       |> Option.map(rows -> rows |> List.filterMap(pointOf))

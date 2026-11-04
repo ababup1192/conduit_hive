@@ -55,6 +55,25 @@ mod Collider {
     pub def worldOf(m: Maze.Maze, props: List[CollisionShape3d.Box3d]): CollisionWorld3d.CollisionWorld3d =
         CollisionWorld3d.build(m#cellSize, List.append(wallBoxes(m), floorBox(m) :: props))
 
+    /// マスごとに、そのマスと周りの 8 マスが床で、立てた物も掛からないか（並びは Maze の grid と同じ）。
+    /// 開いたマスの中の体（半径がマスの幅より小さい）は、どの壁と立てた物の箱にも触れない。
+    pub def openCellsOf(m: Maze.Maze, props: List[CollisionShape3d.Box3d]): Vector[Bool] =
+        Vector.range(0, m#cols * m#rows) |> Vector.map(i -> {
+            let cell = { col = Int32.modulo(i, m#cols), row = i / m#cols };
+            let floors = List.range(-1, 2) |> List.forAll(dr -> List.range(-1, 2) |> List.forAll(dc ->
+                Map.memberOf(Maze.charAt(m, { col = cell#col + dc, row = cell#row + dr }), m#zones)));
+            let (cx, cz) = Maze.centerOf(m, cell);
+            let reach = m#cellSize * 1.5;
+            let clearOfProps = props |> List.forAll(b ->
+                Float64.abs(b#center#x - cx) >= reach + b#half#x or Float64.abs(b#center#z - cz) >= reach + b#half#z);
+            floors and clearOfProps
+        })
+
+    /// 点 x・z のマスが開いているか（openCellsOf。迷路の外は閉じている）。
+    pub def isOpenAt(m: Maze.Maze, open: Vector[Bool], x: Float64, z: Float64): Bool =
+        let cell = Maze.cellAt(m, x, z);
+        cell#col >= 0 and cell#col < m#cols and cell#row >= 0 and cell#row < m#rows and Vector.get(cell#row * m#cols + cell#col, open)
+
     /// origin から destination まで、箱に遮られずに線が引けるか（敵の見通し・自動の操縦が狙える敵を選ぶ）。
     pub def isLineClear(world: CollisionWorld3d.CollisionWorld3d, origin: Vec3.Vec3, destination: Vec3.Vec3): Bool =
         let toward = Vec3.sub(destination, origin);

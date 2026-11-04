@@ -2,9 +2,11 @@
 // 迷路の pickup の印は種類の名前だけを持ち、量は PickupsDoc が正。名前が引けない印・床でないマスの印は 1 行知らせて置かない。
 // 足元から radius の内に入ると拾う: 回復は体力を足す（満タンなら拾わない）・弾倉は弾を足す（上限なら拾わない）・
 // 武器は持っている武器に加えてその場で持ち替える（もう持っていれば弾倉と同じ）。拾った物は Session の taken に番号で残る。
+// 倒れた敵は dropChance の確率で物を落とす（dropsOf。どれを落とすかは dropItems の重み・落とすかと種類は敵の番号から決まる）。
+// 落とした物は dropSeconds で消え、dropLimit を越えたら古い物から消える（keepDrops）。拾い方は置いた物と同じ。
 // 浮き方と回り方（hoverAt・spinAt）もここで決め、描くのは View（PickupModels の形を置く）。
 mod Pickups {
-    use fge::{Log, Num}
+    use fge::{Hash01, Log, Num}
     use WeaponsDoc.Weapon
 
     /// 拾う物の種類。並びは Doc の名前の並び。
@@ -35,6 +37,15 @@ mod Pickups {
 
     /// 拾った結果: 変わった武器と体力・拾った物の番号（前から拾っていた物も）・このコマに拾った物（拾った順）。
     pub type alias Collected = { carry = Carry, taken = Set[Int32], picked = List[Point] }
+
+    /// 倒れた敵が落とした物: 拾う物（番号は dropIdBase + 敵の番号）と、消える時刻。
+    pub type alias Drop = { point = Point, until = Float64 }
+
+    /// 倒れた敵 1 体: 番号（落とすかと種類を決める）・足元・区画。
+    pub type alias Fallen = { id = Int32, x = Float64, z = Float64, zone = Char }
+
+    /// 落とした物の番号の始まり（置いた物の番号と混ざらないように、敵の番号に足す）。
+    def dropIdBase(): Int32 = 1000000
 
     /// 全部の種類。
     def all(): List[Kind] =
@@ -95,6 +106,39 @@ mod Pickups {
                 case Some(n) => { carry = n, taken = Set.insert(p#id, acc#taken), picked = p :: acc#picked }
             }, { carry = c, taken = taken, picked = Nil });
         { picked = List.reverse(got#picked) | got }
+
+    // ── 倒れた敵が落とす物 ──
+
+    /// 時刻 t に倒れた敵が落とす物（落とさない敵は数えない）。
+    pub def dropsOf(doc: PickupsDoc.Doc, t: Float64, fallen: List[Fallen]): List[Drop] =
+        let d = PickupsDoc.rec(doc);
+        let table = d#dropItems |> Map.toList |> List.filterMap(e -> { let (name, item) = e; kindOf(name) |> Option.map(k -> (k, item)) })
+            |> List.filter(e -> snd(e)#weight > 0.0);
+        let total = table |> List.foldLeft((acc, e) -> acc + snd(e)#weight, 0.0);
+        fallen |> List.filterMap(f ->
+            if (total <= 0.0 or Hash01.at(f#id, 91) >= d#dropChance) None
+            else pickByWeight(table, Hash01.at(f#id, 92) * total) |> Option.map(e -> {
+                let (kind, item) = e;
+                { point = { id = dropIdBase() + f#id, kind = kind, amount = item#amount, x = f#x, z = f#z, zone = f#zone }, until = t + d#dropSeconds }
+            }))
+
+    /// 重みの並びで、重みを足していって r を越えた所の種類（丸めで最後まで越えなければ最後の種類）。
+    def pickByWeight(table: List[(Kind, PickupsDoc.DropItem)], r: Float64): Option[(Kind, PickupsDoc.DropItem)] =
+        let (_, found) = table |> List.foldLeft((acc, e) -> {
+            let (rest, chosen) = acc;
+            if (Option.nonEmpty(chosen)) acc else if (rest < snd(e)#weight) (rest, Some(e)) else (rest - snd(e)#weight, None)
+        }, (r, None));
+        found |> Option.withDefault(default = List.last(table))
+
+    /// 時刻 t にまだ消えていない落とした物（limit を越えたら古い物から消す。落とした順に並ぶ）。
+    pub def keepDrops(t: Float64, limit: Int32, drops: List[Drop]): List[Drop] =
+        let kept = drops |> List.filter(d -> d#until > t);
+        List.drop(List.length(kept) - Int32.max(0, limit), kept)
+
+    /// 足元 at から radius の内の落とした物を拾う（拾えない物は残す）。
+    pub def collectDrops(r: Rules, radius: Float64, at: { x = Float64, z = Float64 }, drops: List[Drop], c: Carry): { carry = Carry, drops = List[Drop], picked = List[Point] } =
+        let got = collect(r, radius, at, drops |> List.map(d -> d#point), Set.empty(), c);
+        { carry = got#carry, drops = drops |> List.filter(d -> not Set.memberOf(d#point#id, got#taken)), picked = got#picked }
 
     // ── 浮き方と回り方 ──
 

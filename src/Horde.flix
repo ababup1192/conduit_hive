@@ -1,7 +1,8 @@
 // Horde — 敵の群れの状態と、1 コマ進める規則（純粋）。projectile を進めるのは Projectiles・押し合いと壁は Separation。
 //
 // ── 1 コマ（step）──
-//   1. 湧く予定（Spawner）の時刻が来た敵を出す
+//   1. 入った区画の次の wave を始めるか決め（Spawner.nextWave）、始めた wave を湧くのを待つ列に並べる。
+//      列の頭から、生きている数が maxAlive より少なく、前に湧いてから spawnInterval が過ぎていれば 1 体湧かせる（Spawner.placeOf）
 //   2. 距離の地図（FlowField）を fieldInterval 秒に 1 回だけ、プレイヤーのマスから塗り直す（全員で共有）
 //   3. 倒れて corpseSeconds が過ぎた敵を消し、残りが考える: 追う（地図の隣のマスを読んで進む）・振る / 吐く・よろける
 //   4. 吐いた projectile を足して進める（Projectiles）
@@ -42,12 +43,14 @@ mod Horde {
         anim = Creatures.Anim
     }
 
-    /// 群れ。triggered = 湧かせ終えた部屋・fieldAt = 地図を塗った時刻・nextId = 次に出す敵と projectile の番号。
+    /// 群れ。queue = 湧くのを待っている敵（湧く順）・waves = 入った区画の wave の進み（鍵が無い区画はまだ入っていない）・
+    /// nextSpawnAt = 次の 1 体を湧かせてよい時刻・fieldAt = 地図を塗った時刻・nextId = 次に出す敵と projectile の番号。
     pub type alias Horde = {
         enemies = List[Enemy],
         projectiles = List[Projectiles.Projectile],
-        pending = List[Spawner.Pending],
-        triggered = Set[Char],
+        queue = List[Spawner.Queued],
+        waves = Map[Char, Spawner.Progress],
+        nextSpawnAt = Float64,
         field = FlowField.FlowField,
         fieldAt = Float64,
         nextId = Int32
@@ -56,12 +59,12 @@ mod Horde {
     /// 1 コマの結果: 次の群れ・プレイヤーが受けたダメージの合計・projectile が弾けた所・起きた事。
     pub type alias Outcome = { horde = Horde, damage = Float64, splashes = List[Projectiles.Splash], events = List[Event] }
 
-    /// 撃たれた結果: 次の群れと起きた事（当たった・倒れた）。
-    pub type alias Damaged = { horde = Horde, events = List[Event] }
+    /// 撃たれた結果: 次の群れ・起きた事（当たった・倒れた）・この弾で倒れた敵。
+    pub type alias Damaged = { horde = Horde, events = List[Event], fallen = List[Enemy] }
 
     /// 何もいない群れ。
     pub def empty(): Horde =
-        { enemies = Nil, projectiles = Nil, pending = Nil, triggered = Set.empty(), field = FlowField.empty(), fieldAt = -1000.0, nextId = 0 }
+        { enemies = Nil, projectiles = Nil, queue = Nil, waves = Map.empty(), nextSpawnAt = -1000.0, field = FlowField.empty(), fieldAt = -1000.0, nextId = 0 }
 
     def rad(d: Float64): Float64 = d * Num.pi() / 180.0
 
@@ -80,9 +83,21 @@ mod Horde {
     /// 倒れていない敵。
     pub def aliveEnemies(h: Horde): List[Enemy] = h#enemies |> List.filter(isAlive)
 
-    /// 湧く予定が残っているか、倒れていない敵がいる部屋。
-    pub def zonesInPlay(h: Horde): Set[Char] =
-        List.append(h#enemies |> List.filter(isAlive) |> List.map(e -> e#home), h#pending |> List.map(p -> p#home)) |> List.toSet
+    /// 区画 zone の残り: 倒れていない敵と湧くのを待っている敵のうち、その区画の wave で湧いた（湧く）数。
+    def leftIn(zone: Char, h: Horde): Int32 =
+        List.count(e -> e#home == zone and isAlive(e), h#enemies) + List.count(q -> q#home == zone, h#queue)
+
+    def planOf(res: Res.Res, zone: Char): List[Spawner.Wave] = Map.getWithDefault(zone, Nil, res#wavePlans)
+
+    /// 区画 zone に入り、全部の wave を始め、その wave の敵が残っていないか（まだ入っていなければ偽）。
+    pub def isFinished(res: Res.Res, zone: Char, h: Horde): Bool =
+        Map.get(zone, h#waves) |> Option.exists(p -> p#started >= List.length(planOf(res, zone))) and leftIn(zone, h) == 0
+
+    /// 区画 zone で始めた wave の数（まだ入っていなければ 0）。
+    pub def wavesStarted(zone: Char, h: Horde): Int32 = Map.get(zone, h#waves) |> Option.map(p -> p#started) |> Option.getWithDefault(0)
+
+    /// 湧くのを待っている敵の数。
+    pub def queuedCount(h: Horde): Int32 = List.length(h#queue)
 
     /// 敵 id（いなければ None）。
     pub def enemyOf(id: Int32, h: Horde): Option[Enemy] = h#enemies |> List.find(e -> e#id == id)
@@ -92,17 +107,12 @@ mod Horde {
 
     // ── 湧かせる ──
 
-    /// 部屋 zone に足元 at で入った: まだ湧かせていない部屋なら、その部屋の spawn の点から時刻 t に始まる予定を足す（1 部屋 1 回だけ。
-    /// at から SpawnsDoc の minDistance より近い点は使わない）。
-    pub def enter(res: Res.Res, zone: Char, t: Float64, at: { x = Float64, z = Float64 }, h: Horde): Horde =
-        if (Set.memberOf(zone, h#triggered)) h
-        else {
-            let away = { x = at#x, z = at#z, minDistance = SpawnsDoc.rec(res#spawns)#minDistance };
-            { triggered = Set.insert(zone, h#triggered), pending = List.append(h#pending, Spawner.scheduleOf(res#spawnPoints, zone, t, away)) | h }
-        }
+    /// 区画 zone に時刻 t に入った: まだ入っていない区画なら wave の進みを始める（最初の wave は step が after 秒の後に始める。1 区画 1 回だけ）。
+    pub def enter(zone: Char, t: Float64, h: Horde): Horde =
+        if (Map.memberOf(zone, h#waves)) h else { waves = Map.insert(zone, { started = 0, at = t }, h#waves) | h }
 
-    /// 部屋 zone をもう湧かせ終えたか。
-    pub def isTriggered(zone: Char, h: Horde): Bool = Set.memberOf(zone, h#triggered)
+    /// 区画 zone にもう入ったか。
+    pub def isTriggered(zone: Char, h: Horde): Bool = Map.memberOf(zone, h#waves)
 
     /// 時刻を待たずに敵を出す（描き出しの場面・測り・テスト）。向きは yaw（ラジアン）。
     pub def spawnNow(res: Res.Res, spawns: List[{ kind = Kind, x = Float64, z = Float64, yaw = Float64, home = Char }], h: Horde): Horde =
@@ -118,14 +128,39 @@ mod Horde {
         case Kind.Ranged => d#ranged#health
     }
 
-    /// 時刻 t までに湧く予定の敵を出す（プレイヤーの方を向いて立つ）。
-    def release(res: Res.Res, t: Float64, p: PlayerBody.PlayerBody, h: Horde): Horde =
-        let (due, later) = h#pending |> List.partition(s -> s#at <= t);
-        spawnNow(res, due |> List.map(s -> { kind = s#kind, x = s#x, z = s#z, yaw = facing(s#x, s#z, p#x, p#z), home = s#home }), { pending = later | h })
+    /// 入った区画のうち、時刻 t に次の wave を始める区画の wave を湧くのを待つ列に並べる（1 コマに 1 区画 1 wave まで）。
+    def startWaves(res: Res.Res, t: Float64, h: Horde): (Horde, List[Event]) =
+        h#waves |> Map.foldLeftWithKey((acc, zone, progress) -> {
+            let (current, events) = acc;
+            let plan = planOf(res, zone);
+            let due = if (progress#started >= List.length(plan)) None else Spawner.nextWave(plan, t, leftIn(zone, current), progress);
+            due |> Option.map(w -> ({ queue = List.append(current#queue, Spawner.queueOf(zone, w)),
+                                      waves = Map.insert(zone, { started = progress#started + 1, at = t }, current#waves) | current },
+                                    List.append(events, Event.WaveStarted(zone, progress#started) :: Nil)))
+                |> Option.getWithDefault(acc)
+        }, (h, Nil))
 
-    /// 死んでやり直す時: 敵と projectile と湧く予定を全部消し、zones の部屋をもう一度湧かせられるようにする。
-    pub def resetRooms(zones: Set[Char], h: Horde): Horde =
-        { enemies = Nil, projectiles = Nil, pending = Nil, triggered = Set.difference(h#triggered, zones), field = FlowField.empty(), fieldAt = -1000.0 | h }
+    /// 列の頭の 1 体を湧かせる: 生きている数が maxAlive より少なく、前に湧いてから spawnInterval が過ぎていれば（プレイヤーの方を向いて立つ）。
+    /// 湧く印が無い 1 体は湧かせずに列から外す（plansOf が印の無い wave を捨てるので、来るのは迷路を読み直した時だけ）。
+    def release(res: Res.Res, t: Float64, p: PlayerBody.PlayerBody, h: Horde): Horde =
+        let sd = SpawnsDoc.rec(res#spawns);
+        match h#queue {
+            case q :: rest if t >= h#nextSpawnAt and aliveCount(h) < sd#maxAlive =>
+                let viewer = { x = p#x, z = p#z, yaw = p#yaw, lineOfSight = (x, z) -> Collider.isLineClear(res#collision, p#eye, Vec3.v3(x, p#feet + 1.2, z)) };
+                let next = { queue = rest, nextSpawnAt = t + sd#spawnInterval | h };
+                Spawner.placeOf({ minDistance = sd#minDistance, scatter = sd#scatter }, viewer, q#source, h#nextId, res#spawnPoints)
+                    |> Option.map(at -> { let (x, z) = at; spawnNow(res, { kind = q#kind, x = x, z = z, yaw = facing(x, z, p#x, p#z), home = q#home } :: Nil, next) })
+                    |> Option.getWithDefault(next)
+            case _ => h
+        }
+
+    /// 終えた区画の wave の進み（やり直す所に控え、やり直した時にこれだけを戻す）。
+    pub def finishedOf(res: Res.Res, h: Horde): Map[Char, Spawner.Progress] = h#waves |> Map.filterWithKey((zone, _) -> isFinished(res, zone, h))
+
+    /// やり直す時: 敵と projectile と湧くのを待つ列を全部消し、wave の進みを finished（やり直す所に控えた、終えた区画）へ戻す。
+    /// ほかの区画は入っていない区画に戻り、もう一度入ると最初の wave から湧く。
+    pub def restore(finished: Map[Char, Spawner.Progress], h: Horde): Horde =
+        { enemies = Nil, projectiles = Nil, queue = Nil, waves = finished, nextSpawnAt = -1000.0, field = FlowField.empty(), fieldAt = -1000.0 | h }
 
     // ── 撃たれる ──
 
@@ -143,9 +178,8 @@ mod Horde {
         let enemies = h#enemies |> List.map(e -> Map.get(e#id, taken) |> Option.map(amount -> hurt(d, t, amount, e)) |> Option.getWithDefault(e));
         let kindOf = (id: Int32) -> enemyOf(id, h) |> Option.map(e -> e#kind);
         let hitEvents = hits |> List.filterMap(hit -> kindOf(fst(hit)) |> Option.map(k -> Event.EnemyHit(k, snd(hit))));
-        let downEvents = List.zip(h#enemies, enemies) |> List.filter(pair -> isAlive(fst(pair)) and not isAlive(snd(pair)))
-            |> List.map(pair -> Event.EnemyDown(snd(pair)#kind));
-        { horde = { enemies = enemies | h }, events = List.append(hitEvents, downEvents) }
+        let fallen = List.zip(h#enemies, enemies) |> List.filter(pair -> isAlive(fst(pair)) and not isAlive(snd(pair))) |> List.map(snd);
+        { horde = { enemies = enemies | h }, events = List.append(hitEvents, fallen |> List.map(e -> Event.EnemyDown(e#kind))), fallen = fallen }
 
     def hurt(d: EnemiesDoc.Rec, t: Float64, amount: Float64, e: Enemy): Enemy =
         let health = e#health - amount;
@@ -177,7 +211,8 @@ mod Horde {
     /// 時刻 t（このコマに dt 秒進んだ）に群れを進める。
     pub def step(res: Res.Res, t: Float64, dt: Float64, p: PlayerBody.PlayerBody, h: Horde): Outcome =
         let d = doc(res);
-        let released = release(res, t, p, h);
+        let (waved, waveEvents) = startWaves(res, t, h);
+        let released = release(res, t, p, waved);
         let fielded = refreshField(res, t, p, released);
         let remaining = fielded#enemies |> List.filter(e -> not isGone(d, t, e));
         let thought = remaining |> List.foldLeft((acc, e) -> {
@@ -190,7 +225,7 @@ mod Horde {
         let flight = Projectiles.fly(d#projectile, res#collision, t, dt, p, launched#projectiles);
         let bursts = List.repeat(flight#bursts, Event.Burst);
         { horde = { enemies = separate(res, p, List.reverse(thought#enemies)), projectiles = flight#projectiles | launched },
-          damage = thought#damage + flight#damage, splashes = flight#splashes, events = List.append(thought#events, bursts) }
+          damage = thought#damage + flight#damage, splashes = flight#splashes, events = List.flatten(waveEvents :: thought#events :: bursts :: Nil) }
 
     /// 同じ dt で frames コマ進めた結果（時刻 start の次のコマから。受けたダメージと弾けた所と起きた事は足し合わせる）。
     pub def simulate(res: Res.Res, start: Float64, dt: Float64, frames: Int32, p: PlayerBody.PlayerBody, h: Horde): Outcome =
@@ -217,7 +252,7 @@ mod Horde {
     /// 押し合いと壁（倒れた敵は動かさず、押し合いにも入れない）。
     def separate(res: Res.Res, p: PlayerBody.PlayerBody, enemies: List[Enemy]): List[Enemy] =
         let (alive, fallen) = enemies |> List.partition(isAlive);
-        let moved = Separation.separate(res#maze, res#collision, p,
+        let moved = Separation.separate(res#maze, res#collision, res#openCells, p,
             alive |> List.map(e -> { id = e#id, x = e#x, z = e#z, radius = Creatures.footprintOf(e#kind) }));
         List.append(List.zip(alive, moved) |> List.map(pair -> { x = fst(snd(pair)), z = snd(snd(pair)) | fst(pair) }), fallen)
 

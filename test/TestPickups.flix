@@ -1,5 +1,5 @@
 // 拾う規則（Pickups・Arsenal・Health と World.step）: 印から置く・満タンなら拾わない・武器が加わり持ち替わる・
-// 弾倉で弾が増えて上限で止まる・弾が 0 の時の空撃ちと自動の持ち替え・拾った物は消える。
+// 弾倉で弾が増えて上限で止まる・弾が 0 の時の空撃ちと自動の持ち替え・拾った物は消える・倒れた敵が落とす物。
 mod TestPickups {
     use fge::{LogCapture, Num}
     use Events.Event
@@ -171,4 +171,49 @@ mod TestPickups {
         let back = World.step(r, World.walking(Walker.idle()), { play = clockAt(0.1 + hit + player()#respawnSeconds, 0.05) | down });
         Assert.assertEq(expected = Some((Set.empty(), Weapon.Pistol)),
             World.sessionOf(back) |> Option.map(s -> (World.takenOf(s), World.arsenalOf(s)#current)))
+
+    // ── 倒れた敵が落とす物 ──
+
+    /// どの敵も連射銃の弾倉（20 発）だけを落とす Doc（chance = 落とす確率）。
+    def droppingDoc(chance: Float64): PickupsDoc.Doc =
+        PickupsDoc.Doc.Doc({ dropChance = chance, dropItems = Map#{ "ammo_rifle" => { weight = 1.0, amount = 20 } } | PickupsDoc.rec(PickupsDoc.defaults()) })
+
+    /// 倒れた敵 id（x 10 m・z 6 m）。
+    def fallenAt(id: Int32): Pickups.Fallen = { id = id, x = 10.0, z = 6.0, zone = 'A' }
+
+    /// 落とす確率 1 なら、倒れた 2 体が 2 つとも落とす（種類と量は dropItems。並びは 落とした数・最初の物の種類と量）。
+    @Test
+    def testCertainChanceDropsForEveryFallen(): Unit \ Assert =
+        let drops = Pickups.dropsOf(droppingDoc(1.0), 0.0, fallenAt(0) :: fallenAt(1) :: Nil);
+        Assert.assertEq(expected = (2, Some((Kind.AmmoRifle, 20))), (List.length(drops), List.head(drops) |> Option.map(d -> (d#point#kind, d#point#amount))))
+
+    /// 落とす確率 0 なら何も落とさない。
+    @Test
+    def testZeroChanceDropsNothing(): Unit \ Assert =
+        Assert.assertEq(expected = 0, List.length(Pickups.dropsOf(droppingDoc(0.0), 0.0, fallenAt(0) :: fallenAt(1) :: Nil)))
+
+    /// 落とした物は dropSeconds の半分では残り、dropSeconds で消える。
+    @Test
+    def testDropVanishesAfterTheDocSeconds(): Unit \ Assert =
+        let seconds = PickupsDoc.rec(PickupsDoc.defaults())#dropSeconds;
+        let drops = Pickups.dropsOf(droppingDoc(1.0), 0.0, fallenAt(0) :: Nil);
+        Assert.assertEq(expected = (1, 0), (List.length(Pickups.keepDrops(seconds * 0.5, 10, drops)), List.length(Pickups.keepDrops(seconds, 10, drops))))
+
+    /// 落ちている物が上限（2）を越えると古い物から消え、新しい 2 つ（後に倒れた x 12 m と x 14 m の物）が残る（並びは 残った数・残った最初の物の x）。
+    @Test
+    def testDropLimitKeepsTheNewest(): Unit \ Assert =
+        let fallen = { id = 0, x = 10.0, z = 6.0, zone = 'A' } :: { id = 1, x = 12.0, z = 6.0, zone = 'A' } :: { id = 2, x = 14.0, z = 6.0, zone = 'A' } :: Nil;
+        let kept = Pickups.keepDrops(1.0, 2, Pickups.dropsOf(droppingDoc(1.0), 0.0, fallen));
+        Assert.assertEq(expected = (2, Some(12.0)), (List.length(kept), List.head(kept) |> Option.map(d -> d#point#x)))
+
+    /// 体力が拳銃の威力の melee を通路の東（x 22 m）で撃ち倒すと連射銃の弾倉を落とし、そこへ立つと拾って消える（並びは撃ったコマ・立ったコマの落ちている数）。
+    @Test
+    def testShotEnemyDropsAndTheDropIsPickedUp(): Unit \ Assert =
+        let pistol = WeaponsDoc.statsOf(Weapon.Pistol, weapons());
+        let e = EnemiesDoc.rec(EnemiesDoc.defaults());
+        let r = { enemies = EnemiesDoc.Doc.Doc({ melee = { health = pistol#damage | e#melee } | e }), pickups = droppingDoc(1.0) | res() };
+        let aimed = World.mapHorde(Horde.spawnNow(r, { kind = Creatures.Kind.Melee, x = 22.0, z = 6.0, yaw = Num.pi() * 1.5, home = 'A' } :: Nil), World.initial(r));
+        let shot = World.step(r, { trigger = { pressed = true, held = true } | World.walking(Walker.idle()) }, { play = clockAt(0.05, 0.05) | aimed });
+        let lying = (w: World.World) -> World.sessionOf(w) |> Option.map(s -> List.length(World.dropsOf(s)));
+        Assert.assertEq(expected = (Some(1), Some(0)), (lying(shot), lying(standAt(r, 22.0, 0.1, shot))))
 }

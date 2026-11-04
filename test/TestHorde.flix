@@ -1,5 +1,5 @@
-// 敵の規則（Horde・Creatures の口を直に）: 当たり判定（体・頭・壁の向こう）・ダメージと倒れる・よろけの間隔・spawn（印 → spawns の数）・
-// 押し合い・距離の地図で近づく・melee の当たる時刻と扇・ranged の見通しと吐く上限・projectile・姿勢の共有の鍵。
+// 敵の規則（Horde・Creatures の口を直に）: 当たり判定（体・頭・壁の向こう）・ダメージと倒れる・よろけの間隔・
+// wave・同時に生きている数の上限・湧く所・押し合い・距離の地図で近づく・melee の当たる時刻と扇・ranged の見通しと吐く上限・projectile・姿勢の共有の鍵。
 mod TestHorde {
     use fge::{Camera3d, LogCapture, Mat4, Num, Vec3}
     use Creatures.Kind
@@ -26,7 +26,7 @@ mod TestHorde {
 
     /// 足元 (x, z) に立つプレイヤー（体の寸法は歩く Doc の既定）。
     def playerAt(x: Float64, z: Float64): PlayerBody.PlayerBody =
-        { x = x, feet = 0.0, z = z, eye = Vec3.v3(x, walk()#eyeHeight, z), radius = walk()#radius, height = walk()#height }
+        { x = x, feet = 0.0, z = z, eye = Vec3.v3(x, walk()#eyeHeight, z), yaw = east(), radius = walk()#radius, height = walk()#height }
 
     /// 型 k の 1 体（番号 0）を x・z に、向き yaw（ラジアン）で立たせた群れ。
     def oneAt(r: Res.Res, k: Kind, x: Float64, z: Float64, yaw: Float64): Horde.Horde =
@@ -124,66 +124,126 @@ mod TestHorde {
         let fallen = damaged(0.0, doc()#melee#health, Hitscan.Part.Body, meleeAt12());
         Assert.assertEq(expected = 0, List.length(Horde.step(res(), doc()#corpseSeconds, 0.1, playerAt(22.0, 10.0), fallen)#horde#enemies))
 
-    // ── spawn ──
+    // ── spawn と wave ──
 
-    /// 部屋 A（x 4〜24 m・z 4〜12 m）だけの迷路。start は西の端（x 6 m・z 10 m）で東を向く。marks に spawn の印を足す。
-    def roomMaze(spawns: List[MazeDoc.Mark]): MazeDoc.Doc =
+    /// 東西に長い部屋 A（x 4〜44 m・z 4〜12 m）だけの迷路。start は西の端（x 6 m・z 10 m）で東を向く。
+    /// spawn の印は東の端の 2 マス（x 42 m・z 10 m と z 6 m）。
+    def longRoom(): MazeDoc.Doc =
+        let mark = (col: Int32, row: Int32) -> { kind = MazeDoc.MarkKind.Spawn, name = "spawn", col = col, row = row, yaw = 0.0 };
         MazeDoc.Doc.Doc({ version = 1, cellSize = 4.0, wallHeight = 4.0, finalZone = 'A',
-                          rows = "#######" :: "#AAAAA#" :: "#AAAAA#" :: "#######" :: Nil,
+                          rows = "############" :: "#AAAAAAAAAA#" :: "#AAAAAAAAAA#" :: "############" :: Nil,
                           zones = { id = 'A', name = "room", kind = MazeDoc.ZoneKind.Room, height = 4.0 } :: Nil,
-                          marks = { kind = MazeDoc.MarkKind.Start, name = "start", col = 1, row = 1, yaw = 90.0 } :: spawns })
+                          marks = { kind = MazeDoc.MarkKind.Start, name = "start", col = 1, row = 1, yaw = 90.0 } :: mark(10, 1) :: mark(10, 2) :: Nil })
 
-    def spawnMark(name: String, col: Int32, row: Int32): MazeDoc.Mark = { kind = MazeDoc.MarkKind.Spawn, name = name, col = col, row = row, yaw = 0.0 }
+    def spawns(): SpawnsDoc.Rec = SpawnsDoc.rec(SpawnsDoc.defaults())
 
-    /// spawns.json の既定の pack の群れの数。
-    def packSize(): Option[Int32] = Map.get("pack", SpawnsDoc.rec(SpawnsDoc.defaults())#groups) |> Option.map(g -> g#melee + g#ranged)
+    /// 部屋 A の wave 1 つ（melee だけ）。
+    def wave(melee: Int32, after: Float64, whenLeft: Int32): SpawnsDoc.Wave = { zone = 'A', melee = melee, ranged = 0, source = None, after = after, whenLeft = whenLeft }
 
-    def packRes(): Res.Res = resWith(roomMaze(spawnMark("pack", 4, 1) :: spawnMark("pack", 5, 2) :: Nil))
+    /// 長い部屋の迷路に、部屋 A の wave だけを書いた spawns の Doc の描く元。
+    def wavesRes(waves: List[SpawnsDoc.Wave]): Res.Res =
+        Res.withSpawns(SpawnsDoc.Doc.Doc({ waves = waves | spawns() }), resWith(longRoom()))
 
-    /// 部屋 A の start の足元（x 6 m・z 10 m）。pack の印（x 18 m・z 10 m と x 22 m・z 6 m）からはどちらも 12 m 以上離れている。
-    def entrance(): { x = Float64, z = Float64 } = { x = 6.0, z = 10.0 }
+    /// 西の端（x 6 m・z 10 m）で東を向いて立つプレイヤー（印から 36 m）。
+    def westEnd(): PlayerBody.PlayerBody = playerAt(6.0, 10.0)
 
-    /// spawns.json に無い名前の印は 1 行知らせて置かない（pack の印 1 つだけが残る）。
+    /// 時刻 0 に部屋 A に入り、刻み 0.1 秒で frames コマ進めた群れ。
+    def runFor(r: Res.Res, frames: Int32): Horde.Horde = Horde.simulate(r, 0.0, 0.1, frames, westEnd(), Horde.enter('A', 0.0, Horde.empty()))#horde
+
+    /// 時刻 t に、番号 ids の敵に体力より強い弾を 1 粒ずつ当てた群れ。
+    def shotDown(r: Res.Res, t: Float64, ids: List[Int32], h: Horde.Horde): Horde.Horde =
+        Horde.applyDamage(r, t, 1000.0, ids |> List.map(id -> { struck = Hitscan.Struck.Enemy(id, Hitscan.Part.Body), point = Vec3.zero(), normal = Vec3.zero() }), h)#horde
+
+    /// 上限より 10 体多い wave 1 つに入って 10 秒（上限まで湧くのは maxAlive × spawnInterval = 7.5 秒）。
+    def capped(): (Res.Res, Horde.Horde) =
+        let r = wavesRes(wave(spawns()#maxAlive + 10, 0.0, 0) :: Nil);
+        (r, runFor(r, 100))
+
+    /// 生きている数は maxAlive で止まり、残りは湧くのを待つ。
     @Test
-    def testUnknownSpawnNameIsReportedAndDropped(): Unit \ {Assert, IO} =
-        let (r, lines) = LogCapture.capture(() -> resWith(roomMaze(spawnMark("pack", 4, 1) :: spawnMark("nope", 3, 2) :: Nil)));
-        Assert.assertEq(expected = (1, 1), (List.length(lines), List.length(r#spawnPoints)))
+    def testAliveNeverExceedsMaxAlive(): Unit \ Assert =
+        let (_, h) = capped();
+        Assert.assertEq(expected = (spawns()#maxAlive, 10), (Horde.aliveCount(h), Horde.queuedCount(h)))
 
-    /// pack の印 2 つの部屋に入ると、pack 2 つ分が湧く予定になる。
+    /// 上限の群れの 1 体を倒すと、spawnInterval の後に待っていた 1 体が湧いて上限に戻る（倒れた体は数えない）。
     @Test
-    def testEnteringARoomSchedulesTheMarkedGroups(): Unit \ Assert =
-        Assert.assertEq(expected = packSize() |> Option.map(n -> 2 * n), Some(List.length(Horde.enter(packRes(), 'A', 0.0, entrance(), Horde.empty())#pending)))
+    def testFellingOneLetsTheNextSpawn(): Unit \ Assert =
+        let (r, h) = capped();
+        let refilled = Horde.simulate(r, 10.0, 0.1, 2, westEnd(), shotDown(r, 10.0, 0 :: Nil, h))#horde;
+        Assert.assertEq(expected = (spawns()#maxAlive, 9), (Horde.aliveCount(refilled), Horde.queuedCount(refilled)))
 
-    /// minDistance を 10 m にした群れの描く元。
-    def nearRes(): Res.Res =
-        let r = packRes();
-        { spawns = SpawnsDoc.Doc.Doc({ minDistance = 10.0 | SpawnsDoc.rec(r#spawns) }) | r }
-
-    /// x 10 m・z 10 m から入ると、8 m 先の印（x 18 m・z 10 m）の群れも、約 12.6 m 先の一番遠い印（x 22 m・z 6 m）から湧く:
-    /// 湧く数は pack 2 つ分のまま・どの予定も一番遠い印のマスの中（散らす幅の半分 1.2 m の内）。
+    /// 2 つ目の wave（after 5 秒）は、1 つ目の敵が残っていれば 5 秒が過ぎるまで始まらない（4 秒で 1 つ・6 秒で 2 つ）。
     @Test
-    def testTooCloseMarkSpawnsFromTheFarthestMark(): Unit \ Assert =
-        let pending = Horde.enter(nearRes(), 'A', 0.0, { x = 10.0, z = 10.0 }, Horde.empty())#pending;
-        Assert.assertEq(expected = (packSize() |> Option.map(n -> 2 * n), true),
-            (Some(List.length(pending)), pending |> List.forAll(p -> Float64.abs(p#x - 22.0) <= 1.2 and Float64.abs(p#z - 6.0) <= 1.2)))
+    def testWavesStartInOrderByTime(): Unit \ Assert =
+        let r = wavesRes(wave(2, 0.0, 0) :: wave(2, 5.0, 0) :: Nil);
+        Assert.assertEq(expected = (1, 2), (Horde.wavesStarted('A', runFor(r, 40)), Horde.wavesStarted('A', runFor(r, 60))))
 
-    /// 全部の印が近い所（x 20 m・z 8 m。どちらの印も約 2.8 m）から入っても、湧く数は pack 2 つ分のまま（部屋が空のままクリアにならない）。
+    /// 1 つ目の wave の 2 体を倒すと、残りが whenLeft（0）以下になり、after（100 秒）を待たずに 2 つ目が始まる。
     @Test
-    def testAllMarksTooCloseStillSpawnEveryone(): Unit \ Assert =
-        Assert.assertEq(expected = packSize() |> Option.map(n -> 2 * n),
-            Some(List.length(Horde.enter(nearRes(), 'A', 0.0, { x = 20.0, z = 8.0 }, Horde.empty())#pending)))
+    def testNextWaveStartsWhenFewAreLeft(): Unit \ Assert =
+        let r = wavesRes(wave(2, 0.0, 0) :: wave(2, 100.0, 0) :: Nil);
+        let cleared = shotDown(r, 1.0, 0 :: 1 :: Nil, runFor(r, 10));
+        Assert.assertEq(expected = 2, Horde.wavesStarted('A', Horde.simulate(r, 1.0, 0.1, 1, westEnd(), cleared)#horde))
 
-    /// もう一度入っても予定を足さない（1 部屋 1 回だけ）。
+    /// 部屋は最後の wave を倒すまで終わらない: 1 つ目を倒した所では終わらず、2 つ目が湧いて倒した所で終わる。
     @Test
-    def testEnteringTwiceSpawnsOnce(): Unit \ Assert =
-        let twice = Horde.enter(packRes(), 'A', 1.0, entrance(), Horde.enter(packRes(), 'A', 0.0, entrance(), Horde.empty()));
-        Assert.assertEq(expected = packSize() |> Option.map(n -> 2 * n), Some(List.length(twice#pending)))
+    def testRoomFinishesOnlyAfterTheLastWave(): Unit \ Assert =
+        let r = wavesRes(wave(1, 0.0, 0) :: wave(1, 0.0, 0) :: Nil);
+        let first = shotDown(r, 1.0, 0 :: Nil, runFor(r, 10));
+        let second = shotDown(r, 2.0, 1 :: Nil, Horde.simulate(r, 1.0, 0.1, 10, westEnd(), first)#horde);
+        Assert.assertEq(expected = (false, true), (Horde.isFinished(r, 'A', first), Horde.isFinished(r, 'A', second)))
 
-    /// 予定の時刻を過ぎた（60 秒後の）コマには全部出ている。
+    /// wave を倒し切って corpseSeconds が過ぎると、敵の列は空に戻る（倒した数だけ列が伸び続けない）。
     @Test
-    def testScheduledEnemiesAppearByTheirTime(): Unit \ Assert =
-        let entered = Horde.enter(packRes(), 'A', 0.0, entrance(), Horde.empty());
-        Assert.assertEq(expected = packSize() |> Option.map(n -> 2 * n), Some(Horde.aliveCount(Horde.step(packRes(), 60.0, 0.1, playerAt(6.0, 10.0), entered)#horde)))
+    def testFallenWaveLeavesTheList(): Unit \ Assert =
+        let r = wavesRes(wave(4, 0.0, 0) :: Nil);
+        let fallen = shotDown(r, 1.0, 0 :: 1 :: 2 :: 3 :: Nil, runFor(r, 10));
+        let later = Horde.step(r, 1.0 + doc()#corpseSeconds, 0.1, westEnd(), fallen)#horde;
+        Assert.assertEq(expected = (0, 0), (List.length(later#enemies), Horde.queuedCount(later)))
+
+    /// もう一度入っても wave を始め直さない（1 区画 1 回だけ）。
+    @Test
+    def testEnteringTwiceStartsOnce(): Unit \ Assert =
+        let r = wavesRes(wave(2, 0.0, 0) :: Nil);
+        Assert.assertEq(expected = 1, Horde.wavesStarted('A', Horde.simulate(r, 1.0, 0.1, 1, westEnd(), Horde.enter('A', 1.0, runFor(r, 10)))#horde))
+
+    /// 区画に spawn の印が無い wave は 1 行知らせて捨てる（長い部屋の印は A にだけある）。
+    @Test
+    def testWaveWithoutMarksIsReportedAndDropped(): Unit \ {Assert, IO} =
+        let r = resWith(longRoom());
+        let doc = SpawnsDoc.Doc.Doc({ waves = wave(1, 0.0, 0) :: { source = Some('Z') | wave(1, 0.0, 0) } :: Nil | spawns() });
+        let (plans, lines) = LogCapture.capture(() -> Spawner.plansOf(r#maze, r#spawnPoints, doc));
+        Assert.assertEq(expected = (1, Some(1)), (List.length(lines), Map.get('A', plans) |> Option.map(List.length)))
+
+    // ── 湧く所 ──
+
+    /// x 6 m・z 10 m（西の印）と x 42 m・z 10 m（東の印）。
+    def westAndEast(): List[Spawner.Point] = { zone = 'A', x = 6.0, z = 10.0 } :: { zone = 'A', x = 42.0, z = 10.0 } :: Nil
+
+    def placing(): Spawner.Placing = { minDistance = spawns()#minDistance, scatter = spawns()#scatter }
+
+    /// x・z に立ち、向き yaw で、壁に遮られない（どの点も見通せる）プレイヤーの見え方。
+    def viewer(x: Float64, z: Float64, yaw: Float64): Spawner.Viewer = { x = x, z = z, yaw = yaw, lineOfSight = (_, _) -> true }
+
+    /// 湧いた点が (x, z) の印のマスの中（散らす幅の半分の内）か。
+    def isAround(x: Float64, z: Float64, at: Option[(Float64, Float64)]): Bool =
+        at |> Option.exists(p -> Float64.abs(fst(p) - x) <= spawns()#scatter * 0.5 and Float64.abs(snd(p) - z) <= spawns()#scatter * 0.5)
+
+    /// 西の印から 4 m（minDistance より近い）に立つと、近い西の印でなく遠い東の印から湧く（印を回す番号が西を指す 0 でも）。
+    @Test
+    def testSpawnSkipsMarksNearerThanMinDistance(): Unit \ Assert =
+        Assert.assertEq(expected = true, isAround(42.0, 10.0, Spawner.placeOf(placing(), viewer(10.0, 10.0, west()), 'A', 0, westAndEast())))
+
+    /// 真ん中（x 24 m）で東を向くと、どちらの印も 18 m 先だが、見えている東でなく背中側の西の印から湧く（印を回す番号が東を指す 1 でも）。
+    @Test
+    def testSpawnPrefersAMarkOutOfSight(): Unit \ Assert =
+        Assert.assertEq(expected = true, isAround(6.0, 10.0, Spawner.placeOf(placing(), viewer(24.0, 10.0, east()), 'A', 1, westAndEast())))
+
+    /// どちらの印も minDistance より近い所（x 20 m・z 10 m）からは、一番遠い西の印（13 m 先。東は 12 m）から湧く（部屋が空のままにならない）。
+    @Test
+    def testAllMarksTooCloseSpawnFromTheFarthest(): Unit \ Assert =
+        let near = { zone = 'A', x = 7.0, z = 10.0 } :: { zone = 'A', x = 32.0, z = 10.0 } :: Nil;
+        Assert.assertEq(expected = true, isAround(7.0, 10.0, Spawner.placeOf(placing(), viewer(20.0, 10.0, east()), 'A', 1, near)))
 
     // ── 押し合い ──
 

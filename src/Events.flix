@@ -25,6 +25,8 @@ mod Events {
         case Respawned
         // 部屋に入って群れが湧き始めた。
         case RoomTriggered(Char)
+        // 区画の wave が始まった（区画・何番目の wave か。0 が最初）。
+        case WaveStarted(Char, Int32)
         // 拾った（種類）。
         case PickedUp(Pickups.Kind)
         // 持ち替えた（替えた先の武器。数字キー・ホイール・拾った武器・弾が尽きた時の自動の持ち替え）。

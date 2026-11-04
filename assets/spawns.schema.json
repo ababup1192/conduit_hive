@@ -1,52 +1,95 @@
 {
   "//": "conduit_hive.spawns.json の形（Studio の sections 方言）。既定は src/SpawnsDoc.flix の defaults() が正。",
-  "version": 1,
+  "version": 2,
   "sections": {
     "minDistance": {
       "kind": "field",
       "type": "float",
       "label": "これより近い印からは湧かせない（m）",
       "order": 1,
-      "default": 10.0,
+      "default": 14.0,
       "min": 0,
-      "max": 40
+      "max": 60,
+      "group": "湧き方"
     },
-    "groups": {
-      "kind": "catalog",
-      "label": "群れの種類（鍵 = 迷路の spawn の印の name）",
+    "maxAlive": {
+      "kind": "field",
+      "type": "int",
+      "label": "同時に生きている敵の上限（倒れた体は数えない）",
       "order": 2,
+      "default": 50,
+      "min": 1,
+      "max": 120,
+      "group": "湧き方"
+    },
+    "spawnInterval": {
+      "kind": "field",
+      "type": "float",
+      "label": "1 体湧いてから次が湧くまで（秒）",
+      "order": 3,
+      "default": 0.15,
+      "min": 0,
+      "max": 5,
+      "group": "湧き方"
+    },
+    "scatter": {
+      "kind": "field",
+      "type": "float",
+      "label": "印のマスの中で散らす幅（m）",
+      "order": 4,
+      "default": 2.4,
+      "min": 0,
+      "max": 4,
+      "group": "湧き方"
+    },
+    "waves": {
+      "kind": "list",
+      "label": "wave（区画ごとに並びの順に始まる）",
+      "order": 5,
       "fields": {
+        "zone": {
+          "type": "text",
+          "label": "入ると始まる区画の文字",
+          "order": 1,
+          "required": true
+        },
+        "from": {
+          "type": "text",
+          "label": "湧く印の区画の文字（空なら zone と同じ）",
+          "order": 2,
+          "default": ""
+        },
         "melee": {
           "type": "int",
           "label": "melee の数",
-          "order": 1,
-          "default": 3,
+          "order": 3,
+          "default": 0,
           "min": 0,
-          "max": 64
+          "max": 200
         },
         "ranged": {
           "type": "int",
           "label": "ranged の数",
-          "order": 2,
+          "order": 4,
           "default": 0,
           "min": 0,
-          "max": 64
+          "max": 200
         },
-        "interval": {
+        "after": {
           "type": "float",
-          "label": "1 体ごとの間隔（秒）",
-          "order": 3,
-          "default": 0.5,
+          "label": "前の wave が始まってから（最初は入ってから）この秒で始まる",
+          "order": 5,
+          "default": 0.0,
           "min": 0,
-          "max": 5
+          "max": 300
         },
-        "scatter": {
-          "type": "float",
-          "label": "散らす幅（m）",
-          "order": 4,
-          "default": 2.4,
+        "whenLeft": {
+          "type": "int",
+          "label": "区画の残りがこの数以下でも始まる（2 つ目から）",
+          "order": 6,
+          "default": 0,
           "min": 0,
-          "max": 4
+          "max": 200
         }
       }
     }

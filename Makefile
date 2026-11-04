@@ -49,6 +49,7 @@ precommit-local:
 # 群れの重さの測り（plans/bench-horde.md）: 最後の部屋に本物のクリーチャーを置き、本物の規則で追わせ・押し合わせ・振らせて、組ごとに窓ありの GL で数秒回し、
 # debug/bench/horde-<組>.txt に 1 コマの時間と 3D の数を書く。普段の遊び（make run）には混ざらない別の入口（HordeBench.main）。
 # BENCH_SETS="horde50" で組を絞る。組の中身は下の case（環境変数の意味は src/render/HordeBench.flix の頭）。
+# horde-waves = 最後の部屋で wave を湧かせ続け（同時は maxAlive まで）、自動の操縦が 3 分間（BENCH_SECONDS）倒し続ける組（BENCH_SETS=horde-waves で流す。既定の組には入れない）。
 # WhyNot: FLIX_GE_HIDDEN で流さない — 隠し窓は描き先を design の 480×270 に縮めるので、GPU の数が実機より小さく出る。
 BENCH_SETS ?= horde50 horde25 stage
 .PHONY: bench-horde
@@ -59,6 +60,7 @@ bench-horde:
 	    horde50)        set_env="BENCH_ENEMIES=50";; \
 	    horde25)        set_env="BENCH_ENEMIES=25";; \
 	    stage)          set_env="BENCH_ENEMIES=0";; \
+	    horde-waves)    set_env="BENCH_WAVES=1 BENCH_SECONDS=$${BENCH_SECONDS:-180} BENCH_WARMUP=300";; \
 	    *) echo "[bench] 知らない組: $$s"; exit 2;; \
 	  esac; \
 	  echo "[bench] $$s ($$set_env)"; rm -f debug/bench/horde-$$s.txt; \
