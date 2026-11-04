@@ -1,0 +1,34 @@
+{
+  "//": "stage.manifest.json の形（Studio の sections の書き方）。modeling/stage.py が書き出す生成物で、手では直さない（project.json の editor.resources には載せない）。",
+  "version": 1,
+  "sections": {
+    "glb": { "kind": "field", "type": "text", "label": "絵の glb（このファイルと同じフォルダ）", "order": 1 },
+    "doc": { "kind": "field", "type": "text", "label": "元にした迷路の Doc", "order": 2 },
+    "doc_hash": { "kind": "field", "type": "text", "label": "元の Doc のハッシュ（SHA-256 の頭 16 桁。glb の DOCHASH_ ノードと同じ）", "order": 3 },
+    "doc_hash_rule": { "kind": "field", "type": "text", "label": "ハッシュの取り方", "order": 4 },
+    "coords": { "kind": "field", "type": "text", "label": "座標の約束", "order": 5 },
+    "uv0": { "kind": "field", "type": "text", "label": "1 本目の UV の中身", "order": 6 },
+    "uv1": { "kind": "field", "type": "text", "label": "2 本目の UV の中身（lightmap）", "order": 7 },
+    "lightmap_encoding": { "kind": "field", "type": "text", "label": "lightmap の PNG の書き方と、読む時の intensity", "order": 8 },
+    "lightmap_mip_levels": { "kind": "field", "type": "text", "label": "lightmap の島の間と、読む mip のレベル", "order": 9 },
+    "baked_lights": { "kind": "field", "type": "text", "label": "ベイクに入れた光（ゲームで足さない光）", "order": 10 },
+    "emission": { "kind": "field", "type": "json", "label": "発光の材質の強さ（材質の名前 → 線形の倍率）", "order": 11 },
+    "zones": {
+      "kind": "field",
+      "type": "json",
+      "label": "区画ごとの絵（区画の文字 → 下の欄）",
+      "order": 12,
+      "fields": {
+        "node": { "type": "text", "label": "glb のノードの名前", "order": 1 },
+        "name": { "type": "text", "label": "区画の名前", "order": 2 },
+        "kind": { "type": { "enum": ["room", "corridor"] }, "label": "種類", "order": 3 },
+        "triangles": { "type": "int", "label": "三角形の数", "order": 4 },
+        "materials": { "type": "json", "label": "使う材質（= draw call）", "order": 5 },
+        "lightmap_png": { "type": "text", "label": "lightmap の絵（このファイルからの相対パス）", "order": 6 },
+        "lightmap_size": { "type": "int", "label": "lightmap の大きさ（px）", "order": 7 },
+        "uv_gap_px": { "type": "int", "label": "lightmap の島の間（px）", "order": 8 },
+        "lightmap_stats": { "type": "json", "label": "ベイクした明るさの目安（線形）", "order": 9 }
+      }
+    }
+  }
+}
