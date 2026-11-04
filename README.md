@@ -35,7 +35,7 @@ SF の施設の迷路を一人称で進み、群れで迫るクリーチャー�
    `Separation`（押し合いと壁）・`Projectiles`（ranged の弾）・`Spawner`（印から湧く予定）・`Creatures`（glb・当たり判定の形・姿勢の共有）。
 5. **武器と拾う物** — `src/Arsenal.flix`（連射・弾・持ち替え・拾った武器と弾・空撃ち）・`src/Pickups.flix`（印から置く・拾う規則・浮き方）・`src/PickupModels.flix`（拾う物の形）・`src/Hitscan.flix`（レイの当たり）・`src/FpViewmodel.flix`（腕と銃の glb）。
 6. **描く** — `src/View.flix`（入口で画面を選ぶ）→ `src/HudView.flix`（HUD）・`src/MenuView.flix`（タイトル・ポーズ・クリアのメニュー）→ `src/StageView.flix`（3D の場面とビューモデル）→ `src/PostView.flix`（ブルームと後処理）。
-   迷路の絵は `Maze`・`MazeMesh`・`Collider`、粒は `Particles3d`。
+   迷路の絵は Blender でベイクしたステージ（`StageModel`。`assets/models/stage.glb` と区画ごとの lightmap）、確かめ用の灰色の箱は `MazeMesh`（look の `bakedStage` を false か、glb が迷路と合わない時）。形と当たり判定は `Maze`・`Collider`、粒は `Particles3d`。
 7. **Doc** — 値は `assets/` の JSON（保存即反映）。読み込みと読み直しは `src/Controls.flix`、描く元の束は `src/Res.flix`。
 
 ## Doc（`assets/`）
@@ -50,11 +50,12 @@ SF の施設の迷路を一人称で進み、群れで迫るクリーチャー�
 | `conduit_hive.weapons.json` | 武器ごとの威力・連射・ばらつき・弾と上限・反動 | `WeaponsDoc` |
 | `conduit_hive.viewmodel.json` | 腕と銃の見え方（画角・揺れ・持ち替え） | `FpViewmodelDoc` |
 | `conduit_hive.particles3d.json` | 3D の粒（マズルフラッシュ・火花・体液・projectile の玉） | `Particles3dDoc` |
-| `conduit_hive.walk.json`・`conduit_hive.look.json` | 歩く手触り・施設の色と光と霧 | `WalkDoc`・`LookDoc` |
+| `conduit_hive.walk.json`・`conduit_hive.look.json` | 歩く手触り・ステージの絵の切り替えと lightmap の倍率・施設の色と光と霧 | `WalkDoc`・`LookDoc` |
 | `conduit_hive.uitext.json`・`conduit_hive.theme.json`・`player.keys.json` | 画面の文言・色・キー割り当て | `UiTextDoc`・`ThemeDoc`・`KeysDoc` |
 
 それぞれ schema が並び、`project.json` の `editor.resources` が Studio に宣言している。
-モデル（`assets/models/*.glb`）は `modeling/` の Blender のスクリプトが作る。
+モデル（`assets/models/*.glb`）は `modeling/` の Blender のスクリプトが作る。ステージは `modeling/stage.py`（約 130 秒）・確かめは `modeling/stage_check.py`。
+glb の `DOCHASH_<16 桁>` は迷路の rows と zones だけから取るハッシュ（`modeling/stagehash.py` と `StageModel.docHashOf` が同じ計算）で、合わなければゲームは 1 行知らせて灰色の箱で描く。
 
 ## 絵
 

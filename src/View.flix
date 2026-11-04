@@ -90,7 +90,7 @@ mod View {
     // ── 3D の場面 ──
 
     /// 一人称の場面の値（時刻 t）: 照準のカメラ・今いる区画から見える区画の絵・その区画の敵と projectile と拾う物・粒・手前の腕と銃・撃った瞬間の灯り。
-    pub def stageIn(res: Res.Res, t: Float64, s: World.Session): StageView.In =
+    def stageIn(res: Res.Res, t: Float64, s: World.Session): StageView.In =
         let body = World.walkerOf(s);
         let camera = World.cameraOf(res, t, s);
         let a = World.arsenalOf(s);
@@ -112,7 +112,7 @@ mod View {
           flash = viewmodel |> Option.toList |> List.flatMap(h -> flashLights(res, a, t, StageView.fromEye(camera, fst(h)))),
           creatures = creaturesIn(res, t, horde#enemies |> List.filter(e -> seen(e#x, 1.0, e#z, creatureReach()))),
           pickups = items#instances,
-          textures = List.append(res#creatures |> Map.valuesOf |> List.flatMap(b -> b#model#textures), res#pickupArt#textures),
+          textures = List.flatten(res#stageTextures :: (res#creatures |> Map.valuesOf |> List.flatMap(b -> b#model#textures)) :: res#pickupArt#textures :: Nil),
           glows = List.append(shots |> List.map(p -> Particles3d.spitLight(res#particles, p#at)), items#lights),
           viewmodel = viewmodel |> Option.map(snd) }
 
@@ -122,7 +122,7 @@ mod View {
         let items = pickupsIn(res, t, camera, drawn, Set.empty());
         { t = t, camera = camera, look = LookDoc.rec(res#look),
           zones = drawn |> Set.toList |> List.filterMap(id -> Map.get(id, res#art)),
-          billboards = Nil, flash = Nil, creatures = Nil, pickups = items#instances, textures = res#pickupArt#textures,
+          billboards = Nil, flash = Nil, creatures = Nil, pickups = items#instances, textures = List.append(res#stageTextures, res#pickupArt#textures),
           glows = items#lights, viewmodel = None }
 
     /// 見回しの速さ（度/秒）・目の傾き（度。負で少し見上げる）・タイトルの見回しの始めの向き（度。最後の部屋の長い向き）。

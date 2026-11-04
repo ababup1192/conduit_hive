@@ -26,8 +26,8 @@
   },
   "light": {
     "color": "#ffc890",
-    "intensity": 4.0,
-    "range": 6.0,
+    "intensity": 1.6,
+    "range": 5.0,
     "life": 0.05
   },
   "ichor": {

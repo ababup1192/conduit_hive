@@ -1,8 +1,9 @@
 // HordeBench — 群れの重さの測りの入口（make bench-horde）。普段の遊び（Main・Game.app）とは別の入口で、窓ありの GL で数秒回して数を書き出す。
 //
-// 立つのは最後の部屋の真ん中（東を向く）。本物のクリーチャー（Creatures）を部屋に散らして置き、本物の規則（World.step → Horde.step）で
+// 立つのは最後の部屋の真ん中（東を向く）。ステージは遊びと同じ絵（Res の区画の絵 = ベイクしたステージの glb と lightmap）。
+// 本物のクリーチャー（Creatures）を部屋に散らして置き、本物の規則（World.step → Horde.step）で
 // 追わせ・押し合わせ・振らせ・吐かせる。プレイヤーは動かず撃たない。測る間に倒れないよう、敵の威力だけを 0 にした Doc で回す。
-// 測る組は環境変数で決める（BENCH_LABEL・BENCH_ENEMIES・BENCH_PIPES・BENCH_PIPE_MESH=zone|loose・BENCH_WARMUP・BENCH_FRAMES）。
+// 測る組は環境変数で決める（BENCH_LABEL・BENCH_ENEMIES・BENCH_WARMUP・BENCH_FRAMES）。
 // 数は 2 つの道で取る:
 //   窓の前の CPU だけの測り … 規則の 1 コマ（World.step）と、描く物の木を組む（View.passPlan。敵の姿勢を作るのもここ）を nanoTime で 1 コマずつ
 //   窓の測り             … 1 コマの間隔（frame#realNow の差）と FrameDiagnostics（GL へ送る・swap・GPU・3D の数）
@@ -13,14 +14,13 @@ mod HordeBench {
     import java.io.File
     import java.lang.System
 
-    /// 測る組。pipes = 1 区画あたりのパイプの箱の数（0 で無し）。
-    type alias Config = { label = String, enemies = Int32, pipes = Int32, pipeMesh = BenchPipes.PipeMesh }
+    /// 測る組。
+    type alias Config = { label = String, enemies = Int32 }
 
     /// 測る間に変わらない物。
     type alias Kit = {
         res = Res.Res,
         cfg = Config,
-        pipes = Map[Char, List[Scene3d.Instance3d]],
         start = World.World,
         warmup = Int32,
         frames = Int32,
@@ -62,8 +62,7 @@ mod HordeBench {
 
     def configOf(env: Map[String, String]): Config =
         let text = (name, fallback) -> Map.getWithDefault(name, fallback, env);
-        { label = text("BENCH_LABEL", "bench"), enemies = numOr(env, "BENCH_ENEMIES", 50), pipes = numOr(env, "BENCH_PIPES", 120),
-          pipeMesh = if (text("BENCH_PIPE_MESH", "zone") == "loose") BenchPipes.PipeMesh.Loose else BenchPipes.PipeMesh.PerZone }
+        { label = text("BENCH_LABEL", "bench"), enemies = numOr(env, "BENCH_ENEMIES", 50) }
 
     /// 敵の威力だけを 0 にした Doc（測る間にプレイヤーが倒れて群れが消えないように）。
     def harmless(d: EnemiesDoc.Doc): EnemiesDoc.Doc =
@@ -79,7 +78,7 @@ mod HordeBench {
             let (x, z) = Maze.centerOf(res#maze, cell);
             let placed = World.settleZone(res, World.placeWalker(res, { x = x, z = z }, 90.0, -4.0, World.initial(res)));
             let start = World.withHorde(Horde.spawnNow(res, crowdOf(res, cfg#enemies, x, z), Horde.empty()), placed);
-            { res = res, cfg = cfg, pipes = BenchPipes.artOf(cfg#pipes, cfg#pipeMesh, res#maze), start = start,
+            { res = res, cfg = cfg, start = start,
               warmup = numOr(env, "BENCH_WARMUP", 120), frames = numOr(env, "BENCH_FRAMES", 360),
               out = "${outDir()}/horde-${cfg#label}.txt", micro = Nil }
         })
@@ -126,17 +125,11 @@ mod HordeBench {
 
     def nanosOf(seconds: Float64): Int64 = Float64.round(seconds * 1.0e9) |> Float64.tryToInt64 |> Option.getWithDefault(0i64)
 
-    /// 本編の Pass の計画に、見える区画のパイプを足す。
-    def passPlan(kit: Kit, s: State): Render.PassPlan =
-        // WhyNot: Option.getWithDefault(View.passPlan(..)) にしない — 既定の値は先に計算されるので、毎コマ木を 2 回組んで測りが倍に出る。
-        match World.sessionOf(s#game) {
-            case None => View.passPlan(kit#res, s#game)
-            case Some(session) =>
-                let base = View.stageIn(kit#res, World.seconds(s#game), session);
-                let b = World.walkerOf(session);
-                let pipes = Maze.visibleFrom(kit#res#maze, b#x, b#z) |> Set.toList |> List.flatMap(id -> Map.getWithDefault(id, Nil, kit#pipes));
-                StageView.passPlan({ zones = { instances = pipes, lights = Nil } :: base#zones | base })
-        }
+    /// 本編の Pass の計画（遊びと同じ）。
+    def passPlan(kit: Kit, s: State): Render.PassPlan = View.passPlan(kit#res, s#game)
+
+    /// 測ったステージの絵の種類（ベイクしたステージか灰色の箱か。結果の行に書く）。
+    def stageKindOf(res: Res.Res): String = if (List.isEmpty(res#stageTextures)) "gray" else "baked"
 
     // ── 窓の前の CPU だけの測り ──
 
@@ -209,7 +202,7 @@ mod HordeBench {
         let gpu = xs |> List.filterMap(x -> x#diag#gpuNs) |> List.map(ms);
         let lines =
             "label ${cfg#label}" ::
-            "config enemies=${cfg#enemies} pipes=${cfg#pipes} pipeMesh=${cfg#pipeMesh} alive_at_end=${Horde.aliveCount(hordeIn(s#game))}" ::
+            "config enemies=${cfg#enemies} stage=${stageKindOf(kit#res)} alive_at_end=${Horde.aliveCount(hordeIn(s#game))}" ::
             "frames ${List.length(xs)}" ::
             "interval_ms   ${spread(xs |> List.map(x -> ms(x#intervalNs)))}" ::
             "work_ms       ${spread(xs |> List.map(x -> ms(x#intervalNs - x#diag#swapNs)))}" ::

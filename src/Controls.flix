@@ -105,7 +105,7 @@ mod Controls {
 
     // ── Doc の読み込み・読み直し（watchFile / F1） ──
 
-    /// 起動時と描き出しが同じ形で読む Doc の束と腕と銃・敵・拾う武器の glb。区切りごとに進み具合を知らせる
+    /// 起動時と描き出しが同じ形で読む Doc の束とステージ・腕と銃・敵・拾う武器の glb。区切りごとに進み具合を知らせる
     /// （実機は起動画面が進む・描き出しとテストと flow は HeadlessLoad.handle で絵を解く）。
     pub def loadDocs(): Res.Docs \ Fs.FileRead + IO + LoadProgress =
         LoadProgress.report("reading docs...", 0, 0);
@@ -113,7 +113,7 @@ mod Controls {
           walk = WalkDoc.load(WalkDoc.path()), look = LookDoc.load(LookDoc.path()), maze = MazeDoc.load(MazeDoc.path()),
           weapons = WeaponsDoc.load(WeaponsDoc.path()), viewmodel = FpViewmodelDoc.load(FpViewmodelDoc.path()),
           particles = Particles3dDoc.load(Particles3dDoc.path()), player = PlayerDoc.load(PlayerDoc.path()), enemies = EnemiesDoc.load(EnemiesDoc.path()),
-          spawns = SpawnsDoc.load(SpawnsDoc.path()), pickups = PickupsDoc.load(PickupsDoc.path()),
+          spawns = SpawnsDoc.load(SpawnsDoc.path()), pickups = PickupsDoc.load(PickupsDoc.path()), stage = StageModel.load(),
           viewmodels = FpViewmodel.load(), creatures = Creatures.load(), pickupModels = PickupModels.load() }
 
     def restartPlay(res: Res.Res, w: World.World): World.World =

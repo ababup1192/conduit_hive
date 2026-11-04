@@ -10,8 +10,9 @@ mod MazeMesh {
     use fge::{Color, Hash01, Log, Mat4, Mesh3d, Scene3d, ShaderDoc, Vec3}
     use fge::ShaderDoc.{Field, Shade, Out}
 
-    /// 区画 1 つの絵: 置いた物と、その区画の灯り。
-    pub type alias ZoneArt = { instances = List[Scene3d.Instance3d], lights = List[Scene3d.PointLight] }
+    /// 区画 1 つの絵: 置いた物・場面に入れる灯り・天井の灯具の灯り（lightmap の付かない手前の腕と銃へ写す）。
+    /// 灰色の箱の道は lights と lamps が同じ。ベイクしたステージ（StageModel）は lights が空で、lamps だけを持つ。
+    pub type alias ZoneArt = { instances = List[Scene3d.Instance3d], lights = List[Scene3d.PointLight], lamps = List[Scene3d.PointLight] }
 
     /// 四角 1 枚: 頂点 4 つ（表から見て時計回り）と頂点ごとの色。
     type alias Quad = { points = List[Vec3.Vec3], colors = List[Color] }
@@ -38,8 +39,13 @@ mod MazeMesh {
         let glowing = (name: String, quads: List[Quad], c: Color) ->
             if (List.isEmpty(quads)) Nil
             else (place(name, meshOf(quads)) |> Scene3d.withMaterial(glowMaterial("conduit_${name}", c, look#stripIntensity))) :: Nil;
+        let lit = lamps |> List.map(l -> l#light);
         { instances = place("shell", meshOf(shell)) :: List.append(glowing("strip", strips, look#stripColor), glowing("lamp", lamps |> List.map(l -> l#panel), lampColorOf(look, zone))),
-          lights = lamps |> List.map(l -> l#light) }
+          lights = lit, lamps = lit }
+
+    /// 区画の天井の灯具の灯り（灰色の箱の灯具と、stage.py が灯具を吊るマスは同じ決め方）。
+    pub def lampLightsOf(look: LookDoc.Rec, m: Maze.Maze, zone: Maze.Zone): List[Scene3d.PointLight] =
+        lampsOf(look, m, zone) |> List.map(l -> l#light)
 
     // ── 1 マスの面 ──
 

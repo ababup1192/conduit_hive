@@ -43,6 +43,4 @@ mod BoxMesh {
             case Err(e)   => Log.warnThen("[box] 箱の形を組めない: ${e}", Mesh3d.fromPolygons(Nil))
         }
 
-    /// 大きさ 1 の箱（伸ばして置く物の元）。
-    pub def unit(color: Color): Mesh3d.Mesh3d = of(color, { center = Vec3.zero(), size = Vec3.one() } :: Nil)
 }

@@ -71,4 +71,26 @@ mod TestMaze {
     def testOffTheFloorDrawsEveryZone(): Unit \ Assert =
         let m = Maze.build(100.0, mazeOf("######" :: "#AAbC#" :: "######" :: Nil, 1, 1, 0.0));
         Assert.assertEq(expected = Set#{'A', 'b', 'C'}, Maze.visibleFrom(m, 2.0, 2.0))
+
+    // ========================================================================
+    // ステージの glb のハッシュ（DOCHASH）
+    // ========================================================================
+
+    /// rows と zones の小さな迷路の Doc の字（marks は start が 1 つ。列 startCol に置く）。
+    def stagedOf(startCol: Int32, note: String): String =
+        "{\"note\": \"${note}\", \"wallHeight\": 4.0, \"rows\": [\"####\", \"#Ab#\", \"####\"], " +
+        "\"zones\": [{\"id\": \"A\", \"name\": \"start\", \"kind\": \"room\", \"height\": 6.0}, {\"id\": \"b\", \"kind\": \"corridor\"}], " +
+        "\"marks\": [{\"kind\": \"start\", \"x\": ${startCol}, \"y\": 1}]}"
+
+    def hashOf(text: String): Option[String] = MazeDoc.fromJson(text) |> Option.map(StageModel.docHashOf)
+
+    /// ハッシュは modeling/stagehash.py の doc_hash と同じ値（python で同じ Doc から取った 16 桁）。
+    @Test
+    def testDocHashMatchesTheModelingScript(): Unit \ Assert =
+        Assert.assertEq(expected = Some("3c8a55b86756b32c"), hashOf(stagedOf(1, "a")))
+
+    /// marks の start と note を動かしても、絵に関わらないのでハッシュは変わらない。
+    @Test
+    def testDocHashIgnoresMarksAndNote(): Unit \ Assert =
+        Assert.assertEq(expected = hashOf(stagedOf(1, "a")), hashOf(stagedOf(2, "b")))
 }

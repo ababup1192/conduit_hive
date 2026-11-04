@@ -16,7 +16,7 @@ mod TestSupport {
                     walk = WalkDoc.defaults(), look = LookDoc.defaults(), maze = maze,
                     weapons = WeaponsDoc.defaults(), viewmodel = FpViewmodelDoc.defaults(), particles = Particles3dDoc.defaults(),
                     player = PlayerDoc.defaults(), enemies = EnemiesDoc.defaults(), spawns = SpawnsDoc.defaults(), pickups = PickupsDoc.defaults(),
-                    viewmodels = Map.empty(), creatures = Map.empty(), pickupModels = Map.empty() })
+                    stage = None, viewmodels = Map.empty(), creatures = Map.empty(), pickupModels = Map.empty() })
 
     // ── 遊んでいる場面の値（ほかの画面なら None） ──
 

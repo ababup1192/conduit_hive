@@ -2,10 +2,12 @@
 #   cd modeling && devbox run -- blender -b --factory-startup --python stage_check.py   （numpy を Blender の python から借りる）
 # 出す物: 区画ごとのノード・三角形・材質（= draw call）・lightmap の絵の大きさ・場面の絵の予算・DOCHASH と今の Doc の一致。
 # 確かめる物: 区画の頂点が全部その区画の床のマスの上（壁のマス・ほかの区画へはみ出さない）・高さが 0〜天井。
-import json, struct, os, sys, hashlib
+import json, struct, os, sys
 import numpy as np
 
 HERE = os.path.dirname(os.path.abspath(__file__))
+sys.path.insert(0, HERE)
+import stagehash
 ROOT = os.path.normpath(os.path.join(HERE, ".."))
 ARGS = sys.argv[sys.argv.index("--") + 1:] if "--" in sys.argv else []
 GLB = os.path.join(ROOT, "assets", "models", ARGS[0] if ARGS else "stage.glb")
@@ -40,7 +42,7 @@ d = json.loads(raw)
 rows = d["rows"]; cols = max(map(len, rows)); nrows = len(rows); cs = d["cellSize"]
 grid = [r.ljust(cols, "#") for r in rows]
 heights = {z["id"]: z["height"] for z in d["zones"]}
-want_hash = hashlib.sha256(raw).hexdigest()[:16]
+want_hash = stagehash.doc_hash(d)
 
 doc, bin_ = read_glb(GLB)
 man = json.load(open(MANIFEST)) if os.path.exists(MANIFEST) else {"zones": {}}

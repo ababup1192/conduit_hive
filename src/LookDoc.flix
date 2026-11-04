@@ -1,5 +1,5 @@
 // LookDoc — conduit_hive.look.json（施設の色と光・霧・画面の仕上げ）の宣言ドキュメント層。
-// 灰色の箱の面の色・光る筋・部屋の灯り・環境光・霧・トーンマップ・ブルーム・ビネット・粒の数だけを持つ。
+// ベイクしたステージの使い方と明るさ・灰色の箱の面の色・光る筋・部屋の灯り・環境光・霧・トーンマップ・ブルーム・ビネット・粒の数だけを持つ。
 // 面の組み方は MazeMesh・後処理の Pass の並べ方と式は PostView（コード）。
 // fail-open — 読めない・壊れているときは defaults() へ落とし、欄が無ければその欄だけ既定。
 mod LookDoc {
@@ -8,6 +8,10 @@ mod LookDoc {
 
     pub type alias Rec = {
         version = Int32,
+        // Blender でベイクしたステージ（stage.glb）で描くか（偽なら灰色の箱。glb が迷路と合わない時も灰色の箱）と、lightmap の倍率（線形）。
+        // PNG は線形の光の 1/4 を書いてあるので、4.0 が Blender で見たままの明るさ。
+        bakedStage = Bool,
+        lightmapIntensity = Float64,
         // 面の色: 壁（くすんだ鋼）・床（黒鉛）・天井。
         wallColor = Color,
         floorColor = Color,
@@ -21,7 +25,8 @@ mod LookDoc {
         corridorLightIntensity = Float64,
         lampSpacing = Int32,
         roomLightReach = Float64,
-        // どこにでも当たる光・上を向く面ほど明るくする量。
+        // どこにでも当たる光・上を向く面ほど明るくする量。lightmap の付いた物（ベイクしたステージ）には足されないので、
+        // ベイクしたステージでは敵・拾う物・的の柱（と、倍率を掛けて手前の腕と銃）だけを照らす。
         ambient = Color,
         hemisphere = Float64,
         // 距離の霧（色・かかり始め・かかり切る距離 m）。かかり切る距離はカメラの写す奥行きの端と見える区画の距離も兼ねる。
@@ -53,7 +58,7 @@ mod LookDoc {
 
     /// コード側の既定値（assets/conduit_hive.look.json と同じ値から出発する）。
     pub def defaults(): Doc =
-        Doc.Doc({ version = 1, wallColor = hx("#5b636b"), floorColor = hx("#34383d"), ceilingColor = hx("#24272b"),
+        Doc.Doc({ version = 1, bakedStage = true, lightmapIntensity = 4.0, wallColor = hx("#5b636b"), floorColor = hx("#34383d"), ceilingColor = hx("#24272b"),
                   stripColor = hx("#5fe3f0"), stripIntensity = 6.0,
                   roomLightColor = hx("#cfe6ee"), roomLightIntensity = 2.2, corridorLightIntensity = 1.2, lampSpacing = 4, roomLightReach = 1.6,
                   ambient = hx("#2e3640"), hemisphere = 0.35,
@@ -77,6 +82,7 @@ mod LookDoc {
         let c = (key, fallback) -> colorOr(fallback, key, root);
         let i = (key, fallback) -> JsonCodec.intOr(key, fallback, root);
         Doc.Doc({ version = i("version", d#version),
+                  bakedStage = JsonCodec.boolOr("bakedStage", d#bakedStage, root), lightmapIntensity = f("lightmapIntensity", d#lightmapIntensity),
                   wallColor = c("wallColor", d#wallColor), floorColor = c("floorColor", d#floorColor), ceilingColor = c("ceilingColor", d#ceilingColor),
                   stripColor = c("stripColor", d#stripColor), stripIntensity = f("stripIntensity", d#stripIntensity),
                   roomLightColor = c("roomLightColor", d#roomLightColor), roomLightIntensity = f("roomLightIntensity", d#roomLightIntensity),

@@ -12,6 +12,6 @@
   "swayFollow": 0.12,
   "drawSeconds": 0.35,
   "recoilRecover": 0.18,
-  "ambientScale": 0.55,
-  "lampScale": 0.3
+  "ambientScale": 0.35,
+  "lampScale": 0.08
 }

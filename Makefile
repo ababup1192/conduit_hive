@@ -51,16 +51,14 @@ precommit-local:
 # BENCH_SETS="horde50" で組を絞る。組の中身は下の case（環境変数の意味は src/render/HordeBench.flix の頭）。
 # WhyNot: FLIX_GE_HIDDEN で流さない — 隠し窓は描き先を design の 480×270 に縮めるので、GPU の数が実機より小さく出る。
 BENCH_SETS ?= horde50 horde25 stage
-BENCH_PIPES_N ?= 120
 .PHONY: bench-horde
 bench-horde:
 	@mkdir -p debug/bench
 	@for s in $(BENCH_SETS); do \
 	  case $$s in \
-	    horde50)        set_env="BENCH_ENEMIES=50 BENCH_PIPES=$(BENCH_PIPES_N)";; \
-	    horde25)        set_env="BENCH_ENEMIES=25 BENCH_PIPES=$(BENCH_PIPES_N)";; \
-	    horde50-loose)  set_env="BENCH_ENEMIES=50 BENCH_PIPES=$(BENCH_PIPES_N) BENCH_PIPE_MESH=loose";; \
-	    stage)          set_env="BENCH_ENEMIES=0 BENCH_PIPES=$(BENCH_PIPES_N)";; \
+	    horde50)        set_env="BENCH_ENEMIES=50";; \
+	    horde25)        set_env="BENCH_ENEMIES=25";; \
+	    stage)          set_env="BENCH_ENEMIES=0";; \
 	    *) echo "[bench] 知らない組: $$s"; exit 2;; \
 	  esac; \
 	  echo "[bench] $$s ($$set_env)"; rm -f debug/bench/horde-$$s.txt; \

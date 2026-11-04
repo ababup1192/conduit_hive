@@ -2,10 +2,28 @@
   "//": "conduit_hive.look.json の形（Studio の sections 方言）。既定は src/LookDoc.flix の defaults() が正。",
   "version": 1,
   "sections": {
+    "bakedStage": {
+      "kind": "field",
+      "label": "ベイクしたステージで描く（切ると灰色の箱）",
+      "order": 1,
+      "group": "ステージ",
+      "default": true,
+      "type": "bool"
+    },
+    "lightmapIntensity": {
+      "kind": "field",
+      "label": "lightmap の倍率（線形。4.0 が Blender のまま）",
+      "order": 2,
+      "group": "ステージ",
+      "default": 4.0,
+      "type": "float",
+      "min": 0,
+      "max": 16
+    },
     "wallColor": {
       "kind": "field",
       "label": "壁の色（くすんだ鋼）",
-      "order": 1,
+      "order": 3,
       "group": "面",
       "default": "#5b636b",
       "type": "color"
@@ -13,7 +31,7 @@
     "floorColor": {
       "kind": "field",
       "label": "床の色（黒鉛）",
-      "order": 2,
+      "order": 4,
       "group": "面",
       "default": "#34383d",
       "type": "color"
@@ -21,7 +39,7 @@
     "ceilingColor": {
       "kind": "field",
       "label": "天井の色",
-      "order": 3,
+      "order": 5,
       "group": "面",
       "default": "#24272b",
       "type": "color"
@@ -29,7 +47,7 @@
     "stripColor": {
       "kind": "field",
       "label": "光る筋の色",
-      "order": 4,
+      "order": 6,
       "group": "光",
       "default": "#5fe3f0",
       "type": "color"
@@ -37,7 +55,7 @@
     "stripIntensity": {
       "kind": "field",
       "label": "光る筋の明るさ（線形の倍率）",
-      "order": 5,
+      "order": 7,
       "group": "光",
       "default": 6.0,
       "type": "float",
@@ -47,7 +65,7 @@
     "roomLightColor": {
       "kind": "field",
       "label": "部屋の灯りの色",
-      "order": 6,
+      "order": 8,
       "group": "光",
       "default": "#cfe6ee",
       "type": "color"
@@ -55,7 +73,7 @@
     "roomLightIntensity": {
       "kind": "field",
       "label": "部屋の灯りの強さ",
-      "order": 7,
+      "order": 9,
       "group": "光",
       "default": 2.2,
       "type": "float",
@@ -70,7 +88,7 @@
       "min": 0,
       "max": 20,
       "default": 1.2,
-      "order": 8
+      "order": 10
     },
     "lampSpacing": {
       "kind": "field",
@@ -80,12 +98,12 @@
       "min": 1,
       "max": 16,
       "default": 4,
-      "order": 9
+      "order": 11
     },
     "roomLightReach": {
       "kind": "field",
       "label": "灯りの届く距離（灯具の間隔に対する割合）",
-      "order": 10,
+      "order": 12,
       "group": "光",
       "default": 1.6,
       "type": "float",
@@ -95,7 +113,7 @@
     "ambient": {
       "kind": "field",
       "label": "どこにでも当たる光",
-      "order": 11,
+      "order": 13,
       "group": "光",
       "default": "#2e3640",
       "type": "color"
@@ -103,7 +121,7 @@
     "hemisphere": {
       "kind": "field",
       "label": "上を向く面の明るさ",
-      "order": 12,
+      "order": 14,
       "group": "光",
       "default": 0.35,
       "type": "float",
@@ -113,7 +131,7 @@
     "fogColor": {
       "kind": "field",
       "label": "霧の色",
-      "order": 13,
+      "order": 15,
       "group": "霧",
       "default": "#0b0e12",
       "type": "color"
@@ -121,7 +139,7 @@
     "fogNear": {
       "kind": "field",
       "label": "霧のかかり始め（m）",
-      "order": 14,
+      "order": 16,
       "group": "霧",
       "default": 10.0,
       "type": "float",
@@ -131,7 +149,7 @@
     "fogFar": {
       "kind": "field",
       "label": "霧のかかり切る距離（m・写す奥行きの端・見通しの距離）",
-      "order": 15,
+      "order": 17,
       "group": "霧",
       "default": 56.0,
       "type": "float",
@@ -141,7 +159,7 @@
     "exposure": {
       "kind": "field",
       "label": "露出（stop）",
-      "order": 16,
+      "order": 18,
       "group": "仕上げ",
       "default": 0.0,
       "type": "float",
@@ -151,7 +169,7 @@
     "whitePoint": {
       "kind": "field",
       "label": "白の点",
-      "order": 17,
+      "order": 19,
       "group": "仕上げ",
       "default": 4.0,
       "type": "float",
@@ -161,7 +179,7 @@
     "bloomThreshold": {
       "kind": "field",
       "label": "ブルームのしきい",
-      "order": 18,
+      "order": 20,
       "group": "ブルーム",
       "default": 0.9,
       "type": "float",
@@ -171,7 +189,7 @@
     "bloomKnee": {
       "kind": "field",
       "label": "ブルームの幅",
-      "order": 19,
+      "order": 21,
       "group": "ブルーム",
       "default": 0.6,
       "type": "float",
@@ -181,7 +199,7 @@
     "bloomStrength": {
       "kind": "field",
       "label": "ブルームの強さ",
-      "order": 20,
+      "order": 22,
       "group": "ブルーム",
       "default": 0.6,
       "type": "float",
@@ -191,7 +209,7 @@
     "bloomRadius": {
       "kind": "field",
       "label": "ぼかしの半径",
-      "order": 21,
+      "order": 23,
       "group": "ブルーム",
       "default": 0.04,
       "type": "float",
@@ -201,7 +219,7 @@
     "bloomTaps": {
       "kind": "field",
       "label": "ぼかしの標本の数",
-      "order": 22,
+      "order": 24,
       "group": "ブルーム",
       "default": 12,
       "type": "int",
@@ -211,7 +229,7 @@
     "bloomScale": {
       "kind": "field",
       "label": "ブルームの Pass の倍率",
-      "order": 23,
+      "order": 25,
       "group": "ブルーム",
       "default": 0.5,
       "type": "float",
@@ -221,7 +239,7 @@
     "msaaSamples": {
       "kind": "field",
       "label": "MSAA の標本の数（1・2・4・8）",
-      "order": 24,
+      "order": 26,
       "group": "仕上げ",
       "default": 4,
       "type": "int",
@@ -231,7 +249,7 @@
     "vignette": {
       "kind": "field",
       "label": "周辺の暗さ",
-      "order": 25,
+      "order": 27,
       "group": "仕上げ",
       "default": 0.35,
       "type": "float",
@@ -241,7 +259,7 @@
     "grain": {
       "kind": "field",
       "label": "フィルムの粒",
-      "order": 26,
+      "order": 28,
       "group": "仕上げ",
       "default": 0.015,
       "type": "float",

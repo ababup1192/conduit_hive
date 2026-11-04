@@ -1,7 +1,7 @@
 // StageView — 迷路を一人称で描き、手前に腕と銃（ビューモデル）を重ねる（純粋）。
 //
 // ── 組み方 ──
-// 今いる区画から見える区画（Maze の見える区画の組）の灰色の箱と灯り、その区画にいる敵と projectile と拾う物だけを engine の Scene3d 1 つに入れる。
+// 今いる区画から見える区画（Maze の見える区画の組）の絵（ベイクしたステージか灰色の箱）、その区画にいる敵と projectile と拾う物だけを engine の Scene3d 1 つに入れる。
 // engine は視錐台の外しか間引かないので、壁の向こうの区画を描かないのはここが決める。
 // 霧は距離で施設の暗がりへ沈め、カメラの写す奥行きの端を霧のかかり切る距離にそろえる（霧の先は描かない）。
 //
@@ -9,7 +9,9 @@
 // 腕と銃は 2 つ目の Scene3d に入れ、同じ "scene" の Pass の上（ZStack の後ろ）に重ねる。深度は場面ごとに消えるので、
 // 壁に近づいても銃は壁に埋まらない。カメラは原点・正面向きで、画角と写す奥行きはビューモデルの Doc の物。
 // 背景・空・霧は無し（下のステージがそのまま見える）。光の色と向きはステージに合わせる: 環境光と hemisphere は look の値、
-// 灯りはステージの灯りを目の座標へ写した物（engine が目に近い 8 本を選ぶ）。強さは FpViewmodelDoc の倍率で沈める（暗い鋼に見せる）。
+// 灯りは見える区画の天井の灯具（ZoneArt の lamps）を目の座標へ写した物（engine が目に近い 8 本を選ぶ）。強さは FpViewmodelDoc の倍率で沈める（暗い鋼に見せる）。
+// WhyNot: 灯具の写しをステージの場面へ入れない — 点光源は lightmap の付いた壁にも足されるので、ベイクした灯りの下が二重に明るくなる。
+//   ステージの場面の敵と拾う物は、lightmap の付いた物に足されない環境光と hemisphere で照らす。
 // 撃った瞬間の灯りは両方の場面に入れる（腕の場面では沈めない）。
 //
 // 場面は窓の画素の HDR の Pass に描き、PostView がブルーム・トーンマップ・ビネット・粒を掛けて画面へ写す。
@@ -44,7 +46,7 @@ mod StageView {
         // ステージの座標の粒（当たった所の火花・体液・projectile の玉）と、撃った瞬間の灯り。
         billboards = List[Scene3d.Billboard3d],
         flash = List[Scene3d.PointLight],
-        // 敵（姿勢つきの置いた物）と、拾う物（浮いて回る物と床の台座）と、その材質が読む絵（敵と拾う武器の glb の絵）。
+        // 敵（姿勢つきの置いた物）と、拾う物（浮いて回る物と床の台座）と、場面の材質が読む絵（ステージの trim sheet と lightmap・敵と拾う武器の glb の絵）。
         creatures = List[Scene3d.Instance3d],
         pickups = List[Scene3d.Instance3d],
         textures = List[Texture3d.Texture3d],
@@ -67,8 +69,11 @@ mod StageView {
     /// 本編の木: トーンマップ済みの後処理の Pass を FXAA でならした面 1 枚。
     pub def frameTree(): ZStack.Tree[Layer, World.Press] = ZStack.leaf(PostView.fxaaFill() :: Nil)
 
-    /// ステージの灯り（見える区画の分）。
+    /// ステージの場面に入れる灯り（見える区画の分。ベイクしたステージは空）。
     def stageLights(w: In): List[Scene3d.PointLight] = w#zones |> List.flatMap(z -> z#lights)
+
+    /// 天井の灯具の灯り（見える区画の分。手前の腕と銃へ写す）。
+    def lampLights(w: In): List[Scene3d.PointLight] = w#zones |> List.flatMap(z -> z#lamps)
 
     /// 見える区画を engine の Scene3d 1 つで描く。
     def scene(w: In): Render.PlacedItem =
@@ -98,7 +103,7 @@ mod StageView {
     def viewmodelScene(w: In, h: Viewmodel): Render.PlacedItem =
         let lk = w#look;
         let camera = { eye = Vec3.zero(), yaw = 0.0, pitch = 0.0, fovY = rad(h#fovY), near = h#near, far = h#far };
-        let lamps = stageLights(w) |> List.map(l -> { position = toEye(w#camera, l#position), intensity = l#intensity * h#lampScale | l });
+        let lamps = lampLights(w) |> List.map(l -> { position = toEye(w#camera, l#position), intensity = l#intensity * h#lampScale | l });
         let ambient = Color.rgb(dim(lk#ambient#r, h#ambientScale), dim(lk#ambient#g, h#ambientScale), dim(lk#ambient#b, h#ambientScale));
         Render.scene3d(Vec2.zero(), { instances = h#instances, textures = h#textures, billboards = h#billboards,
                                       pointLights = List.append(h#flash, lamps),

@@ -12,9 +12,11 @@
 #
 # 区画ごとの材質は 3 つ（= draw call 3）: M_hull（壁・床・天井・パイプ・留め具。trim sheet の絵 1 枚 + lightmap）・
 # M_strip（シアンの光る筋）・M_lamp（天井の灯具）。lightmap は TEXCOORD_1。PNG = sRGB(0.25 × 線形)・ゲームでは intensity 4.0。
-import bpy, bmesh, os, sys, json, math, time, hashlib, random, argparse
+import bpy, bmesh, os, sys, json, math, time, random, argparse
 import numpy as np
 from mathutils import Vector
+sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
+import stagehash
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, ".."))
@@ -59,12 +61,8 @@ def load_doc():
         s = specs.get(zid, {})
         zones[zid] = {"id": zid, "name": s.get("name", ""), "kind": s.get("kind", "corridor"),
                       "height": float(s.get("height", d.get("wallHeight", 4.0))), "cells": cs}
-    return {"raw": raw, "cs": float(d.get("cellSize", 4.0)), "rows": len(grid), "cols": cols, "grid": grid,
+    return {"json": d, "cs": float(d.get("cellSize", 4.0)), "rows": len(grid), "cols": cols, "grid": grid,
             "zones": zones, "final": d.get("finalZone", "H"), "marks": d.get("marks", [])}
-
-
-def doc_hash(raw):
-    return hashlib.sha256(raw).hexdigest()[:16]
 
 
 def char_at(doc, col, row):
@@ -1388,7 +1386,7 @@ def main():
     doc = load_doc()
     look = json.load(open(LOOK_PATH))
     walk = json.load(open(WALK_PATH))
-    h16 = doc_hash(doc["raw"])
+    h16 = stagehash.doc_hash(doc["json"])
     only = [z for z in a.zones.split(",") if z] or sorted(doc["zones"].keys())
     trim = make_trim(TRIM_PATH)
     mats = make_materials(trim, look)
@@ -1458,11 +1456,11 @@ def main():
         "glb": os.path.basename(glb),
         "doc": "assets/maze.stage.json",
         "doc_hash": h16,
-        "doc_hash_rule": "SHA-256 of the raw bytes of assets/maze.stage.json, first 16 lowercase hex chars; node name DOCHASH_<hash>",
+        "doc_hash_rule": stagehash.RULE,
         "coords": "engine Scene3d coords (X east, Y up, Z north, floor top y = 0) after the engine reads the glb; cell (col,row) spans x [col*cs,(col+1)*cs), z [(rows-1-row)*cs,(rows-row)*cs) like src/Maze.flix",
         "uv0": "M_hull: trim sheet (embedded PNG, REPEAT in U)",
         "uv1": "lightmap (TEXCOORD_1), one PNG per zone",
-        "lightmap_encoding": "png = srgb_encode(clamp(%.1f * linear, 0, 1)) + ambient %s already added; use Scene3d.lightmap intensity %.1f (x exposure if wanted)" % (PNG_SCALE, list(AMBIENT), 1.0 / PNG_SCALE),
+        "lightmap_encoding": "png = srgb_encode(clamp(%.2f * linear, 0, 1)) + ambient %s already added; use Scene3d.lightmap intensity %.1f (x exposure if wanted)" % (PNG_SCALE, list(AMBIENT), 1.0 / PNG_SCALE),
         "lightmap_mip_levels": "island gap %d px -> Scene3d.lightmapLevelsForGap(%d)" % (LM_GAP_PX, LM_GAP_PX),
         "baked_lights": "ceiling lamps (area lights) + cyan strips (M_strip emission). Do not add these as pointLights in the game.",
         "emission": {"M_strip": 6.0, "M_lamp": 3.0},
