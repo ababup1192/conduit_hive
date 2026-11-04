@@ -1,0 +1,47 @@
+{
+  "lockfile_version": "1",
+  "packages": {
+    "blender@latest": {
+      "last_modified": "2026-11-03T19:55:20Z",
+      "resolved": "github:NixOS/nixpkgs/9d3b8db48266c17be0b5f9c6360c3ecfbac3d1f5#blender",
+      "source": "devbox-search",
+      "version": "5.2.3",
+      "systems": {
+        "aarch64-darwin": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/2rqcqsp3ww61r0qw46izbppssz3bnqxg-blender-5.2.3",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/2rqcqsp3ww61r0qw46izbppssz3bnqxg-blender-5.2.3"
+        },
+        "aarch64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/qk4fn48m9clvk3l57la3wf7gkxxl47lr-blender-5.2.3",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/qk4fn48m9clvk3l57la3wf7gkxxl47lr-blender-5.2.3"
+        },
+        "x86_64-linux": {
+          "outputs": [
+            {
+              "name": "out",
+              "path": "/nix/store/9wg2rcwm24aq9b3xh9w9fmfdrzfycv86-blender-5.2.3",
+              "default": true
+            }
+          ],
+          "store_path": "/nix/store/9wg2rcwm24aq9b3xh9w9fmfdrzfycv86-blender-5.2.3"
+        }
+      }
+    },
+    "github:NixOS/nixpkgs/nixpkgs-unstable": {
+      "last_modified": "2026-10-24T11:44:37Z",
+      "resolved": "github:NixOS/nixpkgs/d3b13ad75cc492690728f9307e443dec9ef9a20e?lastModified=1792842277&narHash=sha256-pGPnZGi8y9d76xNeracniXO3dsYVROEmMkMc8jD0Ihc%3D"
+    }
+  }
+}
