@@ -45,3 +45,36 @@ precommit-local:
 	  if "$$fge" flixlint-prepare > /dev/null; then $(MAKE) --no-print-directory lint-flixlint; \
 	  else echo "[pre-commit] flixlint を用意できないので lint/rules.flix の検査は飛ばします（後で make lint-flixlint）"; fi; \
 	fi
+
+# 段 0.5 の測り（plans/bench-horde.md）: 最後の部屋に骨つきの仮の敵を置き、組ごとに窓ありの GL で数秒回して
+# debug/bench/horde-<組>.txt に 1 コマの時間と 3D の数を書く。普段の遊び（make run）には混ざらない別の入口（HordeBench.main）。
+# BENCH_SETS="a b" で組を絞る。組の中身は下の case（環境変数の意味は src/render/HordeBench.flix の頭）。
+# WhyNot: FLIX_GE_HIDDEN で流さない — 隠し窓は描き先を design の 480×270 に縮めるので、GPU の数が実機より小さく出る。
+BENCH_SETS ?= a b c a-throttle d0 d25 merged pipes-zone pipes-loose stage-pipes-zone stage-pipes-loose merged-shared candidate
+BENCH_PIPES_N ?= 120
+.PHONY: bench-horde
+bench-horde:
+	@mkdir -p debug/bench
+	@for s in $(BENCH_SETS); do \
+	  case $$s in \
+	    a)                 set_env="BENCH_POSE=each";; \
+	    b)                 set_env="BENCH_POSE=shared BENCH_GROUPS=8";; \
+	    c)                 set_env="BENCH_POSE=shared BENCH_GROUPS=8 BENCH_THROTTLE=1";; \
+	    a-throttle)        set_env="BENCH_POSE=each BENCH_THROTTLE=1";; \
+	    d0)                set_env="BENCH_ENEMIES=0";; \
+	    d25)               set_env="BENCH_ENEMIES=25 BENCH_POSE=each";; \
+	    merged)            set_env="BENCH_POSE=each BENCH_PARTS=merged";; \
+	    pipes-zone)        set_env="BENCH_POSE=shared BENCH_GROUPS=8 BENCH_PIPES=$(BENCH_PIPES_N) BENCH_PIPE_MESH=zone";; \
+	    pipes-loose)       set_env="BENCH_POSE=shared BENCH_GROUPS=8 BENCH_PIPES=$(BENCH_PIPES_N) BENCH_PIPE_MESH=loose";; \
+	    stage-pipes-zone)  set_env="BENCH_ENEMIES=0 BENCH_PIPES=$(BENCH_PIPES_N) BENCH_PIPE_MESH=zone";; \
+	    stage-pipes-loose) set_env="BENCH_ENEMIES=0 BENCH_PIPES=$(BENCH_PIPES_N) BENCH_PIPE_MESH=loose";; \
+	    merged-shared)     set_env="BENCH_POSE=shared BENCH_GROUPS=8 BENCH_PARTS=merged";; \
+	    candidate)         set_env="BENCH_POSE=shared BENCH_GROUPS=8 BENCH_PARTS=merged BENCH_PIPES=$(BENCH_PIPES_N) BENCH_PIPE_MESH=zone";; \
+	    *) echo "[bench] 知らない組: $$s"; exit 2;; \
+	  esac; \
+	  echo "[bench] $$s ($$set_env)"; rm -f debug/bench/horde-$$s.txt; \
+	  env BENCH_LABEL=$$s $$set_env FLIX_GE_MUTE=1 FGE_HEADLESS_FALLBACK=1 FLIX_CMD=$(FLIX) "$(ENGINE)/bin/headless-run" --window HordeBench.main \
+	    > debug/bench/horde-$$s.log 2>&1 || { echo "[bench] $$s が落ちた（debug/bench/horde-$$s.log）"; exit 1; }; \
+	  test -f debug/bench/horde-$$s.txt || { echo "[bench] $$s の結果が無い（debug/bench/horde-$$s.log）"; exit 1; }; \
+	done
+	@for s in $(BENCH_SETS); do cat debug/bench/horde-$$s.txt; echo; done

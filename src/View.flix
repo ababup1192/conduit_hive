@@ -26,7 +26,7 @@ mod View {
           looking = World.isLooking(w), showsDiagnostics = World.showsDiagnostics(w) }
 
     /// 一人称の場面の値: 目と、今いる区画から見える区画の絵。
-    def stageIn(res: Res.Res, w: World.World): StageView.In =
+    pub def stageIn(res: Res.Res, w: World.World): StageView.In =
         let walk = WalkDoc.rec(res#walk);
         let body = World.walkerOf(w);
         let drawn = Maze.visibleFrom(res#maze, body#x, body#z);
