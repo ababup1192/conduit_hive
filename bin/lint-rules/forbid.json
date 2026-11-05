@@ -12,7 +12,7 @@
     {
       "id": "render-gl-body-desktop-import",
       "prefixes": ["render_gl/src/"],
-      "basenames": ["Sprite.flix", "Paint.flix", "Frame.flix", "Target.flix", "Static.flix", "Shader.flix", "Buf.flix", "RenderTexture.flix", "PaintHandlers.flix", "Scene3dRenderer.flix"],
+      "basenames": ["Sprite.flix", "Paint.flix", "Frame.flix", "Target.flix", "Static.flix", "Shader.flix", "Buf.flix", "RenderTexture.flix", "PaintHandlers.flix", "Scene3dRenderer.flix", "Render3d.flix", "Render3dGlsl.flix", "Material.flix", "Shadow.flix", "Light.flix", "Counts.flix"],
       "pattern": "^\\s*import\\s+(org\\.lwjgl|java\\.awt|fge\\.gl\\.(LwjglGl|RecordingGl))",
       "rawLine": true,
       "hint": "render_gl の描き手の本体（ブラウザでも同じ物を使う）は LWJGL と AWT を直に呼ばない。GL は引数の gl: GlContext（fge.gl。LWJGL 版を作るのは LwjglLayer・GlOffscreen だけ）、定数は GlConst、直接バッファは gl.allocFloats など。画像のデコードや字の生成は RenderPaint.AssetLoader（デスクトップは LwjglAssets）へ"
@@ -289,6 +289,31 @@
       ],
       "pattern": "\\bunchecked_cast\\s*\\(.*\\\\\\s*\\{\\s*\\}\\s*\\)",
       "hint": "ゲームの系と View では unchecked_cast(… as _ \\ {}) で effect を消さない（App.launch の純粋さの型の約束が崩れる）。Math を包むなら Num（Num.sin・Num.cos・Num.asin・Num.log・Num.sqrt）か標準の Float64.pow・Float64.exp を使う。描き出し（src/render/）とテストは見ない（engine の docs/migrations/0.80.0.md）"
+    },
+    {
+      "id": "game-app-direct",
+      "suffixes": [
+        ".flix"
+      ],
+      "skip": [
+        "engine/",
+        "engine_world/",
+        "engine_tools/",
+        "engine_full/",
+        "render_gl/",
+        "src/engine/",
+        "src/engine_world/",
+        "src/engine_tools/",
+        "src/render_gl/",
+        "lib/",
+        "build/"
+      ],
+      "skipDirs": [
+        "build",
+        "lib"
+      ],
+      "pattern": "\\bApp\\.App\\s*\\(",
+      "hint": "App を App.App(…) で直に組まない（効果のある App に withPipelinedRendering の旗を立てられ、handler の無いスレッドで系が走る）。App.game / App.make から始めて with* でつなぐ"
     },
     {
       "id": "shader-render-cmd-alias",

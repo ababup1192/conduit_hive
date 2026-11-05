@@ -1,7 +1,7 @@
 // 敵の規則（Horde・Creatures の口を直に）: 当たり判定（体・頭・壁の向こう）・ダメージと倒れる・よろけの間隔・
 // wave・同時に生きている数の上限・湧く所・押し合い・距離の地図で近づく・melee の当たる時刻と扇・ranged の見通しと吐く上限・projectile・姿勢の共有の鍵。
 mod TestHorde {
-    use fge::{Camera3d, Hash01, LogCapture, Mat4, Num, Vec3}
+    use fge::{Camera3d, FlowField, Hash01, LogCapture, Mat4, Num, Vec3}
     use Creatures.Kind
     use TestSupport.{mazeOf, resWith}
 
@@ -310,11 +310,11 @@ mod TestHorde {
 
     /// 真ん中に柱のある輪の迷路（床は外周の 8 マス・柱は列 2・行 2）で、左上の (1, 1) へ塗った地図。
     def ringField(): FlowField.FlowField =
-        FlowField.build(resWith(mazeOf("#####" :: "#AAA#" :: "#A#A#" :: "#AAA#" :: "#####" :: Nil, 1, 1, 0.0))#maze, { col = 1, row = 1 })
+        Horde.paintField(resWith(mazeOf("#####" :: "#AAA#" :: "#A#A#" :: "#AAA#" :: "#####" :: Nil, 1, 1, 0.0))#maze, { col = 1, row = 1 })
 
     /// 地図の上で cell から下るマス（列, 行）。
     def downhillAt(f: FlowField.FlowField, col: Int32, row: Int32): Option[(Int32, Int32)] =
-        FlowField.downhill(f, { col = col, row = row }) |> Option.map(c -> (c#col, c#row))
+        FlowField.downhill(f, (col, row))
 
     /// goal のマスからは下らない。
     @Test
@@ -324,12 +324,12 @@ mod TestHorde {
     /// 迷路の外のマスは歩数も下る先も無い。
     @Test
     def testFieldOutsideTheMazeIsUnpainted(): Unit \ Assert =
-        Assert.assertEq(expected = (None, None), (FlowField.stepsAt(ringField(), { col = -1, row = 0 }), downhillAt(ringField(), 9, 9)))
+        Assert.assertEq(expected = (None, None), (FlowField.stepsAt(ringField(), (-1, 0)), downhillAt(ringField(), 9, 9)))
 
     /// 右下 (3, 3) は goal から 4 歩。上 (3, 2) と左 (2, 3) が同じ 3 歩なら、先に見る上へ下る。
     @Test
     def testFieldTiePrefersTheFirstStraightStep(): Unit \ Assert =
-        Assert.assertEq(expected = (Some(4), Some((3, 2))), (FlowField.stepsAt(ringField(), { col = 3, row = 3 }), downhillAt(ringField(), 3, 3)))
+        Assert.assertEq(expected = (Some(4), Some((3, 2))), (FlowField.stepsAt(ringField(), (3, 3)), downhillAt(ringField(), 3, 3)))
 
     /// (3, 2) から斜め左上の (2, 1) は 1 歩だが、柱の角を斜めに抜けないので上の (3, 1) へ下る。
     @Test
@@ -339,8 +339,8 @@ mod TestHorde {
     /// 壁で切れた床 (3, 1) へは届かない（歩数も下る先も無い）。
     @Test
     def testFieldUnreachableFloorIsUnpainted(): Unit \ Assert =
-        let f = FlowField.build(resWith(mazeOf("#####" :: "#A#A#" :: "#####" :: Nil, 1, 1, 0.0))#maze, { col = 1, row = 1 });
-        Assert.assertEq(expected = (None, None), (FlowField.stepsAt(f, { col = 3, row = 1 }), downhillAt(f, 3, 1)))
+        let f = Horde.paintField(resWith(mazeOf("#####" :: "#A#A#" :: "#####" :: Nil, 1, 1, 0.0))#maze, { col = 1, row = 1 });
+        Assert.assertEq(expected = (None, None), (FlowField.stepsAt(f, (3, 1)), downhillAt(f, 3, 1)))
 
     /// U の字の迷路: 西の脚の下（x 6 m・z 6 m）の melee は、間の壁を回って東の脚の下（x 14 m・z 6 m）のプレイヤーへ着く
     /// （壁を回る道は 20 m ほど・melee の速さ 3 m/秒で 7 秒ほど。9 秒進めて、地図の上でプレイヤーのマスか隣にいる）。
@@ -349,7 +349,7 @@ mod TestHorde {
         let r = resWith(mazeOf("#####" :: "#AAA#" :: "#A#A#" :: "#A#A#" :: "#####" :: Nil, 3, 3, 0.0));
         let o = Horde.simulate(r, 0.0, 0.05, 180, playerAt(14.0, 6.0), oneAt(r, Kind.Melee, 6.0, 6.0, 0.0));
         Assert.assertEq(expected = Some(true),
-            Horde.enemyOf(0, o#horde) |> Option.flatMap(e -> FlowField.stepsAt(o#horde#field, Maze.cellAt(r#maze, e#x, e#z))) |> Option.map(s -> s <= 1))
+            Horde.enemyOf(0, o#horde) |> Option.flatMap(e -> { let cell = Maze.cellAt(r#maze, e#x, e#z); FlowField.stepsAt(o#horde#field, (cell#col, cell#row)) }) |> Option.map(s -> s <= 1))
 
     // ── melee の振り下ろし ──
 

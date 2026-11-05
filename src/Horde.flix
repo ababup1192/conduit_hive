@@ -17,7 +17,7 @@
 // 撃たれると（applyDamage）体力が減り、撃たれた向きへ押され（のけぞり・Knockback）、追う・飛びかかる・溜める途中で staggerCooldown が明けていれば
 // よろけ（hit のクリップ）、0 で倒れる（die のクリップ）。倒れた敵は撃たれた向きへ吹っ飛ぶか、条件に当たれば弾けて消える（Gibs.bursts）。
 mod Horde {
-    use fge::{CollisionShape3d, Hash01, Mat4, Num, Ray3d, Vec3}
+    use fge::{CollisionShape3d, FlowField, Hash01, Mat4, Num, Ray3d, Vec3}
     use Creatures.{Clip, Kind}
     use Events.Event
 
@@ -345,8 +345,13 @@ mod Horde {
 
     /// 地図を塗り直す時刻が来ていれば、プレイヤーのマスから塗り直す。
     def refreshField(res: Res.Res, t: Float64, p: PlayerBody.PlayerBody, h: Horde): Horde =
-        if (t - h#fieldAt < doc(res)#fieldInterval and Option.nonEmpty(h#field#goal)) h
-        else { field = FlowField.build(res#maze, Maze.cellAt(res#maze, p#x, p#z)), fieldAt = t | h }
+        if (t - h#fieldAt < doc(res)#fieldInterval and not FlowField.isEmpty(h#field)) h
+        else { field = paintField(res#maze, Maze.cellAt(res#maze, p#x, p#z)), fieldAt = t | h }
+
+    /// goal のマスから床のマスだけを通って塗った地図。歩数の上限は迷路の端から端まで届く数。下るマスは 8 方向から選ぶ。
+    pub def paintField(m: Maze.Maze, goal: Maze.Cell): FlowField.FlowField =
+        FlowField.build(m#cols, m#rows, (col, row) -> Maze.isFloor(m, { col = col, row = row }), (goal#col, goal#row) :: Nil,
+                        { neighbors = FlowField.Neighbors.Eight, maxSteps = 200 })
 
     /// 押し合いと壁（倒れた敵は動かさず、押し合いにも入れない）。
     def separate(res: Res.Res, p: PlayerBody.PlayerBody, enemies: List[Enemy]): List[Enemy] =
@@ -440,9 +445,9 @@ mod Horde {
     def advance(res: Res.Res, field: FlowField.FlowField, dt: Float64, p: PlayerBody.PlayerBody, speed: Float64, e: Enemy): Enemy =
         let m = res#maze;
         let cell = Maze.cellAt(m, e#x, e#z);
-        let direct = FlowField.stepsAt(field, cell) |> Option.exists(s -> s <= 1);
+        let direct = FlowField.stepsAt(field, (cell#col, cell#row)) |> Option.exists(s -> s <= 1);
         let (gx, gz) = if (direct) (p#x, p#z)
-            else FlowField.downhill(field, cell) |> Option.map(Maze.centerOf(m)) |> Option.getWithDefault((p#x, p#z));
+            else FlowField.downhill(field, (cell#col, cell#row)) |> Option.map(next -> Maze.centerOf(m, { col = fst(next), row = snd(next) })) |> Option.getWithDefault((p#x, p#z));
         let dist = distance(gx - e#x, gz - e#z);
         if (dist < 0.001) { moving = false | e }
         else {

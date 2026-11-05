@@ -1,6 +1,6 @@
 [lock]
 version = 1
 
-[packages."github:ababup1192/flix_game_engine"."0.86.0"]
-toml    = "sha256:a26746ad651a43ac97c284209ec25c40cbe1b3429402e8139d7dc9d014d0dc77"
-fpkg    = "sha256:c40559adf6291f0a4d88606a1459f91fad59f9b177a4a76e4d0d45b4677e1298"
+[packages."github:ababup1192/flix_game_engine"."0.87.0"]
+toml    = "sha256:0fab73c241c7e2f4a3fbbbf435a8eab2edc41568bf0b2fe2508f1c98de605b0d"
+fpkg    = "sha256:8c920a8a7b1f4749d7d8c0968261befd4f26c7063e3f4c11dece50af9eda4df1"

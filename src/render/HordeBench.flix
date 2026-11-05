@@ -3,7 +3,7 @@
 // 立つのは最後の部屋の真ん中（東を向く）。ステージは遊びと同じ絵（Res の区画の絵 = ベイクしたステージの glb と lightmap）。
 // 本物のクリーチャー（Creatures）を部屋に散らして置き、本物の規則（World.step → Horde.step）で
 // 追わせ・押し合わせ・振らせ・吐かせる。プレイヤーは動かず撃たない。測る間に倒れないよう、敵の威力だけを 0 にした Doc で回す。
-// 測る組は環境変数で決める（BENCH_LABEL・BENCH_ENEMIES・BENCH_WARMUP・BENCH_FRAMES・BENCH_WAVES・BENCH_SECONDS）。
+// 測る組は環境変数で決める（BENCH_LABEL・BENCH_ENEMIES・BENCH_WARMUP・BENCH_FRAMES・BENCH_WAVES・BENCH_SECONDS・BENCH_MICRO_WARM）。
 // BENCH_WAVES=1 の組は、敵を最初に置かず、最後の部屋に入った所から wave を湧かせ続け（maxAlive の上限まで）、紹介の動画の自動の操縦（Pilot）が
 // その場で撃ち続けて倒し続ける（弾と体力は TourDoc の下限で足す）。BENCH_SECONDS の間（実時間）測る。
 // 数は 2 つの道で取る:
@@ -29,6 +29,8 @@ mod HordeBench {
         out = String,
         // 窓の前の CPU だけの測りの行。
         micro = List[String],
+        // 窓の前の CPU だけの測りで、測り始める前に進めるコマの数（湧く組は群れが育つまで進める）。
+        microWarm = Int32,
         // DEBUG の起動か（ヒッチの見張り・遊んだ記録・POST /perf の命令口を開く）。
         debug = Bool
     }
@@ -113,7 +115,7 @@ mod HordeBench {
             let (res, start) = rs;
             { res = res, cfg = cfg, start = start,
               warmup = numOr(env, "BENCH_WARMUP", 120), frames = numOr(env, "BENCH_FRAMES", 360),
-              out = "${outDir()}/horde-${cfg#label}.txt", micro = Nil, debug = App.debugOf(env) }
+              out = "${outDir()}/horde-${cfg#label}.txt", micro = Nil, microWarm = numOr(env, "BENCH_MICRO_WARM", 120), debug = App.debugOf(env) }
         })
 
     /// 最後の部屋の床のマスへ count 体を散らす（5 体に 1 体が ranged）。プレイヤーから 6 m より近いマスには置かない。
@@ -196,15 +198,22 @@ mod HordeBench {
     // ── 窓の前の CPU だけの測り ──
 
     /// 規則の 1 コマ（時計を進めて World.step。App.traceFrame で実機と同じ道）と描く物の木を組む（passPlan）の 1 コマあたりの時間と、
-    /// 作った姿勢の数。120 コマ慣らしてから 240 コマ測る。
+    /// 作った姿勢の数。microWarm コマ慣らしてから 240 コマ測る。dt を 1/60 に決めて進めるので、起動ごとに同じ列になる（cpu_column の行で比べる）。
     def microbench(kit: Kit): List[String] \ IO =
         let a = app(kit);
-        let warmed = microLoop(kit, a, 120, { state = initial(kit), stepState = App.freshStepState(), rows = Nil, passes = 0, poses = 0 });
+        let warmed = microLoop(kit, a, kit#microWarm, { state = initial(kit), stepState = App.freshStepState(), rows = Nil, passes = 0, poses = 0 });
         let measured = microLoop(kit, a, 240, { rows = Nil, poses = 0 | warmed });
         let rows = measured#rows;
         let msOf = (f: ((Int64, Int64)) -> Int64) -> rows |> List.map(r -> ms(f(r)));
         "cpu_step_ms   ${spread(msOf(fst))}" :: "cpu_plan_ms   ${spread(msOf(snd))}  (passes ${Int32.toString(measured#passes)})" ::
-        "poses_frame   ${fmt(Int32.toFloat64(measured#poses) / 240.0)}  (全員を描いた時。共有した姿勢は 1 と数える)" :: Nil
+        "poses_frame   ${fmt(Int32.toFloat64(measured#poses) / 240.0)}  (全員を描いた時。共有した姿勢は 1 と数える)" ::
+        "cpu_column    ${columnOf(measured#state#game)}" :: Nil
+
+    /// 測り終えた World の印（遊びの秒・生きている敵・敵の足元の指紋）。同じ列を進めたかを 2 回の起動で比べる。
+    def columnOf(w: World.World): String =
+        let h = hordeIn(w);
+        let feet = h#enemies |> List.map(e -> "${e#x},${e#z}") |> List.join(";");
+        "t=${fmt(World.seconds(w))} alive=${Horde.aliveCount(h)} feet=${Hash.hash(feet)}"
 
     /// 測りの途中: 状態・コマごとの (規則, 木) の時間・組んだ Pass の数の合計（木を組んだ結果を使う所）・作った姿勢の数の合計。
     type alias Micro = { state = State, stepState = App.StepState, rows = List[(Int64, Int64)], passes = Int32, poses = Int32 }
