@@ -51,6 +51,7 @@ precommit-local:
 # BENCH_SETS="horde50" で組を絞る。組の中身は下の case（環境変数の意味は src/render/HordeBench.flix の頭）。
 # horde-waves = 最後の部屋で wave を湧かせ続け（同時は maxAlive まで）、自動の操縦が 3 分間（BENCH_SECONDS）倒し続ける組（BENCH_SETS=horde-waves で流す。既定の組には入れない）。
 # WhyNot: FLIX_GE_HIDDEN で流さない — 隠し窓は描き先を design の 480×270 に縮めるので、GPU の数が実機より小さく出る。
+# WhyNot: 垂直同期を待たせない（FLIX_GE_NO_VSYNC）— 待つと 1 コマの間隔が 16.7 ms に張り付き、60 fps より速くなった分が数に出ない。
 BENCH_SETS ?= horde50 horde25 stage
 .PHONY: bench-horde
 bench-horde:
@@ -70,7 +71,7 @@ bench-horde:
 	    *) echo "[bench] 知らない組: $$s"; exit 2;; \
 	  esac; \
 	  echo "[bench] $$s ($$set_env)"; rm -f debug/bench/horde-$$s.txt; \
-	  env BENCH_LABEL=$$s $$set_env FLIX_GE_MUTE=1 FGE_HEADLESS_FALLBACK=1 FLIX_CMD=$(FLIX) "$(ENGINE)/bin/headless-run" --window HordeBench.main \
+	  env BENCH_LABEL=$$s $$set_env FLIX_GE_MUTE=1 FLIX_GE_NO_VSYNC=1 FGE_HEADLESS_FALLBACK=1 FLIX_CMD=$(FLIX) "$(ENGINE)/bin/headless-run" --window HordeBench.main \
 	    > debug/bench/horde-$$s.log 2>&1 || { echo "[bench] $$s が落ちた（debug/bench/horde-$$s.log）"; exit 1; }; \
 	  test -f debug/bench/horde-$$s.txt || { echo "[bench] $$s の結果が無い（debug/bench/horde-$$s.log）"; exit 1; }; \
 	done

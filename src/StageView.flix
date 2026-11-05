@@ -41,6 +41,8 @@ mod StageView {
         // 目（照準のカメラ。反動で跳ね上がった角を含む）。
         camera = Camera3d.Camera3d,
         look = LookDoc.Rec,
+        // 画面の後処理の面。
+        post = PostSpecs.Specs,
         // 描く区画の絵（見える区画の組の分だけ）。
         zones = List[MazeMesh.ZoneArt],
         // ステージの座標の粒（当たった所の火花と煙・体液・弾けた時の輪・projectile の玉・溜めの光）と、撃った瞬間の灯り・弾けた瞬間の光。
@@ -66,10 +68,10 @@ mod StageView {
     pub def passPlan(w: In): Render.PassPlan =
         let stack = SortingLayer.stack(App.pickCtx(size()), Layer.Scene);
         let layers = ZStack.leaf(scene(w) :: Nil) :: (w#viewmodel |> Option.map(h -> ZStack.leaf(viewmodelScene(w, h) :: Nil)) |> Option.toList);
-        PostView.chain(w#look, stack(ZStack.of(layers)), w#t)
+        PostView.chain(w#look, w#post, stack(ZStack.of(layers)), w#t)
 
     /// 本編の木: トーンマップ済みの後処理の Pass を FXAA でならした面 1 枚。
-    pub def frameTree(): ZStack.Tree[Layer, World.Press] = ZStack.leaf(PostView.fxaaFill() :: Nil)
+    pub def frameTree(post: PostSpecs.Specs): ZStack.Tree[Layer, World.Press] = ZStack.leaf(PostView.fxaaFill(post) :: Nil)
 
     /// ステージの場面に入れる灯り（見える区画の分。ベイクしたステージは空）。
     def stageLights(w: In): List[Scene3d.PointLight] = w#zones |> List.flatMap(z -> z#lights)

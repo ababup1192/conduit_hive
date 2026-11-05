@@ -46,6 +46,8 @@ mod Res {
         theme = ThemeDoc.Doc,
         walk = WalkDoc.Doc,
         look = LookDoc.Doc,
+        // 画面の後処理の面（見た目の Doc から組む）。
+        post = PostSpecs.Specs,
         mazeDoc = MazeDoc.Doc,
         weapons = WeaponsDoc.Doc,
         viewmodel = FpViewmodelDoc.Doc,
@@ -107,7 +109,7 @@ mod Res {
     /// Doc の束から描く元を組む。
     pub def build(docs: Docs): Res =
         let stage = stageOf(docs#maze, docs#look, docs#stage);
-        withPlans({ uiText = docs#uiText, keys = docs#keys, theme = docs#theme, walk = docs#walk, look = docs#look, mazeDoc = docs#maze,
+        withPlans({ uiText = docs#uiText, keys = docs#keys, theme = docs#theme, walk = docs#walk, look = docs#look, post = PostSpecs.build(LookDoc.rec(docs#look)), mazeDoc = docs#maze,
           weapons = docs#weapons, viewmodel = docs#viewmodel, particles = docs#particles, juice = docs#juice, player = docs#player,
           moves = docs#moves, grenade = docs#grenade, enemies = docs#enemies,
           spawns = docs#spawns, pickups = docs#pickups, tour = docs#tour,
@@ -162,7 +164,7 @@ mod Res {
 
     def withStage(mazeDoc: MazeDoc.Doc, look: LookDoc.Doc, res: Res): Res =
         let stage = stageOf(mazeDoc, look, res#stage);
-        withPlans({ mazeDoc = mazeDoc, look = look, maze = stage#maze, collision = stage#collision, openCells = stage#openCells, props = stage#props, hitTargets = stage#hitTargets,
+        withPlans({ mazeDoc = mazeDoc, look = look, post = PostSpecs.build(LookDoc.rec(look)), maze = stage#maze, collision = stage#collision, openCells = stage#openCells, props = stage#props, hitTargets = stage#hitTargets,
           art = stage#art, propArt = stage#propArt, stageTextures = stage#textures, spawnPoints = stage#spawnPoints, pickupPoints = Pickups.pointsOf(stage#maze, res#pickups),
           pickupArt = PickupModels.build(LookDoc.rec(look), res#pickups, res#pickupArt#models) | res }) |> withWarmup
 

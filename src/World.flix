@@ -166,8 +166,8 @@ mod World {
 
     // ── 盤の寸法（design 480×270。project.json と同じ値） ──
 
-    pub def width(): Float64 = 480.0
-    pub def height(): Float64 = 270.0
+    pub def width(): Float64 = Design.width()
+    pub def height(): Float64 = Design.height()
 
     pub def spritePath(): String = "assets/conduit_hive.sprite.json"
 

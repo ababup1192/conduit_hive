@@ -129,7 +129,7 @@ mod View {
         let lying = List.append(res#pickupPoints |> List.filter(p -> not Set.memberOf(p#id, taken)), World.dropsOf(s) |> List.map(d -> d#point));
         let items = pickupsIn(res, t, camera, drawn, lying);
         let props = if (Set.memberOf(res#maze#finalZone, drawn)) res#propArt else Nil;
-        { t = t, camera = camera, look = LookDoc.rec(res#look),
+        { t = t, camera = camera, look = LookDoc.rec(res#look), post = res#post,
           zones = drawn |> Set.toList |> List.filterMap(id -> Map.get(id, res#art)),
           billboards = List.flatten(
               (shots |> List.filterMap(p -> Particles3d.spitBillboard(res#particles, Particles3d.textureName(), Res.particleRegion(res, Particles3d.Kind.Spark), p#at)))
@@ -159,7 +159,7 @@ mod View {
     def showcaseIn(res: Res.Res, t: Float64, camera: Camera3d.Camera3d): StageView.In =
         let drawn = Maze.visibleFrom(res#maze, camera#eye#x, camera#eye#z);
         let items = pickupsIn(res, t, camera, drawn, res#pickupPoints);
-        { t = t, camera = camera, look = LookDoc.rec(res#look),
+        { t = t, camera = camera, look = LookDoc.rec(res#look), post = res#post,
           zones = drawn |> Set.toList |> List.filterMap(id -> Map.get(id, res#art)),
           billboards = Nil, flash = Nil, creatures = Nil, pickups = items#instances, effects = Nil, textures = List.append(res#stageTextures, res#pickupArt#textures),
           glows = items#lights, viewmodel = None }
@@ -246,14 +246,14 @@ mod View {
 
     /// 本編の描き物（App の view と描き出しが呼ぶ）: 後処理の面と、その上のメニューと確認の窓（3D の場面は Pass の計画が描く）。
     pub def frame(ctx: App.ViewCtx, res: Res.Res, w: World.World): List[Render.PlacedItem] =
-        SortingLayer.compose(ctx, (Layer.Scene, StageView.frameTree()) :: overlayLayers(ctx, overlayOf(res, w)))
+        SortingLayer.compose(ctx, (Layer.Scene, StageView.frameTree(res#post)) :: overlayLayers(ctx, overlayOf(res, w)))
 
     /// 本編より先に描く Pass の計画（Main の App.withPassPlan と描き出しが呼ぶ）。
     pub def passPlan(res: Res.Res, w: World.World): Render.PassPlan = StageView.passPlan(stageOf(res, w))
 
     /// 層ごとの木（絵と押せる物の当たり）。Controls.tapAt がこの木から押した物を選ぶ。
     pub def layers(ctx: App.ViewCtx, w: In): List[(Layer, ZStack.Tree[Layer, World.Press])] =
-        (Layer.Scene, StageView.frameTree()) :: overlayLayers(ctx, w#overlay)
+        (Layer.Scene, StageView.frameTree(w#stage#post)) :: overlayLayers(ctx, w#overlay)
 
     /// メニューと確認の窓の層。
     def overlayLayers(ctx: App.ViewCtx, o: Overlay): List[(Layer, ZStack.Tree[Layer, World.Press])] =

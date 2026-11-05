@@ -163,6 +163,7 @@ mod HordeBench {
             |> App.withDebug(kit#debug)
             |> App.addOutput({ keyOf = s -> if (isDone(kit, s)) kit#cfg#label else "", write = s -> writeReport(kit, s), onJump = App.OnJump.Skip })
             |> App.quitWhen((_, s) -> s#doneAt |> Option.exists(at -> s#frame >= at + 4))
+            |> App.withPipelinedRendering
 
     def isDone(kit: Kit, s: State): Bool =
         if (kit#cfg#seconds > 0.0) s#frame > kit#warmup and s#measured >= kit#cfg#seconds else s#frame > kit#warmup + kit#frames

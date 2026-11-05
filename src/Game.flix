@@ -39,4 +39,6 @@ mod Game {
             |> App.withFlow(E2e.table())
             |> App.withFingerprint(Resources.read(E2e.fingerprint))
             |> App.withStatusLine(Resources.read(E2e.fingerprint))
+            // WhyNot: 規則と描くのを直列に戻さない — 群れの場面で 60 fps を割る。照準が画面に出るのが 1 コマ遅れるのは許した。
+            |> App.withPipelinedRendering
 }

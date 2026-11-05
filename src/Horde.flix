@@ -442,7 +442,7 @@ mod Horde {
         let cell = Maze.cellAt(m, e#x, e#z);
         let direct = FlowField.stepsAt(field, cell) |> Option.exists(s -> s <= 1);
         let (gx, gz) = if (direct) (p#x, p#z)
-            else FlowField.downhill(m, field, cell) |> Option.map(Maze.centerOf(m)) |> Option.getWithDefault((p#x, p#z));
+            else FlowField.downhill(field, cell) |> Option.map(Maze.centerOf(m)) |> Option.getWithDefault((p#x, p#z));
         let dist = distance(gx - e#x, gz - e#z);
         if (dist < 0.001) { moving = false | e }
         else {
