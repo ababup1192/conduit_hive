@@ -1,7 +1,7 @@
 // 敵の規則（Horde・Creatures の口を直に）: 当たり判定（体・頭・壁の向こう）・ダメージと倒れる・よろけの間隔・
 // wave・同時に生きている数の上限・湧く所・押し合い・距離の地図で近づく・melee の当たる時刻と扇・ranged の見通しと吐く上限・projectile・姿勢の共有の鍵。
 mod TestHorde {
-    use fge::{Camera3d, LogCapture, Mat4, Num, Vec3}
+    use fge::{Camera3d, Hash01, LogCapture, Mat4, Num, Vec3}
     use Creatures.Kind
     use TestSupport.{mazeOf, resWith}
 
@@ -259,6 +259,52 @@ mod TestHorde {
         let after = Horde.step(res(), 0.1, 1.0 / 60.0, playerAt(22.0, 10.0), both)#horde;
         let gap = forM (a <- Horde.enemyOf(0, after); b <- Horde.enemyOf(1, after)) yield Num.sqrt((a#x - b#x) * (a#x - b#x) + (a#z - b#z) * (a#z - b#z));
         Assert.assertEq(expected = Some(true), gap |> Option.map(g -> g >= Creatures.footprintOf(Kind.Melee) * 2.0 - 0.001))
+
+    /// 部屋 A に詰めた大小 120 体の押し合いは、全員どうしを比べて押した足元と 1e-9 m の内で同じ。
+    @Test
+    def testCrowdIsPushedLikeEveryPairCompared(): Unit \ Assert =
+        Assert.assertEq(expected = 0.0, Float64.floor(pushGap(crowdInA()) * 1.0e9))
+
+    /// 部屋 A の 120 体と、迷路から遠く離れた 1 体（升が広がる・迷路の外で壁の箱が無く壁に押されない）の押し合いも、全員どうしを比べた足元と 1e-9 m の内で同じ。
+    @Test
+    def testCrowdWithStragglerIsPushedLikeEveryPairCompared(): Unit \ Assert =
+        let straggler = { id = 999, x = 200.0, z = 200.0, radius = 0.35 };
+        Assert.assertEq(expected = 0.0, Float64.floor(pushGap(List.append(crowdInA(), straggler :: Nil)) * 1.0e9))
+
+    /// 円が 0 個なら足元も 0 個。
+    @Test
+    def testNoDiscsGiveNoFeet(): Unit \ Assert =
+        let r = res();
+        Assert.assertEq(expected = Nil, Separation.separate(r#maze, r#collision, r#openCells, playerAt(14.0, 10.0), Nil))
+
+    /// 部屋 A の床の内（x 8〜20 m・z 7〜13 m。壁の箱に届かない）に散らした大小 120 体。どの 2 体も 1e-4 m より離れている。
+    def crowdInA(): List[Separation.Disc] =
+        List.range(0, 120) |> List.map(i ->
+            { id = i, x = 8.0 + 12.0 * Hash01.at(i, 11), z = 7.0 + 6.0 * Hash01.at(i, 12), radius = if (Int32.modulo(i, 3) == 0) 0.6 else 0.35 })
+
+    /// (14, 10) に立つプレイヤーで discs を押し合わせた足元と、全員どうしを比べた足元の、一番大きい差（m）。
+    def pushGap(discs: List[Separation.Disc]): Float64 =
+        let r = res();
+        let p = playerAt(14.0, 10.0);
+        let got = Separation.separate(r#maze, r#collision, r#openCells, p, discs);
+        let want = discs |> List.map(everyPairPushed(p, discs));
+        List.zip(got, want) |> List.foldLeft((acc, gw) -> {
+            let ((gx, gz), (wx, wz)) = gw;
+            Float64.max(acc, Float64.max(Float64.abs(gx - wx), Float64.abs(gz - wz)))
+        }, 0.0)
+
+    /// d が、ほかの全員から重なった分の半分ずつ・プレイヤーから重なった分を全部押されて着く足元（壁は見ない・1e-4 m より近い組は無い前提）。
+    def everyPairPushed(p: PlayerBody.PlayerBody, discs: List[Separation.Disc], d: Separation.Disc): (Float64, Float64) =
+        let away = (ox: Float64, oz: Float64, reach: Float64, share: Float64) -> {
+            let dist = Num.sqrt((d#x - ox) * (d#x - ox) + (d#z - oz) * (d#z - oz));
+            if (dist >= reach) (0.0, 0.0) else ((d#x - ox) / dist * (reach - dist) * share, (d#z - oz) / dist * (reach - dist) * share)
+        };
+        let pushes = (p#x, p#z, d#radius + p#radius, 1.0) :: (discs |> List.filter(o -> o#id != d#id) |> List.map(o -> (o#x, o#z, d#radius + o#radius, 0.5)));
+        pushes |> List.foldLeft((acc, o) -> {
+            let (ox, oz, reach, share) = o;
+            let (ax, az) = away(ox, oz, reach, share);
+            (fst(acc) + ax, snd(acc) + az)
+        }, (d#x, d#z))
 
     // ── 距離の地図で近づく ──
 

@@ -47,8 +47,11 @@ mod GameLint {
                 |> allowIn(Fn.VideoRender_frames, "Makefile の口（make video）が名前で呼ぶ入口")
                 |> allowIn(Fn.VideoRender_jobs, "描き出しの常駐（HEADLESS_RESIDENT=1）が名前で呼ぶ入口の束"),
             customRule({ id = "test-calc", check = testCalc })
-                |> allowIn(Fn.TestStarts_testEveryShotBuildsFromTheApp, "性質テストの決まり（どの場面も shot:<名前> の始まりで組める）。組めない場面の名前だけを集める"),
+                |> allowIn(Fn.TestStarts_testEveryShotBuildsFromTheApp, "性質テストの決まり（どの場面も shot:<名前> の始まりで組める）。組めない場面の名前だけを集める")
+                |> allowIn(Fn.TestHorde_everyPairPushed, "性質テストの正解（押し合いを全員どうしで比べる素朴な形）。升で近所を引く本体と同じ足元になるかを、詰めた群れで突き合わせる"),
             customRule({ id = "test-branch", check = testBranch })
+                |> allowIn(Fn.TestHorde_everyPairPushed, "性質テストの正解（押し合いを全員どうしで比べる素朴な形）。重なった組だけを押す分かれ道は正解の式そのもの")
+                |> allowIn(Fn.TestHorde_crowdInA, "性質テストの群れ。大小 2 つの半径を混ぜて、升の一辺を決める一番大きい円を作る")
         })
     })
 

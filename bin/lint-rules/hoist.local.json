@@ -1,0 +1,9 @@
+{
+  "exempt": {
+    "src/Separation.flix::gridOf::starts": "Array.repeat の結果（region の効果があり純粋な let ではないので書き写されない）",
+    "src/Separation.flix::gridOf::order": "Array.repeat の結果（region の効果があり純粋な let ではないので書き写されない）",
+    "src/Separation.flix::gridOf::cells": "Array.repeat の結果（region の効果があり純粋な let ではないので書き写されない）",
+    "src/Separation.flix::gridOf::cursor": "Array.copyOfRange の結果（region の効果があり純粋な let ではないので書き写されない）",
+    "src/Separation.flix::gridOf::c": "ラムダの中の Array.get の結果（region の効果があり、ループの外の式ではない）"
+  }
+}
