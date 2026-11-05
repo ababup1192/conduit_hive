@@ -1,0 +1,9 @@
+# 群れの動画（make video-horde → debug/video/horde300.mp4）の手順。始まりは VIDEO_HORDE の World（VideoRender.hordeStart）:
+# 最後の部屋の真ん中で自動の操縦が撃ち続け、wave が上限まで湧き続ける。start を書くと普段の場面に戻るので書かない。
+# 湧き始めの数秒（群れがまだ薄い所）は撮らない。
+fps 60
+
+wait 12
+mark in_horde
+wait 36
+mark out_horde

@@ -27,14 +27,19 @@ mod View {
     /// 先に画面を選び、遊んでいる場面の部品は Session を受ける。
     pub def inputOf(res: Res.Res, w: World.World): In = { stage = stageOf(res, w), overlay = overlayOf(res, w) }
 
-    /// 画面ごとの 3D の場面。
+    /// 画面ごとの 3D の場面（遊びの途中で初めて出る物を視錐台の外に足す: GpuWarmup）。
     def stageOf(res: Res.Res, w: World.World): StageView.In =
         let t = World.seconds(w);
-        match w#screen {
+        let stage = match w#screen {
             case World.Screen.Title    => showcaseIn(res, t, titleCamera(res, t))
             case World.Screen.Play(s)  => stageIn(res, t, s)
             case World.Screen.Clear(c) => showcaseIn(res, t, clearCamera(res, t, c))
-        }
+        };
+        withWarmup(res#warmup, t, stage)
+
+    /// ステージの場面に、時刻 t に先に上げる物と、その材質が読む絵を足す。
+    def withWarmup(g: GpuWarmup.Warmup, t: Float64, stage: StageView.In): StageView.In =
+        { effects = List.append(stage#effects, GpuWarmup.at(g, t)), textures = List.append(stage#textures, g#textures) | stage }
 
     /// 画面ごとのメニューと確認の窓。
     def overlayOf(res: Res.Res, w: World.World): Overlay =

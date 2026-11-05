@@ -61,6 +61,12 @@ bench-horde:
 	    horde25)        set_env="BENCH_ENEMIES=25";; \
 	    stage)          set_env="BENCH_ENEMIES=0";; \
 	    horde-waves)    set_env="BENCH_WAVES=1 BENCH_SECONDS=$${BENCH_SECONDS:-180} BENCH_WARMUP=300";; \
+	    horde-waves75)  set_env="BENCH_WAVES=1 BENCH_MAX_ALIVE=75 BENCH_SECONDS=$${BENCH_SECONDS:-180} BENCH_WARMUP=300";; \
+	    horde-waves300) set_env="BENCH_WAVES=1 BENCH_MAX_ALIVE=300 BENCH_SECONDS=$${BENCH_SECONDS:-180} BENCH_WARMUP=300";; \
+	    horde75)        set_env="BENCH_ENEMIES=75";; \
+	    horde300)       set_env="BENCH_ENEMIES=300";; \
+	    horde1000)      set_env="BENCH_ENEMIES=1000";; \
+	    horde-waves1000) set_env="BENCH_WAVES=1 BENCH_MAX_ALIVE=1000 BENCH_SECONDS=$${BENCH_SECONDS:-180} BENCH_WARMUP=300";; \
 	    *) echo "[bench] 知らない組: $$s"; exit 2;; \
 	  esac; \
 	  echo "[bench] $$s ($$set_env)"; rm -f debug/bench/horde-$$s.txt; \
@@ -89,3 +95,10 @@ video:
 	    -movflags +faststart debug/video/$(VIDEO_OUT).mp4; fi
 	@test -f debug/video/$(VIDEO_OUT).mp4 || { echo "[video] mp4 ができなかった（debug/video/$(VIDEO_OUT)/）"; exit 1; }
 	@echo "[video] debug/video/$(VIDEO_OUT).mp4"
+
+# 最後の部屋の真ん中で最大 300 体の群れに囲まれて撃ち続ける動画 = debug/video/horde300.mp4（ゲームの値は変えない見せ物。描く元は make bench-horde の倒し続ける組と同じ）。
+# 数は HORDE=<同時に生きている敵の上限>（既定 300）。
+HORDE ?= 300
+.PHONY: video-horde
+video-horde:
+	@VIDEO_HORDE=$(HORDE) $(MAKE) --no-print-directory video FLOW=$(or $(HORDE_FLOW),e2e/horde.flow) OUT=$(or $(HORDE_OUT),horde$(HORDE))

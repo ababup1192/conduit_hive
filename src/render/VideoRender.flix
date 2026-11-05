@@ -9,6 +9,7 @@
 //
 // 環境変数: VIDEO_FPS（既定 60。60 を割り切る数）・VIDEO_FLOW（手順。既定 e2e/video.flow）・VIDEO_OUT（debug/video/<名前>。既定 play）・
 //           VIDEO_SCALE（design 480×270 の何倍で塗るか。既定 4 = 1920×1080）・VIDEO_X264（GPU の道で mp4 を書く ffmpeg の旗）・
+//           VIDEO_HORDE（立てると最後の部屋の真ん中で群れに囲まれて撃ち続ける動画。数は同時に生きている敵の上限。手順は start を書かない物）・
 //           FGE_GPU / FGE_VIDEO_PAINT / FFMPEG（VideoOut.settingsOf）
 mod VideoRender {
     use fge::{
@@ -45,16 +46,58 @@ mod VideoRender {
         let settings = VideoOut.settingsOf(env);
         let fps = Map.get("VIDEO_FPS", env) |> Option.flatMap(Int32.fromString)
             |> Option.filter(n -> n > 0 and Int32.modulo(playFps(), n) == 0) |> Option.getWithDefault(60);
-        let app = run { Game.app(HeadlessLoad.handle(Controls.loadDocs)) } with Fs.FileRead.runWithIO;
-        let fresh = run { App.freshWorld(app, SceneRender.design()) } with Fs.FileRead.runWithIO;
+        let docs = run { HeadlessLoad.handle(Controls.loadDocs) } with Fs.FileRead.runWithIO;
+        let app = Game.app(docs);
+        let fresh = match hordeOf(env) {
+            case Some(maxAlive) => hordeStart(maxAlive, docs)
+            case None           => Ok(run { App.freshWorld(app, SceneRender.design()) } with Fs.FileRead.runWithIO)
+        };
         let take = takeOf(env);
         discard (new File(take#outDir)).mkdirs();
-        match playFlow(app, fresh, take#flow, Files.readString(Paths.get(take#flow))) {
+        match fresh |> Result.flatMap(w -> playFlow(app, w, take#flow, Files.readString(Paths.get(take#flow)))) {
             case Err(why) =>
                 println("[video] ${why}");
                 1
             case Ok(outcome) => writeOutcome(settings, env, fps, take, outcome)
         }
+
+    // ── 群れの動画（VIDEO_HORDE） ──
+
+    /// VIDEO_HORDE = 同時に生きている敵の上限（立っていなければ普段の動画）。
+    def hordeOf(env: Map[String, String]): Option[Int32] =
+        Map.get("VIDEO_HORDE", env) |> Option.flatMap(v -> Int32.fromString(String.trim(v))) |> Option.filter(n -> n > 0)
+
+    /// 群れの動画の始まり: 群れの重さの測り（HordeBench.endlessScene）と同じ描く元と World（最後の部屋の真ん中で自動の操縦が撃ち続け、
+    /// wave が上限まで湧き続け、敵の威力は 0）に、振り向きだけ人の手に寄せた物。
+    // WhyNot: App.freshWorld を通さない — Doc を全部ファイルから読み直すので、群れの描く元が普段の物へ戻る。
+    //   flow も start を書かない（start は freshWorld で組み直す）。
+    def hordeStart(maxAlive: Int32, docs: Res.Docs): Result[String, AppState] =
+        HordeBench.endlessScene(maxAlive, Res.build(standOff(HordeBench.harmlessDocs(docs))))
+            |> Result.map(rs -> { let (res, w) = rs; Resources.of(humanAim(res), w) })
+
+    /// 敵が押し出されるプレイヤーの体の円を半径 1.8 m に広げ、melee はその縁で足を止めて振り、飛びかからない。
+    // WhyNot: 遊びの距離（体 0.35 m・1.2 m で止まり 4.5 m から飛びかかる）のままにしない — 後ろの数百体に押されて前の列が目の中まで入り、
+    //   画面が体の内側だけになる（群れも撃つ所も見えない）。止まる距離だけ広げても、押し合いで前の列は押し込まれる。
+    def standOff(docs: Res.Docs): Res.Docs =
+        let r = EnemiesDoc.rec(docs#enemies);
+        let walk = WalkDoc.rec(docs#walk);
+        { enemies = EnemiesDoc.Doc.Doc({ melee = { attackRange = 2.6, stopDistance = 2.4, lungeRange = 0.0 | r#melee } | r }),
+          walk = WalkDoc.Doc.Doc({ radius = 1.8 | walk }) | docs }
+
+    /// 振り向きの速さと狙いへ寄る勢いを、測りの組（900 度/秒・0.04 秒）から人の手の速さへ戻す。
+    // WhyNot: 測りの組の速さのままにしない — 的から的へ一瞬で向きが跳ね、絵が切り替わって見える。
+    def humanAim(res: Res.Res): Res.Res =
+        let t = TourDoc.rec(res#tour);
+        res |> Res.withTour(TourDoc.Doc.Doc({ turnRate = 320.0, lookEase = 0.12, turnSmooth = 0.08, fireCone = 4.0 | t }))
+
+    /// 撮ったコマの間の群れ: 生きている敵の最大・平均・最小と、倒した数（撮り始めから撮り終わりまで）。
+    def hordeSummary(worlds: List[AppState]): String =
+        let alive = worlds |> List.map(Resources.read((_, w) -> Horde.aliveCount(HordeBench.hordeIn(w))));
+        let kills = worlds |> List.map(Resources.read((_, w) -> HordeBench.killsIn(w)));
+        let n = Int32.max(1, List.length(alive));
+        let killed = Option.getWithDefault(0, List.last(kills)) - Option.getWithDefault(0, List.head(kills));
+        "[video] 群れ: 生きている敵 最大 ${List.maximum(alive) |> Option.getWithDefault(0)}・平均 ${List.sum(alive) / n}・" +
+        "最小 ${List.minimum(alive) |> Option.getWithDefault(0)}・撮った間に倒した数 ${killed}"
 
     /// 手順（flow の文）を読んで、まっさらな World から流す。読めない・途中で止まった時は、その訳の 1 行。
     def playFlow(app: App.App[AppState, {}], fresh: AppState, flowPath: String, text: String): Result[String, Flow.Outcome[AppState]] \ IO =
@@ -78,6 +121,7 @@ mod VideoRender {
                 let painted = shown |> List.zipWithIndex |> List.filter(p -> Int32.modulo(fst(p), stride) == 0)
                     |> List.map(p -> snd(p)#step#after);
                 println("[video] ${List.length(outcome#frames)} フレームを流し、${List.length(segments)} 区間・${List.length(painted)} コマを撮る（${Int32.toString(List.length(painted) / fps)} 秒・${Int32.toString(fps)} fps）");
+                if (Option.nonEmpty(hordeOf(env))) println(hordeSummary(painted)) else ();
                 let audio = "${take#outDir}/audio.f64";
                 writeAudio(audio, shown |> List.map(p -> p#step));
                 writeVideo(settings, encoderOf(env, fps, take, audio), fps, take, painted);

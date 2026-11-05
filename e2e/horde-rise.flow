@@ -1,0 +1,8 @@
+# 群れが湧き始めてから上限に届くまでの動画（make video-horde FLOW=e2e/horde-rise.flow OUT=horde300-rise）の手順。
+# 始まりは e2e/horde.flow と同じ VIDEO_HORDE の World。最初のコマから撮る。
+fps 60
+
+wait 0.5
+mark in_rise
+wait 45
+mark out_rise
