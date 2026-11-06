@@ -101,9 +101,7 @@ mod Res {
         blastArt = BlastFx.Art,
         // 投げた手榴弾の glb（読めなければ None）と、蹴りの間に手前へ出る脚の形（boot.glb の腿と脛）。
         grenadeModel = Option[Model3d.Model3d],
-        bootArt = Boot.Art,
-        // 遊びの途中で初めて出る物を GPU へ先に上げておくために、毎コマ視錐台の外へ置く物（GpuWarmup。形の束から作り、束を作り直したら作り直す）。
-        warmup = GpuWarmup.Warmup
+        bootArt = Boot.Art
     }
 
     /// Doc の束から描く元を組む。
@@ -118,10 +116,8 @@ mod Res {
           pickupArt = PickupModels.build(LookDoc.rec(docs#look), docs#pickups, docs#pickupModels), maze = stage#maze, collision = stage#collision, openCells = stage#openCells, props = stage#props, hitTargets = stage#hitTargets,
           art = stage#art, propArt = stage#propArt, stageTextures = stage#textures, particleTexture = Particles3d.textureOf(),
           gibArt = Gibs.artOf(docs#gibs), tracerArt = Tracers.artOf(Particles3dDoc.rec(docs#particles)#tracer), blastArt = BlastFx.artOf(Particles3dDoc.rec(docs#particles)#blast),
-          grenadeModel = docs#grenadeModel, bootArt = Boot.build(docs#bootModel), warmup = GpuWarmup.empty() }) |> withWarmup
+          grenadeModel = docs#grenadeModel, bootArt = Boot.build(docs#bootModel) })
 
-    /// 先に上げる物を今の形の束から作り直す。
-    def withWarmup(res: Res): Res = { warmup = GpuWarmup.of(res) | res }
 
     /// 迷路と見た目から作る物。
     type alias Stage = {
@@ -166,7 +162,7 @@ mod Res {
         let stage = stageOf(mazeDoc, look, res#stage);
         withPlans({ mazeDoc = mazeDoc, look = look, post = PostSpecs.build(LookDoc.rec(look)), maze = stage#maze, collision = stage#collision, openCells = stage#openCells, props = stage#props, hitTargets = stage#hitTargets,
           art = stage#art, propArt = stage#propArt, stageTextures = stage#textures, spawnPoints = stage#spawnPoints, pickupPoints = Pickups.pointsOf(stage#maze, res#pickups),
-          pickupArt = PickupModels.build(LookDoc.rec(look), res#pickups, res#pickupArt#models) | res }) |> withWarmup
+          pickupArt = PickupModels.build(LookDoc.rec(look), res#pickups, res#pickupArt#models) | res })
 
     /// 粒の種類の絵のコマ。
     pub def particleRegion(res: Res, kind: Particles3d.Kind): Option[Rect2.Rect2] = Particles3d.regionOf(res#particleTexture, kind)
@@ -190,7 +186,7 @@ mod Res {
     pub def withViewmodel(viewmodel: FpViewmodelDoc.Doc, res: Res): Res = { viewmodel = viewmodel | res }
 
     pub def withParticles(particles: Particles3dDoc.Doc, res: Res): Res =
-        withWarmup({ particles = particles, tracerArt = Tracers.artOf(Particles3dDoc.rec(particles)#tracer), blastArt = BlastFx.artOf(Particles3dDoc.rec(particles)#blast) | res })
+        { particles = particles, tracerArt = Tracers.artOf(Particles3dDoc.rec(particles)#tracer), blastArt = BlastFx.artOf(Particles3dDoc.rec(particles)#blast) | res }
 
     pub def withJuice(juice: JuiceDoc.Doc, res: Res): Res = { juice = juice | res }
 
@@ -211,6 +207,6 @@ mod Res {
     pub def withMixer(mixer: AudioMixer.Mixer, res: Res): Res = { mixerDoc = mixer, mixer = SoundsDoc.mixerOf(mixer, res#sounds) | res }
 
     pub def withPickups(pickups: PickupsDoc.Doc, res: Res): Res =
-        withWarmup({ pickups = pickups, pickupPoints = Pickups.pointsOf(res#maze, pickups),
-          pickupArt = PickupModels.build(LookDoc.rec(res#look), pickups, res#pickupArt#models) | res })
+        { pickups = pickups, pickupPoints = Pickups.pointsOf(res#maze, pickups),
+          pickupArt = PickupModels.build(LookDoc.rec(res#look), pickups, res#pickupArt#models) | res }
 }

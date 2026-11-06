@@ -161,6 +161,7 @@ mod HordeBench {
             |> App.withPassPlan(s -> passPlan(kit, s))
             |> App.withHudView((ctx, s) -> View.hudFrame(ctx, kit#res, s#game))
             |> App.withSpriteAtlases(_ -> { texture = Particles3d.textureName(), key = Particles3d.textureKey(), baked = kit#res#particleTexture } :: Nil)
+            |> Preload3d.withPreload(_ -> kit#res)
             |> App.withDiagnostics
             |> App.withDebug(kit#debug)
             |> App.addOutput({ keyOf = s -> if (isDone(kit, s)) kit#cfg#label else "", write = s -> writeReport(kit, s), onJump = App.OnJump.Skip })
