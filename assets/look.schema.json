@@ -570,7 +570,7 @@
       "label": "敵の体に金属っぽさと粗さを付ける（濡れた肌）",
       "order": 46,
       "group": "敵の材質",
-      "default": false
+      "default": true
     },
     "creatureSurface": {
       "kind": "record",

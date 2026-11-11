@@ -200,7 +200,7 @@ mod LookDoc {
                   pipePaintSurface = { metallic = 0.1, roughness = 0.5 }, pipeGraphiteSurface = { metallic = 0.6, roughness = 0.4 },
                   hazardSurface = { metallic = 0.0, roughness = 0.6 }, ventSurface = { metallic = 0.8, roughness = 0.45 },
                   grooveRoughness = 0.35, grooveMetal = 0.6,
-                  creaturePbr = false, creatureSurface = { metallic = 0.0, roughness = 0.25 },
+                  creaturePbr = true, creatureSurface = { metallic = 0.0, roughness = 0.25 },
                   zoneLights = Map.empty(),
                   fixtures = Nil,
                   beacon = { intensity = 1.5, range = 5.0, spin = 1.6, beamFov = 0.55, beamIntensity = 5.0, beamRange = 12.0 },

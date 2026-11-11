@@ -77,7 +77,7 @@
     "metallic": 0.8,
     "roughness": 0.45
   },
-  "creaturePbr": false,
+  "creaturePbr": true,
   "creatureSurface": {
     "metallic": 0.0,
     "roughness": 0.25
