@@ -14,7 +14,7 @@
 mod VideoRender {
     use fge::{
         App, AudioMixdown, DocJson, Flow, FontAtlas, HeadlessFont, HeadlessLoad, HeadlessRender, JsonCodec,
-        PxSpriteAtlas, Render, Resources, VideoOut
+        PxSpriteAtlas, Render, Resources, Sort, VideoOut
     }
 
     import java.io.{BufferedOutputStream, DataOutputStream, File, FileOutputStream}
@@ -143,7 +143,7 @@ mod VideoRender {
         if (not List.isEmpty(lonely)) Err("対の無い印 ${List.join(", ", lonely)}")
         else if (List.isEmpty(pairs)) Err("in_<名前> と out_<名前> の組が 1 つも無い")
         else if (not List.isEmpty(backwards)) Err("終わりが始まりより前の組がある")
-        else Ok(List.sortBy(fst, pairs))
+        else Ok(Sort.sortStableBy(fst, pairs))
 
     /// GPU の道で debug/video/<名前>.mp4 を直に書く ffmpeg の旗（VIDEO_X264 は Makefile と同じ字を受ける）。音（audio）を 2 本目の入力に足す。
     def encoderOf(env: Map[String, String], fps: Int32, take: Take, audio: String): VideoOut.Encoder =

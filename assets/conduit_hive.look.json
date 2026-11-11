@@ -1,7 +1,7 @@
 {
   "version": 1,
   "title": "施設の色・光・霧と画面の仕上げ",
-  "note": "bakedStage=Blender でベイクしたステージ（assets/models/stage.glb と区画ごとの lightmap）で描くか（false で灰色の箱。glb が迷路の rows・zones と合わない時も灰色の箱）。lightmapIntensity=lightmap の倍率（線形。PNG は線形の 1/4 なので 4.0 が Blender のまま）。wall/floor/ceilingColor=灰色の箱の面の色（陰は頂点の色で付ける）。strip*=施設の光る筋（冷たいシアン）と明るさの線形の倍率（灰色の箱と的の柱と拾う物の筋。ベイクしたステージの筋は glb の強さ）。roomLight*/corridorLightIntensity/lampSpacing=天井の灯り（部屋は lampSpacing マスごとの升目・通路は lampSpacing マスごと。Reach は灯具の間隔に対する届く距離の割合）。ベイクしたステージでは場面に入れず、手前の腕と銃にだけ写す。ambient/hemisphere=どこにでも当たる光と上を向く面の明るさ（lightmap の付いた物には足されない = ベイクしたステージでは敵・拾う物・的の柱だけを照らす）。fog*=距離の霧（m）。fogFar はカメラの写す奥行きの端と、見える区画の組を作る見通しの距離も兼ねる。exposure/whitePoint=トーンマップ。bloom*=ブルーム。msaaSamples=場面の MSAA（窓で描く時だけ）。vignette=周辺の暗さ。grain=フィルムの粒。",
+  "note": "bakedStage=Blender でベイクしたステージ（assets/models/stage.glb と区画ごとの lightmap）で描くか（false で灰色の箱。glb が迷路の rows・zones と合わない時も灰色の箱）。lightmapIntensity=lightmap の倍率（線形。PNG は線形の 1/4 なので 4.0 が Blender のまま）。wall/floor/ceilingColor=灰色の箱の面の色（陰は頂点の色で付ける）。strip*=施設の光る筋（冷たいシアン）と明るさの線形の倍率（灰色の箱と的の柱と拾う物の筋。ベイクしたステージの筋は glb の強さ）。roomLight*/corridorLightIntensity/lampSpacing=天井の灯り（部屋は lampSpacing マスごとの升目・通路は lampSpacing マスごと。Reach は灯具の間隔に対する届く距離の割合）。ベイクしたステージでは場面に入れず、手前の腕と銃にだけ写す。ambient/hemisphere=どこにでも当たる光と上を向く面の明るさ（lightmap の付いた物には足されない = ベイクしたステージでは敵・拾う物・的の柱だけを照らす）。fog*=距離の霧（m）。fogFar はカメラの写す奥行きの端と、見える区画の組を作る見通しの距離も兼ねる。exposure/whitePoint=トーンマップ。bloom*=ブルーム。msaaSamples=場面の MSAA（窓で描く時だけ）。vignette=周辺の暗さ。grain=フィルムの粒。 env*=映り込みの景色（環境マップ。金属っぽさと粗さを持つ材質だけが読む）: envMaps=使うか・envIntensity=明るさの線形の倍率（パノラマは線形の 1/4 で書いてあるので 4.0 が Blender のまま）・envPerZone=区画ごとのパノラマ（stage_env/zone_<文字>.png・小文字の区画は zone_lc_<文字>.png）を使うか・envBox=区画を囲む箱で景色の位置を合わせるか・envFinal/envRoom/envCorridor=最後の部屋・ほかの部屋・通路で使うパノラマの名前（assets/models/stage_env/<名前>.png。作り直しは modeling/render_panorama.py）。 stagePbr=ベイクしたステージの壁・床・天井・パイプ（M_hull）に金属っぽさと粗さを付けるか。*Surface=trim sheet の帯ごとの metallic と roughness（floor=床の板と格子・ceiling=天井・panel=壁の板・kick=腰板と目地・trim=暗い金物（面取り・柱・梁・扉の枠・フランジ・灯具の枠）・pipeSteel/pipePaint/pipeGraphite=パイプ 3 種・hazard=警告の縞・vent=換気の羽根）。 creaturePbr=敵の体に金属っぽさと粗さを付けるか（濡れた肌の照り）・creatureSurface=その値。 zoneLights=区画ごとの天井の灯り（区画の文字 → color と intensity。1 未満で薄暗い区画）。色の光は区画を染めず fixtures の物から出す。fixtures=色の光を出す物（kind = exit 非常口の灯り・beacon 回転灯・panel 制御盤・tank 薬品のタンク・hydrant 消火栓・flicker 明滅する蛍光灯／x・y = マスの列と行／side = 付ける壁の向き n・e・s・w（exit は扉の向き）／color）。zoneLights と fixtures の形と動かない光は modeling/stage.py のベイクに入る（変えたら stage.py と render_panorama.py を流し直す）。beacon=回転灯の毎コマの光（灯の点光源の intensity と range・回る 2 本のスポットの spin rad/秒・beamFov rad・beamIntensity・beamRange）。flicker=明滅する蛍光灯（intensity・range・rate = 1 秒に切り替わる回数・dark = 消えている割合）。decalRoughness/puddleRoughness=床の標示の塗料と水たまりの粗さ。 envFade=ほかの区画との境目の手前で映り込みを弱め始める距離 m（境目で 0。区画をまたいで景色の絵を替える瞬間を見せない）。",
   "bakedStage": true,
   "lightmapIntensity": 2.2,
   "wallColor": "#5b636b",
@@ -29,5 +29,316 @@
   "bloomScale": 0.5,
   "msaaSamples": 4,
   "vignette": 0.35,
-  "grain": 0.015
+  "grain": 0.015,
+  "envMaps": true,
+  "envIntensity": 4.0,
+  "envBox": true,
+  "envFinal": "hive",
+  "envRoom": "room",
+  "envCorridor": "corridor",
+  "stagePbr": true,
+  "floorSurface": {
+    "metallic": 0.4,
+    "roughness": 0.34
+  },
+  "ceilingSurface": {
+    "metallic": 0.1,
+    "roughness": 0.8
+  },
+  "panelSurface": {
+    "metallic": 0.6,
+    "roughness": 0.5
+  },
+  "kickSurface": {
+    "metallic": 0.5,
+    "roughness": 0.55
+  },
+  "trimSurface": {
+    "metallic": 0.9,
+    "roughness": 0.4
+  },
+  "pipeSteelSurface": {
+    "metallic": 1.0,
+    "roughness": 0.25
+  },
+  "pipePaintSurface": {
+    "metallic": 0.1,
+    "roughness": 0.5
+  },
+  "pipeGraphiteSurface": {
+    "metallic": 0.6,
+    "roughness": 0.4
+  },
+  "hazardSurface": {
+    "metallic": 0.0,
+    "roughness": 0.6
+  },
+  "ventSurface": {
+    "metallic": 0.8,
+    "roughness": 0.45
+  },
+  "creaturePbr": false,
+  "creatureSurface": {
+    "metallic": 0.0,
+    "roughness": 0.25
+  },
+  "grooveRoughness": 0.35,
+  "grooveMetal": 0.6,
+  "envPerZone": true,
+  "zoneLights": {
+    "A": {
+      "color": "#cfe6ee",
+      "intensity": 1.0
+    },
+    "B": {
+      "color": "#cfe6ee",
+      "intensity": 1.0
+    },
+    "C": {
+      "color": "#cfe6ee",
+      "intensity": 1.0
+    },
+    "D": {
+      "color": "#cfe6ee",
+      "intensity": 1.0
+    },
+    "E": {
+      "color": "#cfe6ee",
+      "intensity": 1.0
+    },
+    "F": {
+      "color": "#cfe6ee",
+      "intensity": 1.0
+    },
+    "G": {
+      "color": "#cfe6ee",
+      "intensity": 0.55
+    },
+    "H": {
+      "color": "#cfe6ee",
+      "intensity": 1.0
+    },
+    "a": {
+      "color": "#cfe6ee",
+      "intensity": 1.0
+    },
+    "b": {
+      "color": "#cfe6ee",
+      "intensity": 1.0
+    },
+    "c": {
+      "color": "#cfe6ee",
+      "intensity": 0.3
+    },
+    "d": {
+      "color": "#cfe6ee",
+      "intensity": 1.0
+    },
+    "e": {
+      "color": "#cfe6ee",
+      "intensity": 1.0
+    },
+    "f": {
+      "color": "#cfe6ee",
+      "intensity": 0.35
+    },
+    "g": {
+      "color": "#cfe6ee",
+      "intensity": 1.0
+    },
+    "h": {
+      "color": "#cfe6ee",
+      "intensity": 0.5
+    },
+    "i": {
+      "color": "#cfe6ee",
+      "intensity": 0.5
+    },
+    "j": {
+      "color": "#cfe6ee",
+      "intensity": 1.0
+    },
+    "k": {
+      "color": "#cfe6ee",
+      "intensity": 1.0
+    },
+    "l": {
+      "color": "#cfe6ee",
+      "intensity": 0.45
+    },
+    "m": {
+      "color": "#cfe6ee",
+      "intensity": 0.4
+    },
+    "n": {
+      "color": "#cfe6ee",
+      "intensity": 0.45
+    }
+  },
+  "decalRoughness": 0.55,
+  "puddleRoughness": 0.05,
+  "fixtures": [
+    {
+      "kind": "exit",
+      "x": 7,
+      "y": 34,
+      "side": "e",
+      "color": "#ff2a1a"
+    },
+    {
+      "kind": "exit",
+      "x": 16,
+      "y": 30,
+      "side": "n",
+      "color": "#ff2a1a"
+    },
+    {
+      "kind": "exit",
+      "x": 18,
+      "y": 16,
+      "side": "n",
+      "color": "#ff2a1a"
+    },
+    {
+      "kind": "exit",
+      "x": 8,
+      "y": 5,
+      "side": "e",
+      "color": "#ff2a1a"
+    },
+    {
+      "kind": "exit",
+      "x": 15,
+      "y": 5,
+      "side": "w",
+      "color": "#ff2a1a"
+    },
+    {
+      "kind": "exit",
+      "x": 4,
+      "y": 22,
+      "side": "s",
+      "color": "#ff2a1a"
+    },
+    {
+      "kind": "beacon",
+      "x": 19,
+      "y": 35,
+      "side": "e",
+      "color": "#ffa020"
+    },
+    {
+      "kind": "beacon",
+      "x": 33,
+      "y": 17,
+      "side": "e",
+      "color": "#ffa020"
+    },
+    {
+      "kind": "beacon",
+      "x": 37,
+      "y": 3,
+      "side": "e",
+      "color": "#ffa020"
+    },
+    {
+      "kind": "beacon",
+      "x": 38,
+      "y": 18,
+      "side": "e",
+      "color": "#ffa020"
+    },
+    {
+      "kind": "panel",
+      "x": 27,
+      "y": 31,
+      "side": "w",
+      "color": "#39ff88"
+    },
+    {
+      "kind": "panel",
+      "x": 14,
+      "y": 20,
+      "side": "w",
+      "color": "#3aa0ff"
+    },
+    {
+      "kind": "panel",
+      "x": 2,
+      "y": 32,
+      "side": "w",
+      "color": "#3aa0ff"
+    },
+    {
+      "kind": "panel",
+      "x": 15,
+      "y": 2,
+      "side": "w",
+      "color": "#39ff88"
+    },
+    {
+      "kind": "tank",
+      "x": 2,
+      "y": 17,
+      "side": "w",
+      "color": "#7dff4a"
+    },
+    {
+      "kind": "tank",
+      "x": 8,
+      "y": 21,
+      "side": "e",
+      "color": "#7dff4a"
+    },
+    {
+      "kind": "hydrant",
+      "x": 10,
+      "y": 34,
+      "side": "s",
+      "color": "#ff2020"
+    },
+    {
+      "kind": "hydrant",
+      "x": 18,
+      "y": 13,
+      "side": "w",
+      "color": "#ff2020"
+    },
+    {
+      "kind": "hydrant",
+      "x": 38,
+      "y": 26,
+      "side": "w",
+      "color": "#ff2020"
+    },
+    {
+      "kind": "flicker",
+      "x": 4,
+      "y": 26,
+      "side": "e",
+      "color": "#dfeeff"
+    },
+    {
+      "kind": "flicker",
+      "x": 38,
+      "y": 12,
+      "side": "w",
+      "color": "#dfeeff"
+    }
+  ],
+  "beacon": {
+    "intensity": 1.5,
+    "range": 5.0,
+    "spin": 1.6,
+    "beamFov": 0.55,
+    "beamIntensity": 5.0,
+    "beamRange": 12.0
+  },
+  "flicker": {
+    "intensity": 2.5,
+    "range": 7.0,
+    "rate": 9.0,
+    "dark": 0.35
+  },
+  "envFade": 1.6
 }

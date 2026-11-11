@@ -138,17 +138,18 @@ mod TestJuice {
     /// 曳光弾は上限を越えると古い物から消える: 上限 2 に 3 本足すと、新しい 2 本。
     @Test
     def testTracersDropTheOldestPastTheLimit(): Unit \ Assert =
-        let doc = { limit = 2 | Particles3dDoc.rec(Particles3dDoc.defaults())#tracer };
-        let tr = (t: Float64) -> { origin = Vec3.zero(), target = Vec3.v3(0.0, 0.0, 10.0), born = t };
+        let doc = { limit = 2 | Particles3dDoc.rec(Particles3dDoc.defaults())#tracers#rifle };
+        let tr = (t: Float64) -> { origin = Vec3.zero(), target = Vec3.v3(0.0, 0.0, 10.0), born = t, weapon = WeaponsDoc.Weapon.Rifle };
         let kept = Nil |> Tracers.add(doc, tr(0.0)) |> Tracers.add(doc, tr(1.0)) |> Tracers.add(doc, tr(2.0));
         Assert.assertEq(expected = (2, Some(2.0), Some(1.0)), (List.length(kept), List.head(kept) |> Option.map(x -> x#born), List.last(kept) |> Option.map(x -> x#born)))
 
     /// 曳光弾は尻が着く点に追いつくと消える: 10 m 先へ撃って (10 + length) ÷ speed 秒の後は残らない。
     @Test
     def testTracerVanishesAfterReachingTheTarget(): Unit \ Assert =
-        let doc = Particles3dDoc.rec(Particles3dDoc.defaults())#tracer;
-        let tr = { origin = Vec3.zero(), target = Vec3.v3(0.0, 0.0, 10.0), born = 0.0 };
-        Assert.assertEq(expected = 0, List.length(Tracers.step(doc, (10.0 + doc#length) / doc#speed, tr :: Nil)))
+        let docs = Particles3dDoc.rec(Particles3dDoc.defaults())#tracers;
+        let doc = docs#shotgun;
+        let tr = { origin = Vec3.zero(), target = Vec3.v3(0.0, 0.0, 10.0), born = 0.0, weapon = WeaponsDoc.Weapon.Shotgun };
+        Assert.assertEq(expected = 0, List.length(Tracers.step(docs, (10.0 + doc#length) / doc#speed, tr :: Nil)))
 
     // ── 爆発の形 ──
 
@@ -185,7 +186,7 @@ mod TestJuice {
     @Test
     def testFireballIsNotABillboard(): Unit \ Assert =
         let puffs = blastAt(Particles3d.BlastPart.Fireball, Vec3.v3(0.0, 0.5, 0.0));
-        Assert.assertEq(expected = 0, List.length(Particles3d.billboards(blastDoc(), Particles3d.textureName(), Res.particleRegion(res()), Particles3d.Space.World, Mat4.identity(), 0.05, puffs)))
+        Assert.assertEq(expected = 0, List.length(Particles3d.billboards(blastDoc(), Particles3d.textureName(), Res.particleFrame(res()), Particles3d.Space.World, Mat4.identity(), 0.05, puffs)))
 
     // ── 飛びかかり・溜め ──
 

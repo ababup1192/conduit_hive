@@ -83,7 +83,7 @@ tris = V.tri_count([body])
 V.harden_normals(body)
 if not NOBAKE:
     V.unwrap(body)
-    V.bake_atlas(body, 1024, "vm_" + KIND)
+    V.bake_atlas(body, 1024, "vm_" + KIND, surfaces=True)
 
 arm = rig.build_armature()
 body.parent = arm

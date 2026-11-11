@@ -1,7 +1,10 @@
+beacon	dynamic=142	static=0
 blast	dynamic=74	static=0
 clear	dynamic=108	static=0
 corridor	dynamic=142	static=0
+dark	dynamic=142	static=0
 dodge	dynamic=99	static=0
+exit	dynamic=142	static=0
 fight	dynamic=142	static=0
 fire	dynamic=142	static=0
 fling	dynamic=73	static=0
@@ -9,7 +12,14 @@ gib	dynamic=81	static=0
 hall	dynamic=142	static=0
 horde	dynamic=142	static=0
 kick	dynamic=65	static=0
+marks	dynamic=142	static=0
+overview	dynamic=142	static=0
+panel	dynamic=142	static=0
 pickups	dynamic=142	static=0
+pipes	dynamic=142	static=0
+puddle	dynamic=142	static=0
+spit	dynamic=142	static=0
+tank	dynamic=142	static=0
 title	dynamic=273	static=0
 tracer	dynamic=66	static=0
 wall	dynamic=142	static=0

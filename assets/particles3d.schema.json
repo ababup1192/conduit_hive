@@ -281,10 +281,112 @@
         }
       }
     },
+    "muzzleFlicker": {
+      "kind": "field",
+      "type": "float",
+      "label": "マズルフラッシュの形が替わるまで（秒。0 で替えない）",
+      "default": 0.016,
+      "min": 0,
+      "max": 0.5,
+      "order": 4
+    },
+    "muzzleSmoke": {
+      "kind": "record",
+      "label": "銃口のうっすらした煙",
+      "order": 5,
+      "fields": {
+        "count": {
+          "type": "int",
+          "label": "1 回に出す数",
+          "order": 1,
+          "default": 3,
+          "min": 0,
+          "max": 64
+        },
+        "life": {
+          "type": "float",
+          "label": "寿命（秒）",
+          "order": 2,
+          "default": 0.6,
+          "min": 0.01,
+          "max": 3
+        },
+        "lifeJitter": {
+          "type": "float",
+          "label": "寿命の散らし（0 で全部同じ）",
+          "order": 3,
+          "default": 0.4,
+          "min": 0,
+          "max": 1
+        },
+        "speed": {
+          "type": "float",
+          "label": "飛び出す速さ（m/秒）",
+          "order": 4,
+          "default": 0.35,
+          "min": 0,
+          "max": 30
+        },
+        "spread": {
+          "type": "float",
+          "label": "向きの広がり（度）",
+          "order": 5,
+          "default": 40.0,
+          "min": 0,
+          "max": 180
+        },
+        "size": {
+          "type": "float",
+          "label": "大きさ（m）",
+          "order": 6,
+          "default": 0.05,
+          "min": 0.005,
+          "max": 1
+        },
+        "grow": {
+          "type": "float",
+          "label": "寿命の終わりの大きさの倍率（1 未満で縮む・1 を超えて広がる）",
+          "default": 3.0,
+          "min": 0,
+          "max": 10,
+          "order": 7
+        },
+        "aspect": {
+          "type": "float",
+          "label": "横の長さの倍率（1 で丸）",
+          "default": 1.0,
+          "min": 0.1,
+          "max": 6,
+          "order": 8
+        },
+        "gravity": {
+          "type": "float",
+          "label": "下へ引く強さ（m/秒²）",
+          "order": 9,
+          "default": -0.6,
+          "min": 0,
+          "max": 30
+        },
+        "color": {
+          "type": "color",
+          "label": "色",
+          "order": 10,
+          "default": "#5a5d62"
+        },
+        "intensity": {
+          "type": "float",
+          "label": "明るさの倍率（線形。1 を超えるとブルームが掛かる）",
+          "order": 11,
+          "default": 0.35,
+          "min": 0,
+          "max": 40
+        }
+      }
+    },
     "spark": {
       "kind": "record",
       "label": "当たった所の火花",
-      "order": 4,
+      "order": 6,
       "fields": {
         "count": {
           "type": "int",
@@ -377,7 +479,7 @@
     "smoke": {
       "kind": "record",
       "label": "壁に当たった所の煙",
-      "order": 5,
+      "order": 7,
       "fields": {
         "count": {
           "type": "int",
@@ -470,7 +572,7 @@
     "light": {
       "kind": "record",
       "label": "撃った瞬間の灯り",
-      "order": 6,
+      "order": 8,
       "fields": {
         "color": {
           "type": "color",
@@ -507,36 +609,36 @@
     "tracer": {
       "kind": "record",
       "label": "連射銃の曳光弾",
-      "order": 7,
+      "order": 9,
       "fields": {
         "every": {
           "type": "int",
-          "label": "何発に 1 発",
+          "label": "何発に 1 発（0 で出さない）",
           "order": 1,
           "default": 1,
-          "min": 1,
+          "min": 0,
           "max": 20
         },
         "speed": {
           "type": "float",
           "label": "飛ぶ速さ（m/秒）",
-          "order": 2,
+          "order": 3,
           "default": 110.0,
           "min": 1,
           "max": 1000
         },
         "length": {
           "type": "float",
-          "label": "光る線の長さ（m）",
-          "order": 3,
+          "label": "光る芯の長さ（m）",
+          "order": 4,
           "default": 3.5,
           "min": 0.1,
           "max": 30
         },
         "width": {
           "type": "float",
-          "label": "光る線の太さ（m）",
-          "order": 4,
+          "label": "光る芯の太さ（m）",
+          "order": 5,
           "default": 0.022,
           "min": 0.002,
           "max": 0.5
@@ -544,21 +646,207 @@
         "color": {
           "type": "color",
           "label": "色",
-          "order": 5,
+          "order": 6,
           "default": "#ffb060"
         },
         "intensity": {
           "type": "float",
           "label": "明るさの倍率",
-          "order": 6,
-          "default": 2.0,
+          "order": 7,
+          "default": 3.0,
           "min": 0,
           "max": 20
         },
         "alpha": {
           "type": "float",
           "label": "濃さ",
+          "order": 8,
+          "default": 0.9,
+          "min": 0,
+          "max": 1
+        },
+        "limit": {
+          "type": "int",
+          "label": "同時に飛ぶ数の上限",
+          "order": 9,
+          "default": 8,
+          "min": 0,
+          "max": 64
+        },
+        "count": {
+          "type": "int",
+          "label": "1 回に出す本数（散弾は粒の当たった所へ）",
+          "order": 2,
+          "default": 1,
+          "min": 1,
+          "max": 16
+        },
+        "glowWidth": {
+          "type": "float",
+          "label": "にじむ外側の太さ（芯の何倍）",
+          "order": 10,
+          "default": 4.0,
+          "min": 1,
+          "max": 20
+        },
+        "glowAlpha": {
+          "type": "float",
+          "label": "にじむ外側の濃さ（0 で描かない）",
+          "order": 11,
+          "default": 0.25,
+          "min": 0,
+          "max": 1
+        }
+      }
+    },
+    "tracerPistol": {
+      "kind": "record",
+      "label": "拳銃の曳光弾",
+      "order": 10,
+      "fields": {
+        "every": {
+          "type": "int",
+          "label": "何発に 1 発（0 で出さない）",
+          "order": 1,
+          "default": 1,
+          "min": 0,
+          "max": 20
+        },
+        "speed": {
+          "type": "float",
+          "label": "飛ぶ速さ（m/秒）",
+          "order": 3,
+          "default": 90.0,
+          "min": 1,
+          "max": 1000
+        },
+        "length": {
+          "type": "float",
+          "label": "光る芯の長さ（m）",
+          "order": 4,
+          "default": 2.5,
+          "min": 0.1,
+          "max": 30
+        },
+        "width": {
+          "type": "float",
+          "label": "光る芯の太さ（m）",
+          "order": 5,
+          "default": 0.02,
+          "min": 0.002,
+          "max": 0.5
+        },
+        "color": {
+          "type": "color",
+          "label": "色",
+          "order": 6,
+          "default": "#ffc070"
+        },
+        "intensity": {
+          "type": "float",
+          "label": "明るさの倍率",
           "order": 7,
+          "default": 3.0,
+          "min": 0,
+          "max": 20
+        },
+        "alpha": {
+          "type": "float",
+          "label": "濃さ",
+          "order": 8,
+          "default": 0.9,
+          "min": 0,
+          "max": 1
+        },
+        "limit": {
+          "type": "int",
+          "label": "同時に飛ぶ数の上限",
+          "order": 9,
+          "default": 4,
+          "min": 0,
+          "max": 64
+        },
+        "count": {
+          "type": "int",
+          "label": "1 回に出す本数（散弾は粒の当たった所へ）",
+          "order": 2,
+          "default": 1,
+          "min": 1,
+          "max": 16
+        },
+        "glowWidth": {
+          "type": "float",
+          "label": "にじむ外側の太さ（芯の何倍）",
+          "order": 10,
+          "default": 4.0,
+          "min": 1,
+          "max": 20
+        },
+        "glowAlpha": {
+          "type": "float",
+          "label": "にじむ外側の濃さ（0 で描かない）",
+          "order": 11,
+          "default": 0.25,
+          "min": 0,
+          "max": 1
+        }
+      }
+    },
+    "tracerShotgun": {
+      "kind": "record",
+      "label": "散弾銃の曳光弾",
+      "order": 11,
+      "fields": {
+        "every": {
+          "type": "int",
+          "label": "何発に 1 発（0 で出さない）",
+          "order": 1,
+          "default": 1,
+          "min": 0,
+          "max": 20
+        },
+        "speed": {
+          "type": "float",
+          "label": "飛ぶ速さ（m/秒）",
+          "order": 3,
+          "default": 80.0,
+          "min": 1,
+          "max": 1000
+        },
+        "length": {
+          "type": "float",
+          "label": "光る芯の長さ（m）",
+          "order": 4,
+          "default": 1.4,
+          "min": 0.1,
+          "max": 30
+        },
+        "width": {
+          "type": "float",
+          "label": "光る芯の太さ（m）",
+          "order": 5,
+          "default": 0.012,
+          "min": 0.002,
+          "max": 0.5
+        },
+        "color": {
+          "type": "color",
+          "label": "色",
+          "order": 6,
+          "default": "#ffa850"
+        },
+        "intensity": {
+          "type": "float",
+          "label": "明るさの倍率",
+          "order": 7,
+          "default": 3.0,
+          "min": 0,
+          "max": 20
+        },
+        "alpha": {
+          "type": "float",
+          "label": "濃さ",
+          "order": 8,
           "default": 0.85,
           "min": 0,
           "max": 1
@@ -566,10 +854,34 @@
         "limit": {
           "type": "int",
           "label": "同時に飛ぶ数の上限",
-          "order": 8,
-          "default": 8,
+          "order": 9,
+          "default": 12,
           "min": 0,
           "max": 64
+        },
+        "count": {
+          "type": "int",
+          "label": "1 回に出す本数（散弾は粒の当たった所へ）",
+          "order": 2,
+          "default": 5,
+          "min": 1,
+          "max": 16
+        },
+        "glowWidth": {
+          "type": "float",
+          "label": "にじむ外側の太さ（芯の何倍）",
+          "order": 10,
+          "default": 4.0,
+          "min": 1,
+          "max": 20
+        },
+        "glowAlpha": {
+          "type": "float",
+          "label": "にじむ外側の濃さ（0 で描かない）",
+          "order": 11,
+          "default": 0.2,
+          "min": 0,
+          "max": 1
         }
       }
     },
@@ -577,7 +889,7 @@
       "kind": "field",
       "type": "int",
       "label": "同時に出ている粒の上限（古い物から消す）",
-      "order": 8,
+      "order": 12,
       "default": 320,
       "min": 0,
       "max": 4000

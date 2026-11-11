@@ -430,7 +430,7 @@ mod World {
         let pd = PlayerDoc.rec(res#player);
         if (Health.isRespawnDue(pd, t, s#health)) respawn(res, s)
         else if (Health.isDown(s#health)) { particles = Particles3d.step(t, s#particles), gibs = Gibs.step(JuiceDoc.rec(res#juice)#gib, lineOfSightIn(res), t, dt, s#gibs),
-                                              tracers = Tracers.step(Particles3dDoc.rec(res#particles)#tracer, t, s#tracers) | s }
+                                              tracers = Tracers.step(Particles3dDoc.rec(res#particles)#tracers, t, s#tracers) | s }
         else {
             let vm = FpViewmodelDoc.rec(res#viewmodel);
             let equipped = Arsenal.equip(vm, t, input#choice, s#arsenal);
@@ -438,7 +438,7 @@ mod World {
             let stepped = walked(res, clock, t, dt, input#drive, braced);
             let moved = { sway = swayAfter(vm, input#drive, dt, s#sway), arsenal = equipped, particles = Particles3d.step(t, stepped#particles),
                           gibs = Gibs.step(JuiceDoc.rec(res#juice)#gib, lineOfSightIn(res), t, dt, s#gibs),
-                          tracers = Tracers.step(Particles3dDoc.rec(res#particles)#tracer, t, s#tracers),
+                          tracers = Tracers.step(Particles3dDoc.rec(res#particles)#tracers, t, s#tracers),
                           drops = Pickups.keepDrops(t, PickupsDoc.rec(res#pickups)#dropLimit, stepped#drops),
                           events = List.append(stepped#events, switched(s#arsenal, equipped)) | stepped };
             let picked = pickUp(res, t, enterZone(res, t, moved));
@@ -699,7 +699,9 @@ mod World {
                              Particles3d.emit(res#particles, Particles3d.Kind.Smoke, Particles3d.Space.World, lifted, hit#normal, t, seed + 32))
         });
         let ahead = Particles3d.muzzleOf(res#particles, a#current)#size * 0.5;
-        let flash = Particles3d.emit(res#particles, Particles3d.Kind.Muzzle(a#current), Particles3d.Space.Muzzle, Vec3.v3(0.0, 0.0, ahead), Vec3.v3(0.0, 0.0, 1.0), t, a#shots);
+        let flash = List.append(
+            Particles3d.emit(res#particles, Particles3d.Kind.Muzzle(a#current), Particles3d.Space.Muzzle, Vec3.v3(0.0, 0.0, ahead), Vec3.v3(0.0, 0.0, 1.0), t, a#shots),
+            Particles3d.emit(res#particles, Particles3d.Kind.MuzzleSmoke, Particles3d.Space.Muzzle, Vec3.v3(0.0, 0.0, ahead), Vec3.v3(0.0, 0.4, 1.0), t, a#shots + 7));
         let damaged = Horde.applyDamage(res, { t = t, damage = stats#damage, weapon = a#current, origin = aim#eye, index = a#shots }, impacts, s#horde);
         let burst = burstOf(res, t, aim#eye, a#shots, damaged#burst, s#gibs);
         let sd = SoundsDoc.rec(res#sounds);
@@ -707,7 +709,8 @@ mod World {
         let jd = JuiceDoc.rec(res#juice);
         let shaken = s#shake |> CameraShake.add(jd#shake, t, JuiceDoc.ofWeapon(a#current, jd#shake#fire)
             + jd#shake#kill * Int32.toFloat64(List.length(damaged#fallen)) + jd#shake#gib * Int32.toFloat64(List.length(damaged#burst)));
-        let tracers = if (Tracers.isDue(pdoc#tracer, a#current, a#shots)) Tracers.add(pdoc#tracer, tracerOf(aim, stats#range, impacts, t), s#tracers) else s#tracers;
+        let tdoc = Particles3dDoc.tracerOf(pdoc, a#current);
+        let tracers = if (Tracers.isDue(tdoc, a#shots)) shotTracersOf(aim, stats#range, impacts, t, a#current, tdoc#count) |> List.foldLeft((acc, tr) -> Tracers.add(tdoc, tr, acc), s#tracers) else s#tracers;
         { arsenal = Arsenal.fire(res#weapons, t, dt, a), horde = damaged#horde,
           drops = List.append(s#drops, Pickups.dropsOf(res#pickups, t, fallenOf(res, damaged#fallen))),
           particles = Particles3d.added(res#particles, List.flatten(flash :: sparks :: burst#particles :: Nil), s#particles),
@@ -734,11 +737,18 @@ mod World {
 
     /// 曳光弾 1 本: 銃口のあたり（目から前へ 0.8 m・右へ 0.12 m・下へ 0.13 m）から、最初に当たった所（当たらなければ照準の先の届く距離）まで。
     // WhyNot: 銃口の点を腕と銃の glb から取らない — 銃口は描く側の物で World は知らない。曳光弾は 1 コマに 2 m 余り進むので数 cm の違いは見えない。
-    pub def tracerOf(aim: Camera3d.Camera3d, range: Float64, impacts: List[Hitscan.Impact], t: Float64): Tracers.Tracer =
+    pub def tracerOf(aim: Camera3d.Camera3d, range: Float64, impacts: List[Hitscan.Impact], t: Float64, w: WeaponsDoc.Weapon): Tracers.Tracer =
         let forward = Camera3d.forward(aim);
-        let start = Vec3.add(aim#eye, Vec3.add(Vec3.mul(forward, 0.8), Vec3.add(Vec3.mul(Camera3d.right(aim), 0.12), Vec3.mul(Camera3d.up(aim), -0.13))));
         let target = List.head(impacts) |> Option.map(hit -> hit#point) |> Option.getWithDefault(Vec3.add(aim#eye, Vec3.mul(forward, range)));
-        { origin = start, target = target, born = t }
+        { origin = tracerStart(aim), target = target, born = t, weapon = w }
+
+    def tracerStart(aim: Camera3d.Camera3d): Vec3.Vec3 =
+        Vec3.add(aim#eye, Vec3.add(Vec3.mul(Camera3d.forward(aim), 0.8), Vec3.add(Vec3.mul(Camera3d.right(aim), 0.12), Vec3.mul(Camera3d.up(aim), -0.13))))
+
+    /// 1 回撃った時の曳光弾 count 本: 1 本なら tracerOf と同じ・2 本以上なら粒の当たった所の前から count 個へ 1 本ずつ（届かなかった粒の分は出さない）。
+    def shotTracersOf(aim: Camera3d.Camera3d, range: Float64, impacts: List[Hitscan.Impact], t: Float64, w: WeaponsDoc.Weapon, count: Int32): List[Tracers.Tracer] =
+        if (count <= 1) tracerOf(aim, range, impacts, t, w) :: Nil
+        else impacts |> List.take(count) |> List.map(hit -> { origin = tracerStart(aim), target = hit#point, born = t, weapon = w })
 
     /// 撃った後に遅れて起きる事: 薬莢が床に落ちる（武器ごとの秒の後）・散弾銃は先台を引く。
     def afterShot(sd: SoundsDoc.Rec, t: Float64, w: WeaponsDoc.Weapon): List[{ at = Float64, event = Event }] = match w {

@@ -11,7 +11,7 @@
 //   窓の測り             … 1 コマの間隔（frame#realNow の差）と FrameDiagnostics（GL へ送る・swap・GPU・3D の数）
 // 結果は debug/bench/horde-<label>.txt に書く（App.addOutput）。
 mod HordeBench {
-    use fge::{App, Clock, FrameDiagnostics, Hash01, HeadlessLoad, Log, LwjglLayer, Num, Render, Scene3d}
+    use fge::{App, Clock, FrameDiagnostics, Hash01, HeadlessLoad, Log, LwjglLayer, Num, Render, Scene3d, Sort}
 
     import java.io.File
     import java.lang.System
@@ -266,10 +266,10 @@ mod HordeBench {
 
     /// 中央値・95 パーセンタイル・最大（ミリ秒）。
     def spread(xs: List[Float64]): String =
-        let sorted = List.sort(xs);
+        let sorted = Sort.sortStable(xs);
         "median ${fmt(at(50, sorted))}  p95 ${fmt(at(95, sorted))}  max ${fmt(at(100, sorted))}"
 
-    def medianInt(xs: List[Int32]): Int32 = List.drop(List.length(xs) / 2, List.sort(xs)) |> List.head |> Option.getWithDefault(0)
+    def medianInt(xs: List[Int32]): Int32 = List.drop(List.length(xs) / 2, Sort.sortStable(xs)) |> List.head |> Option.getWithDefault(0)
 
     /// 描き先ごとの GPU の時間の平均（ミリ秒）。
     def passAverages(samples: List[Sample]): String =
@@ -313,7 +313,7 @@ mod HordeBench {
     /// GC は JAVA_TOOL_OPTIONS="-Xlog:gc*:file=…" で別に取って時刻で照らす。
     def worstFrames(xs: List[Sample]): List[String] =
         let n = List.length(xs);
-        xs |> List.zipWithIndex |> List.map(e -> (0i64 - snd(e)#intervalNs, e)) |> List.sortBy(fst) |> List.take(3) |> List.map(e -> {
+        xs |> List.zipWithIndex |> List.map(e -> (0i64 - snd(e)#intervalNs, e)) |> Sort.sortStableBy(fst) |> List.take(3) |> List.map(e -> {
             let (i, sample) = snd(e);
             let d = sample#diag;
             "worst         frame ${n - i} interval=${fmt(ms(sample#intervalNs))} submit=${fmt(ms(d#submitNs))} swap=${fmt(ms(d#swapNs))} gpu=${fmt(d#gpuNs |> Option.map(ms) |> Option.getWithDefault(0.0))} shaders=${List.length(d#shaderBuilds)} uploads=${List.length(d#textureUploads)}"

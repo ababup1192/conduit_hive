@@ -6,10 +6,11 @@
 mod Particles3d {
     use fge::{Color, Hash01, Mat4, Num, PxSpriteAtlas, Rect2, Scene3d, Texture3d, Vec2, Vec3}
 
-    /// 粒の種類（Doc の欄と、描くコマを決める）。Muzzle は武器ごとの形・Smoke は壁の煙・Gore は弾けた時の体液・Ring は弾けた時の衝撃の輪・
+    /// 粒の種類（Doc の欄と、描くコマを決める）。Muzzle は武器ごとの形・MuzzleSmoke は撃った後の銃口の薄い煙・Smoke は壁の煙・Gore は弾けた時の体液・Ring は弾けた時の衝撃の輪・
     /// Blast は手榴弾の爆発の粒（BlastPart の 4 つ）。
     pub enum Kind with Eq, ToString {
         case Muzzle(WeaponsDoc.Weapon)
+        case MuzzleSmoke
         case Spark
         case Smoke
         case Ichor
@@ -48,6 +49,7 @@ mod Particles3d {
         case Kind.Muzzle(WeaponsDoc.Weapon.Pistol)  => Particles3dDoc.rec(doc)#muzzle#pistol
         case Kind.Muzzle(WeaponsDoc.Weapon.Shotgun) => Particles3dDoc.rec(doc)#muzzle#shotgun
         case Kind.Muzzle(WeaponsDoc.Weapon.Rifle)   => Particles3dDoc.rec(doc)#muzzle#rifle
+        case Kind.MuzzleSmoke => Particles3dDoc.rec(doc)#muzzleSmoke
         case Kind.Spark  => Particles3dDoc.rec(doc)#spark
         case Kind.Smoke  => Particles3dDoc.rec(doc)#smoke
         case Kind.Ichor  => Particles3dDoc.rec(doc)#ichor
@@ -108,8 +110,7 @@ mod Particles3d {
                 |> Scene3d.withAnchor(center()) |> Scene3d.withBillboardTint(brightened(g#color, g#intensity)) |> Scene3d.unlit)
 
     /// 曳光弾の頭の光る玉（点 at が玉の真ん中・大きさは線の太さの 4 倍）。region = 粒の絵のコマ（無ければ描かない）。
-    pub def tracerHead(doc: Particles3dDoc.Doc, texture: String, area: Option[Rect2.Rect2], at: Vec3.Vec3): Option[Scene3d.Billboard3d] =
-        let tr = Particles3dDoc.rec(doc)#tracer;
+    pub def tracerHead(tr: Particles3dDoc.Tracer, texture: String, area: Option[Rect2.Rect2], at: Vec3.Vec3): Option[Scene3d.Billboard3d] =
         area |> Option.map(rect ->
             Scene3d.billboard(texture, rect, at, { x = tr#width * 4.0, y = tr#width * 4.0 })
                 |> Scene3d.withAnchor(center()) |> Scene3d.withBillboardTint(brightened(tr#color, tr#intensity)) |> Scene3d.unlit)
@@ -143,12 +144,28 @@ mod Particles3d {
         let fall = 0.5 * burstOf(doc, p#kind)#gravity * age * age;
         Vec3.add(p#origin, Vec3.v3(p#velocity#x * age, p#velocity#y * age - fall, p#velocity#z * age))
 
+    /// 粒 p の時刻 t の形の番号: マズルフラッシュは粒ごとにずらした番号から、Doc の muzzleFlicker 秒ごとに次の形へ替わる（ほかの種類は 0）。
+    def frameAt(doc: Particles3dDoc.Doc, t: Float64, p: Particle): Int32 = match p#kind {
+        case Kind.Muzzle(_) =>
+            let flicker = Particles3dDoc.rec(doc)#muzzleFlicker;
+            let start = Num.floorInt(Hash01.at(Num.floorInt(p#velocity#x * 7919.0 + p#velocity#y * 104729.0 + p#born * 997.0), 61) * Int32.toFloat64(muzzleFrames()));
+            let steps = if (flicker <= 0.0) 0 else Num.floorInt(Float64.max(0.0, t - p#born) / flicker);
+            Int32.modulo(start + steps, muzzleFrames())
+        case Kind.Ichor => dropOf(p)
+        case Kind.Gore  => dropOf(p)
+        case _ => 0
+    }
+
+    /// 体液の粒の形の番号（粒ごとに散らす。寿命の間は替えない）。
+    def dropOf(p: Particle): Int32 =
+        Num.floorInt(Hash01.at(Num.floorInt(p#velocity#x * 7919.0 + p#velocity#z * 104729.0), 62) * 2.0)
+
     /// 置き場 space の生きている粒の Billboard3d。base = 置き場の座標 → 描く場面の座標の行列（Muzzle なら今の銃口の行列・World なら単位行列）。
-    /// regionOf = 種類 → アトラスのコマ（無ければその粒は描かない）。大きさは寿命の終わりに grow 倍へ変わり、横は aspect 倍。
-    pub def billboards(doc: Particles3dDoc.Doc, texture: String, regionOf: Kind -> Option[Rect2.Rect2],
+    /// regionOf = 種類と形の番号 → アトラスのコマ（無ければその粒は描かない）。大きさは寿命の終わりに grow 倍へ変わり、横は aspect 倍。
+    pub def billboards(doc: Particles3dDoc.Doc, texture: String, regionOf: (Kind, Int32) -> Option[Rect2.Rect2],
                        space: Space, base: Mat4.Mat4, t: Float64, ps: List[Particle]): List[Scene3d.Billboard3d] =
         ps |> List.filter(p -> p#space == space and isAlive(t, p)) |> List.filterMap(p ->
-            regionOf(p#kind) |> Option.map(rect -> {
+            regionOf(p#kind, frameAt(doc, t, p)) |> Option.map(rect -> {
                 let b = burstOf(doc, p#kind);
                 let size = b#size * (1.0 + (b#grow - 1.0) * Num.clamp01((t - p#born) / Float64.max(0.0001, p#life)));
                 Scene3d.billboard(texture, rect, Mat4.apply(base, positionAt(doc, t, p)), { x = size * b#aspect, y = size })
@@ -168,11 +185,31 @@ mod Particles3d {
 
     /// 粒の絵を GPU に登録する名前と、上げ直すかを決める鍵（絵はコードで決まるので、塗り方を替えたら版を上げる）。
     pub def textureName(): String = "particles3d"
-    pub def textureKey(): String = "particles3d:v6"
+    pub def textureKey(): String = "particles3d:v8"
+
+    /// マズルフラッシュの形の数（左の列に縦に並ぶ。筋の長さと角をずらし、少しずつ回した形）。
+    def muzzleFrames(): Int32 = 3
+
+    def frameName(frame: Int32): String = match Int32.modulo(frame, muzzleFrames()) {
+        case 0 => "a"
+        case 1 => "b"
+        case _ => "c"
+    }
+
+    /// 種類の frame 番目のコマ。マズルフラッシュは形の数・体液の粒は 2 つのコマがあり、ほかの種類は regionOf と同じ。
+    pub def frameRegionOf(t: PxSpriteAtlas.Baked, kind: Kind, frame: Int32): Option[Rect2.Rect2] = match kind {
+        case Kind.Muzzle(_) => PxSpriteAtlas.regionOf(t, "muzzle", frameName(frame))
+        case Kind.Ichor     => PxSpriteAtlas.regionOf(t, "drop", if (frame == 0) "a" else "b")
+        case Kind.Gore      => PxSpriteAtlas.regionOf(t, "drop", if (frame == 0) "a" else "b")
+        case _              => regionOf(t, kind)
+    }
 
     /// 種類のコマ（textureOf の中の矩形）。形で描く爆発の部分（BlastFx）はコマが無い（ビルボードにしない）。
     pub def regionOf(t: PxSpriteAtlas.Baked, kind: Kind): Option[Rect2.Rect2] = match kind {
         case Kind.Muzzle(_) => PxSpriteAtlas.regionOf(t, "muzzle", "a")
+        case Kind.MuzzleSmoke => PxSpriteAtlas.regionOf(t, "smoke", "a")
+        case Kind.Ichor     => PxSpriteAtlas.regionOf(t, "drop", "a")
+        case Kind.Gore      => PxSpriteAtlas.regionOf(t, "drop", "a")
         case Kind.Smoke     => PxSpriteAtlas.regionOf(t, "smoke", "a")
         case Kind.Ring      => PxSpriteAtlas.regionOf(t, "ring", "a")
         case Kind.Blast(BlastPart.Smoke) => PxSpriteAtlas.regionOf(t, "smoke", "a")
@@ -182,23 +219,31 @@ mod Particles3d {
         case _              => PxSpriteAtlas.regionOf(t, "spark", "a")
     }
 
-    /// 粒の絵 1 枚（左にマズルフラッシュ・右の列に上から火花・輪・煙）。色は白から灰の濃淡だけで、粒の色は描く時に掛ける。
+    /// 粒の絵 1 枚（左の列に上からマズルフラッシュの 3 つの形・右の列に上から火花・輪・煙・体液の粒の 2 つの形）。色は白から灰の濃淡だけで、粒の色は描く時に掛ける。
     /// 型の外は透明（ビルボードは α が半分未満の画素を捨てる）。読み込みで 1 回だけ作る。
     pub def textureOf(): PxSpriteAtlas.Baked =
-        let side = muzzleSide() + sparkSide();
+        let side = muzzleSide() * muzzleFrames();
         let pixels = Vector.range(0, side * side) |> Vector.map(i -> {
             let (x, y) = (Int32.modulo(i, side), i / side);
-            if (x < muzzleSide() and y < muzzleSide()) muzzlePixel(x, y)
+            if (x < muzzleSide() and y < muzzleSide() * muzzleFrames()) streakMuzzlePixel(y / muzzleSide(), x, Int32.modulo(y, muzzleSide()))
             else if (x >= muzzleSide() and y < ringTop()) sparkPixel(x - muzzleSide(), y)
             else if (x >= muzzleSide() and y < smokeTop()) ringPixel(x - muzzleSide(), y - ringTop())
             else if (x >= muzzleSide() and y < smokeTop() + sparkSide()) smokePixel(x - muzzleSide(), y - smokeTop())
+            else if (x >= muzzleSide() and y < dropTop() + sparkSide() * 2) dropPixel((y - dropTop()) / sparkSide(), x - muzzleSide(), Int32.modulo(y - dropTop(), sparkSide()))
             else 0
         });
         { side = side, pixels = pixels,
           regions = Map#{ ("muzzle", "a") => { x = 0, y = 0, w = muzzleSide(), h = muzzleSide() },
+                          ("muzzle", "b") => { x = 0, y = muzzleSide(), w = muzzleSide(), h = muzzleSide() },
+                          ("muzzle", "c") => { x = 0, y = muzzleSide() * 2, w = muzzleSide(), h = muzzleSide() },
                           ("spark", "a") => { x = muzzleSide(), y = 0, w = sparkSide(), h = sparkSide() },
                           ("ring", "a") => { x = muzzleSide(), y = ringTop(), w = sparkSide(), h = sparkSide() },
-                          ("smoke", "a") => { x = muzzleSide(), y = smokeTop(), w = sparkSide(), h = sparkSide() } } }
+                          ("smoke", "a") => { x = muzzleSide(), y = smokeTop(), w = sparkSide(), h = sparkSide() },
+                          ("drop", "a") => { x = muzzleSide(), y = dropTop(), w = sparkSide(), h = sparkSide() },
+                          ("drop", "b") => { x = muzzleSide(), y = dropTop() + sparkSide(), w = sparkSide(), h = sparkSide() } } }
+
+    /// 右の列の体液の粒の 2 つの形の左上の y（煙の下）。
+    def dropTop(): Int32 = smokeTop() + sparkSide()
 
     /// 画素の真ん中の、型の中の座標（-1〜1）。
     def unitOf(n: Int32, x: Int32, y: Int32): (Float64, Float64) =
@@ -210,19 +255,36 @@ mod Particles3d {
         let v = Num.roundInt(255.0 * Num.clamp01(k));
         Int32.bitwiseOr(Int32.bitwiseOr(-16777216, Int32.leftShift(v, 16)), Int32.bitwiseOr(Int32.leftShift(v, 8), v))
 
-    /// マズルフラッシュ: 真ん中の丸から長短 3 本ずつの光の筋が先細りに出る星。真ん中が白く、外へ向かって暗くなる。
-    def muzzlePixel(x: Int32, y: Int32): Int32 =
+    /// マズルフラッシュ（frame 番目の形）: 小さな白い芯から、細い光の筋が 14 本放射状に開く（実写の銃口の光の写真のような、芯が強く筋が細い形）。
+    /// 筋は 1 本ずつ長さと角をずらし、形ごとに全体を少し回す（数コマで形が変わり、少しずつ回って見える）。芯ほど明るく、筋の先へ暗くなる。
+    // WhyNot: 太い 6 本の星にしない — 平たい切り絵の星に見えて漫画っぽい。筋を細く多くして、明るさはブルームでにじませる。
+    def streakMuzzlePixel(frame: Int32, x: Int32, y: Int32): Int32 =
         let (u, v) = unitOf(muzzleSide(), x, y);
         let d = Num.sqrt(u * u + v * v);
         let a = Num.atan2(v, u);
-        let inRay = List.range(0, 6) |> List.exists(k -> {
-            let length = if (Int32.modulo(k, 2) == 0) 1.0 else 0.68;
-            let da = a - (Int32.toFloat64(k) * Num.pi() / 3.0 + Num.pi() / 2.0);
+        let turn = Int32.toFloat64(frame) * 0.21;
+        let rays = 14;
+        let ray = List.range(0, rays) |> List.foldLeft((best, k) -> {
+            let key = frame * 31 + k;
+            let length = 0.45 + 0.55 * Hash01.at(key, 63);
+            let angle = Int32.toFloat64(k) * Num.tau() / Int32.toFloat64(rays) + turn + 0.18 * (Hash01.at(key, 64) - 0.5);
+            let da = a - angle;
             let across = Float64.abs(Num.sin(da)) * d;
-            Num.cos(da) > 0.0 and d <= length and across <= 0.16 * (1.0 - d / length)
-        });
-        let falloff = 1.0 - Num.clamp01(d);
-        if (d <= 0.34 or inRay) greyOf(0.08 + 0.92 * falloff * falloff) else 0
+            let thick = 0.06 + 0.04 * Hash01.at(key, 65);
+            let lit = Num.cos(da) > 0.0 and d <= length and across <= thick * (1.0 - d / length) + 0.012;
+            if (lit) Float64.max(best, 1.0 - d / length) else best
+        }, 0.0);
+        let core = Num.clamp01(1.0 - d / 0.3);
+        let k = Float64.max(core, ray * ray);
+        if (k > 0.02) greyOf(0.2 + 0.8 * k) else 0
+
+    /// 体液の粒（frame 番目の形）: 縁のちぎれた小さな滴。0 は少し細長い・1 は小さな欠片の 2 つ。
+    def dropPixel(frame: Int32, x: Int32, y: Int32): Int32 =
+        let (u, v) = unitOf(sparkSide(), x, y);
+        let stretch = if (frame == 0) 1.6 else 1.0;
+        let d = Num.sqrt(u * u * stretch * stretch + v * v);
+        let n = valueNoise(10, 66 + frame, x, y);
+        if (d <= 0.45 + 0.35 * n) greyOf(1.0 - 0.6 * d) else 0
 
     /// 火花: 丸。真ん中が白く、縁へ向かって暗くなる。
     def sparkPixel(x: Int32, y: Int32): Int32 =

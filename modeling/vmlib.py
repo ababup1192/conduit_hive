@@ -499,8 +499,8 @@ def to_srgb(lin):
     return np.where(lin <= 0.0031308, lin * 12.92, 1.055 * np.power(lin, 1 / 2.4) - 0.055)
 
 
-def bake_atlas(o, size, name, extra_occluders=()):
-    """o（glow 以外の材質）を 1 枚の絵へベイク、材質を body（絵）と glow（光る色）の 2 つにまとめる。"""
+def bake_atlas(o, size, name, extra_occluders=(), surfaces=False):
+    """o（glow 以外の材質）を 1 枚の絵へベイク、材質を body（絵）と glow（光る色）にまとめる（surfaces なら body を色分けごとに分ける）。"""
     t0 = time.time()
     sc = bpy.context.scene
     sc.render.engine = "CYCLES"
@@ -540,18 +540,20 @@ def bake_atlas(o, size, name, extra_occluders=()):
     tex.pack()
     bpy.data.images.remove(img)
 
-    body = bpy.data.materials.new(name + "_body")
-    body.use_nodes = True
-    nt = body.node_tree
-    nt.nodes.clear()
-    out = nt.nodes.new("ShaderNodeOutputMaterial")
-    bsdf = nt.nodes.new("ShaderNodeBsdfPrincipled")
-    nt.links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
-    t = nt.nodes.new("ShaderNodeTexImage")
-    t.image = tex
-    nt.links.new(t.outputs["Color"], bsdf.inputs["Base Color"])
-    bsdf.inputs["Metallic"].default_value = 0.2
-    bsdf.inputs["Roughness"].default_value = 0.55
+    def body_material(suffix, metallic, roughness):
+        body = bpy.data.materials.new(name + "_" + suffix)
+        body.use_nodes = True
+        nt = body.node_tree
+        nt.nodes.clear()
+        out = nt.nodes.new("ShaderNodeOutputMaterial")
+        bsdf = nt.nodes.new("ShaderNodeBsdfPrincipled")
+        nt.links.new(bsdf.outputs["BSDF"], out.inputs["Surface"])
+        t = nt.nodes.new("ShaderNodeTexImage")
+        t.image = tex
+        nt.links.new(t.outputs["Color"], bsdf.inputs["Base Color"])
+        bsdf.inputs["Metallic"].default_value = metallic
+        bsdf.inputs["Roughness"].default_value = roughness
+        return body
 
     glow = bpy.data.materials.new(name + "_glow")
     glow.use_nodes = True
@@ -562,16 +564,27 @@ def bake_atlas(o, size, name, extra_occluders=()):
     bsdf.inputs["Emission Strength"].default_value = GLOW_STRENGTH
     bsdf.inputs["Roughness"].default_value = 0.3
 
-    glow_idx = {i for i, m in enumerate(mats) if m.name.split(".")[0] == "glow"}
-    for p in o.data.polygons:
-        p.material_index = 1 if p.material_index in glow_idx else 0
-    # WhyNot: materials.clear() で付け替えない — 面の材質の番号が全部 0 へ戻り、光る面が消える。
+    # 面の新しい材質: surfaces なら形を組んだ時の色分け（steel・glove…）ごとに、同じ絵を読む材質を 1 つずつ（名前 <name>_<色分け>）。
+    # ゲームは材質の名前の末尾で金属っぽさと粗さを Doc から付ける。surfaces でなければ body 1 つ。
+    classes = [m.name.split(".")[0] for m in mats]
+    if surfaces:
+        order = [c for i, c in enumerate(classes) if c != "glow" and c not in classes[:i]]
+        bodies = [body_material(c, PALETTE[c][1], PALETTE[c][2]) for c in order]
+        slot_of = {c: j for j, c in enumerate(order)}
+    else:
+        bodies = [body_material("body", 0.2, 0.55)]
+        slot_of = {c: 0 for c in classes if c != "glow"}
+    new_mats = bodies + ([glow] if "glow" in classes else [])
+    remap = [len(bodies) if c == "glow" else slot_of[c] for c in classes]
     me = o.data
-    while len(me.materials) < 2:
-        me.materials.append(body)
-    me.materials[0] = body
-    me.materials[1] = glow
-    while len(me.materials) > (2 if glow_idx else 1):
+    # WhyNot: materials.clear() で付け替えない — 面の材質の番号が全部 0 へ戻り、光る面が消える。
+    while len(me.materials) < len(new_mats):
+        me.materials.append(new_mats[0])
+    for p in me.polygons:
+        p.material_index = remap[p.material_index]
+    for j, m in enumerate(new_mats):
+        me.materials[j] = m
+    while len(me.materials) > len(new_mats):
         me.materials.pop(index=len(me.materials) - 1)
     print("bake %s %dpx %.1fs" % (name, size, time.time() - t0))
     return tex

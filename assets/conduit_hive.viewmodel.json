@@ -1,7 +1,7 @@
 {
   "version": 1,
   "title": "腕と銃の見え方",
-  "note": "画面の手前に重ねる腕と銃（ビューモデル）。ステージとは別の場面で描くので、壁に近づいても銃が壁に埋まらない。光の色と向きはステージの look と灯りに合わせ、強さだけ ambientScale・lampScale で沈める（目の真ん前の物はステージと同じ強さだと白っぽく見える）。霧は掛けない。長さは m・角度は度・時間は秒。",
+  "note": "画面の手前に重ねる腕と銃（ビューモデル）。ステージとは別の場面で描くので、壁に近づいても銃が壁に埋まらない。光の色と向きはステージの look と灯りに合わせ、強さだけ ambientScale・lampScale で沈める（目の真ん前の物はステージと同じ強さだと白っぽく見える）。霧は掛けない。長さは m・角度は度・時間は秒。 pbr = 面ごとの金属っぽさと粗さを付けるか（偽で拡散の光だけ）。steel〜bore は glb の材質の名前の末尾（vm_<武器>_<面>）で引く面ごとの metallic（0 絶縁体〜1 金属）と roughness（0 鏡〜1 ざらざら）。光る筋には付けない。",
   "fovY": 55.0,
   "near": 0.01,
   "far": 4.0,
@@ -13,5 +13,27 @@
   "drawSeconds": 0.35,
   "recoilRecover": 0.18,
   "ambientScale": 0.35,
-  "lampScale": 0.08
+  "lampScale": 0.08,
+  "pbr": true,
+  "steel": {
+    "metallic": 0.75,
+    "roughness": 0.3
+  },
+  "steelDark": {
+    "metallic": 0.7,
+    "roughness": 0.4
+  },
+  "graphite": {
+    "metallic": 0.0,
+    "roughness": 0.62
+  },
+  "glove": {
+    "metallic": 0.0,
+    "roughness": 0.95
+  },
+  "bore": {
+    "metallic": 0.5,
+    "roughness": 0.7
+  },
+  "envScale": 3.0
 }

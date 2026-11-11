@@ -21,418 +21,476 @@
       "node": "ZONE_A",
       "name": "start",
       "kind": "room",
-      "triangles": 13846,
+      "triangles": 13900,
       "materials": [
+        "M_decal",
+        "M_fx_3aa0ff",
+        "M_fx_ff2a1a",
         "M_hull",
-        "M_lamp",
+        "M_lamp_41",
+        "M_puddle",
         "M_strip"
       ],
       "lightmap_png": "stage_lightmaps/zone_41_A.png",
       "lightmap_size": 1024,
       "uv_gap_px": 8,
       "lightmap_stats": {
-        "p50": 0.05999735692226224,
-        "p95": 2.1299062933612753,
-        "clipped_pct": 2.5429725646972656
+        "p50": 0.07419286926435653,
+        "p95": 2.074027205449563,
+        "clipped_pct": 2.415180206298828
       }
     },
     "B": {
       "node": "ZONE_B",
       "name": "pump",
       "kind": "room",
-      "triangles": 16406,
+      "triangles": 16468,
       "materials": [
+        "M_decal",
+        "M_fx_ff2a1a",
         "M_hull",
-        "M_lamp",
+        "M_lamp_42",
+        "M_puddle",
         "M_strip"
       ],
       "lightmap_png": "stage_lightmaps/zone_42_B.png",
       "lightmap_size": 1024,
       "uv_gap_px": 8,
       "lightmap_stats": {
-        "p50": 0.15655743573330066,
-        "p95": 3.8861122246671607,
-        "clipped_pct": 5.791759490966797
+        "p50": 0.16185341134998535,
+        "p95": 3.8725445253407513,
+        "clipped_pct": 5.9444427490234375
       }
     },
     "C": {
       "node": "ZONE_C",
       "name": "relay",
       "kind": "room",
-      "triangles": 16492,
+      "triangles": 16530,
       "materials": [
+        "M_decal",
+        "M_fx_39ff88",
         "M_hull",
-        "M_lamp",
+        "M_lamp_43",
+        "M_puddle",
         "M_strip"
       ],
       "lightmap_png": "stage_lightmaps/zone_43_C.png",
       "lightmap_size": 1024,
       "uv_gap_px": 8,
       "lightmap_stats": {
-        "p50": 0.07669249026366959,
-        "p95": 1.708912087202072,
-        "clipped_pct": 1.9576072692871094
+        "p50": 0.07268308000763257,
+        "p95": 1.604981070809894,
+        "clipped_pct": 1.8323898315429688
       }
     },
     "D": {
       "node": "ZONE_D",
       "name": "filter",
       "kind": "room",
-      "triangles": 14508,
+      "triangles": 14732,
       "materials": [
+        "M_decal",
+        "M_fx_7dff4a",
+        "M_fx_ff2a1a",
         "M_hull",
-        "M_lamp",
+        "M_lamp_44",
+        "M_puddle",
         "M_strip"
       ],
       "lightmap_png": "stage_lightmaps/zone_44_D.png",
       "lightmap_size": 1024,
       "uv_gap_px": 8,
       "lightmap_stats": {
-        "p50": 0.1750966607950352,
-        "p95": 4.143566929022471,
-        "clipped_pct": 6.2000274658203125
+        "p50": 0.14849040692934284,
+        "p95": 4.687123307969836,
+        "clipped_pct": 7.180976867675781
       }
     },
     "E": {
       "node": "ZONE_E",
       "name": "hub",
       "kind": "room",
-      "triangles": 22148,
+      "triangles": 22202,
       "materials": [
+        "M_decal",
+        "M_fx_3aa0ff",
+        "M_fx_ff2a1a",
         "M_hull",
-        "M_lamp",
+        "M_lamp_45",
+        "M_puddle",
         "M_strip"
       ],
       "lightmap_png": "stage_lightmaps/zone_45_E.png",
       "lightmap_size": 2048,
       "uv_gap_px": 8,
       "lightmap_stats": {
-        "p50": 0.1405860428572805,
-        "p95": 3.2061357591417106,
-        "clipped_pct": 4.268836975097656
+        "p50": 0.1468075923047684,
+        "p95": 3.1975330282670473,
+        "clipped_pct": 4.233121871948242
       }
     },
     "F": {
       "node": "ZONE_F",
       "name": "coolant",
       "kind": "room",
-      "triangles": 15426,
+      "triangles": 15472,
       "materials": [
+        "M_decal",
         "M_hull",
-        "M_lamp",
+        "M_lamp_46",
+        "M_puddle",
         "M_strip"
       ],
       "lightmap_png": "stage_lightmaps/zone_46_F.png",
       "lightmap_size": 1024,
       "uv_gap_px": 8,
       "lightmap_stats": {
-        "p50": 0.10306037290973796,
-        "p95": 1.8856704383514544,
-        "clipped_pct": 1.86004638671875
+        "p50": 0.10216706711664383,
+        "p95": 1.8325513578653339,
+        "clipped_pct": 1.7569541931152344
       }
     },
     "G": {
       "node": "ZONE_G",
       "name": "vault",
       "kind": "room",
-      "triangles": 15652,
+      "triangles": 15688,
       "materials": [
+        "M_decal",
+        "M_fx_ff2a1a",
         "M_hull",
-        "M_lamp",
+        "M_lamp_47",
+        "M_puddle",
         "M_strip"
       ],
       "lightmap_png": "stage_lightmaps/zone_47_G.png",
       "lightmap_size": 1024,
       "uv_gap_px": 8,
       "lightmap_stats": {
-        "p50": 0.082005882854263,
-        "p95": 1.9337253854208525,
-        "clipped_pct": 2.623271942138672
+        "p50": 0.06789680602567064,
+        "p95": 1.1868725076295712,
+        "clipped_pct": 1.0150909423828125
       }
     },
     "H": {
       "node": "ZONE_H",
       "name": "hive",
       "kind": "room",
-      "triangles": 88996,
+      "triangles": 89076,
       "materials": [
+        "M_decal",
+        "M_fx_39ff88",
+        "M_fx_ff2a1a",
         "M_hull",
-        "M_lamp",
+        "M_lamp_48",
+        "M_puddle",
         "M_strip"
       ],
       "lightmap_png": "stage_lightmaps/zone_48_H.png",
       "lightmap_size": 2048,
       "uv_gap_px": 8,
       "lightmap_stats": {
-        "p50": 0.13013780447606135,
-        "p95": 2.7587436069470854,
-        "clipped_pct": 1.677870750427246
+        "p50": 0.13842103279630344,
+        "p95": 2.8023683641221786,
+        "clipped_pct": 1.7020225524902344
       }
     },
     "a": {
       "node": "ZONE_a",
       "name": "A-B",
       "kind": "corridor",
-      "triangles": 4488,
+      "triangles": 4520,
       "materials": [
+        "M_decal",
+        "M_fx_ff2020",
         "M_hull",
-        "M_lamp",
+        "M_lamp_61",
+        "M_puddle",
         "M_strip"
       ],
       "lightmap_png": "stage_lightmaps/zone_61_a.png",
       "lightmap_size": 512,
       "uv_gap_px": 8,
       "lightmap_stats": {
-        "p50": 0.16055739716992334,
-        "p95": 1.4105716646247413,
-        "clipped_pct": 0.5313873291015625
+        "p50": 0.164283869040785,
+        "p95": 1.4270348815432297,
+        "clipped_pct": 0.52947998046875
       }
     },
     "b": {
       "node": "ZONE_b",
       "name": "B-C",
       "kind": "corridor",
-      "triangles": 5744,
+      "triangles": 5766,
       "materials": [
+        "M_decal",
         "M_hull",
-        "M_lamp",
+        "M_lamp_62",
+        "M_puddle",
         "M_strip"
       ],
       "lightmap_png": "stage_lightmaps/zone_62_b.png",
       "lightmap_size": 512,
       "uv_gap_px": 8,
       "lightmap_stats": {
-        "p50": 0.0975584652804666,
-        "p95": 1.0931219132112118,
-        "clipped_pct": 0.2368927001953125
+        "p50": 0.10007916047821183,
+        "p95": 1.124890077387842,
+        "clipped_pct": 0.1102447509765625
       }
     },
     "c": {
       "node": "ZONE_c",
       "name": "A-D",
       "kind": "corridor",
-      "triangles": 6070,
+      "triangles": 6106,
       "materials": [
+        "M_decal",
         "M_hull",
-        "M_lamp",
+        "M_lamp_63",
+        "M_puddle",
         "M_strip"
       ],
       "lightmap_png": "stage_lightmaps/zone_63_c.png",
       "lightmap_size": 512,
       "uv_gap_px": 8,
       "lightmap_stats": {
-        "p50": 0.11727277677009504,
-        "p95": 1.1135991012034558,
-        "clipped_pct": 0.0995635986328125
+        "p50": 0.1000285598871403,
+        "p95": 0.5042928749742325,
+        "clipped_pct": 0.003814697265625
       }
     },
     "d": {
       "node": "ZONE_d",
       "name": "B-E",
       "kind": "corridor",
-      "triangles": 4834,
+      "triangles": 4852,
       "materials": [
+        "M_decal",
         "M_hull",
-        "M_lamp",
+        "M_lamp_64",
+        "M_puddle",
         "M_strip"
       ],
       "lightmap_png": "stage_lightmaps/zone_64_d.png",
       "lightmap_size": 512,
       "uv_gap_px": 8,
       "lightmap_stats": {
-        "p50": 0.11391764914879093,
-        "p95": 0.9316977620654607,
-        "clipped_pct": 0.2330780029296875
+        "p50": 0.12123883842710059,
+        "p95": 0.9541095201041943,
+        "clipped_pct": 0.213623046875
       }
     },
     "e": {
       "node": "ZONE_e",
       "name": "C-F",
       "kind": "corridor",
-      "triangles": 6000,
+      "triangles": 6022,
       "materials": [
+        "M_decal",
         "M_hull",
-        "M_lamp",
+        "M_lamp_65",
+        "M_puddle",
         "M_strip"
       ],
       "lightmap_png": "stage_lightmaps/zone_65_e.png",
       "lightmap_size": 512,
       "uv_gap_px": 8,
       "lightmap_stats": {
-        "p50": 0.10500284561459666,
-        "p95": 1.2150789234351176,
-        "clipped_pct": 0.2414703369140625
+        "p50": 0.10769618760780604,
+        "p95": 1.2131164500536733,
+        "clipped_pct": 0.159454345703125
       }
     },
     "f": {
       "node": "ZONE_f",
       "name": "D-E",
       "kind": "corridor",
-      "triangles": 4764,
+      "triangles": 4780,
       "materials": [
+        "M_decal",
         "M_hull",
-        "M_lamp",
+        "M_lamp_66",
+        "M_puddle",
         "M_strip"
       ],
       "lightmap_png": "stage_lightmaps/zone_66_f.png",
       "lightmap_size": 512,
       "uv_gap_px": 8,
       "lightmap_stats": {
-        "p50": 0.1513826735433605,
-        "p95": 1.1604943803041068,
-        "clipped_pct": 0.5931854248046875
+        "p50": 0.13275291764956934,
+        "p95": 0.7008177463633041,
+        "clipped_pct": 0.4337310791015625
       }
     },
     "g": {
       "node": "ZONE_g",
       "name": "E-F",
       "kind": "corridor",
-      "triangles": 4212,
+      "triangles": 4228,
       "materials": [
+        "M_decal",
         "M_hull",
-        "M_lamp",
+        "M_lamp_67",
+        "M_puddle",
         "M_strip"
       ],
       "lightmap_png": "stage_lightmaps/zone_67_g.png",
       "lightmap_size": 512,
       "uv_gap_px": 8,
       "lightmap_stats": {
-        "p50": 0.1553511904254556,
-        "p95": 1.014373442418045,
-        "clipped_pct": 0.51422119140625
+        "p50": 0.1615068446270846,
+        "p95": 1.0314594528719228,
+        "clipped_pct": 0.4985809326171875
       }
     },
     "h": {
       "node": "ZONE_h",
       "name": "D-G",
       "kind": "corridor",
-      "triangles": 6000,
+      "triangles": 6022,
       "materials": [
+        "M_decal",
         "M_hull",
-        "M_lamp",
+        "M_lamp_68",
+        "M_puddle",
         "M_strip"
       ],
       "lightmap_png": "stage_lightmaps/zone_68_h.png",
       "lightmap_size": 512,
       "uv_gap_px": 8,
       "lightmap_stats": {
-        "p50": 0.10662300803098414,
-        "p95": 1.1850737745541098,
-        "clipped_pct": 0.214385986328125
+        "p50": 0.09165569628385345,
+        "p95": 0.7509191529044389,
+        "clipped_pct": 0.0644683837890625
       }
     },
     "i": {
       "node": "ZONE_i",
       "name": "G-H",
       "kind": "corridor",
-      "triangles": 5386,
+      "triangles": 5404,
       "materials": [
+        "M_decal",
         "M_hull",
-        "M_lamp",
+        "M_lamp_69",
+        "M_puddle",
         "M_strip"
       ],
       "lightmap_png": "stage_lightmaps/zone_69_i.png",
       "lightmap_size": 512,
       "uv_gap_px": 8,
       "lightmap_stats": {
-        "p50": 0.07607379193817852,
-        "p95": 0.7692578329510159,
-        "clipped_pct": 0.1255035400390625
+        "p50": 0.07455401646304463,
+        "p95": 0.5577049986609705,
+        "clipped_pct": 0.03204345703125
       }
     },
     "j": {
       "node": "ZONE_j",
       "name": "E-H",
       "kind": "corridor",
-      "triangles": 3590,
+      "triangles": 3618,
       "materials": [
+        "M_decal",
+        "M_fx_ff2020",
         "M_hull",
-        "M_lamp",
+        "M_lamp_6a",
+        "M_puddle",
         "M_strip"
       ],
       "lightmap_png": "stage_lightmaps/zone_6a_j.png",
       "lightmap_size": 512,
       "uv_gap_px": 8,
       "lightmap_stats": {
-        "p50": 0.1831145462937377,
-        "p95": 1.3675656623840333,
-        "clipped_pct": 0.763702392578125
+        "p50": 0.20266024866093088,
+        "p95": 1.28354454531493,
+        "clipped_pct": 0.533294677734375
       }
     },
     "k": {
       "node": "ZONE_k",
       "name": "C-east",
       "kind": "corridor",
-      "triangles": 3518,
+      "triangles": 3530,
       "materials": [
+        "M_decal",
         "M_hull",
-        "M_lamp",
+        "M_lamp_6b",
+        "M_puddle",
         "M_strip"
       ],
       "lightmap_png": "stage_lightmaps/zone_6b_k.png",
       "lightmap_size": 512,
       "uv_gap_px": 8,
       "lightmap_stats": {
-        "p50": 0.12050798481316478,
-        "p95": 1.5609760050950194,
-        "clipped_pct": 1.8627166748046875
+        "p50": 0.12562760805007483,
+        "p95": 1.5860117912270366,
+        "clipped_pct": 1.888275146484375
       }
     },
     "l": {
       "node": "ZONE_l",
       "name": "east-1",
       "kind": "corridor",
-      "triangles": 3846,
+      "triangles": 3858,
       "materials": [
+        "M_decal",
         "M_hull",
-        "M_lamp",
+        "M_lamp_6c",
+        "M_puddle",
         "M_strip"
       ],
       "lightmap_png": "stage_lightmaps/zone_6c_l.png",
       "lightmap_size": 512,
       "uv_gap_px": 8,
       "lightmap_stats": {
-        "p50": 0.11769503302289241,
-        "p95": 1.0994902088112297,
-        "clipped_pct": 0.66680908203125
+        "p50": 0.09986319977017463,
+        "p95": 0.6244350195460843,
+        "clipped_pct": 0.57373046875
       }
     },
     "m": {
       "node": "ZONE_m",
       "name": "east-2",
       "kind": "corridor",
-      "triangles": 4834,
+      "triangles": 4868,
       "materials": [
+        "M_decal",
+        "M_fx_ff2020",
         "M_hull",
-        "M_lamp",
+        "M_lamp_6d",
+        "M_puddle",
         "M_strip"
       ],
       "lightmap_png": "stage_lightmaps/zone_6d_m.png",
       "lightmap_size": 512,
       "uv_gap_px": 8,
       "lightmap_stats": {
-        "p50": 0.09239398784093836,
-        "p95": 0.8565707581992501,
-        "clipped_pct": 0.2407073974609375
+        "p50": 0.07754546012465532,
+        "p95": 0.4619156524792865,
+        "clipped_pct": 0.15411376953125
       }
     },
     "n": {
       "node": "ZONE_n",
       "name": "east-3",
       "kind": "corridor",
-      "triangles": 10384,
+      "triangles": 10468,
       "materials": [
+        "M_decal",
         "M_hull",
-        "M_lamp",
+        "M_lamp_6e",
+        "M_puddle",
         "M_strip"
       ],
       "lightmap_png": "stage_lightmaps/zone_6e_n.png",
       "lightmap_size": 1024,
       "uv_gap_px": 8,
       "lightmap_stats": {
-        "p50": 0.11098570022511262,
-        "p95": 1.0571746887686075,
-        "clipped_pct": 0.39653778076171875
+        "p50": 0.09822088748047611,
+        "p95": 0.6644238112524015,
+        "clipped_pct": 0.2882957458496094
       }
     }
   }

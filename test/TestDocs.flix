@@ -33,6 +33,12 @@ mod TestDocs {
     def testLookBrokenJsonIsNone(): Unit \ Assert =
         Assert.assertEq(expected = true, Option.isEmpty(LookDoc.fromJson("{oops")))
 
+    /// 面の値の片方だけを書くと、もう片方は既定のまま。
+    @Test
+    def testLookSurfaceOverridesOneField(): Unit \ Assert =
+        Assert.assertEq(expected = Some((LookDoc.rec(LookDoc.defaults())#floorSurface#metallic, 0.1)),
+            LookDoc.fromJson("{\"floorSurface\": {\"roughness\": 0.1}}") |> Option.map(d -> (LookDoc.rec(d)#floorSurface#metallic, LookDoc.rec(d)#floorSurface#roughness)))
+
     @Test
     def testKeysBrokenFallsBack(): Unit \ Assert =
         Assert.assertEq(expected = true, Option.isEmpty(KeysDoc.fromJson("{oops")))
@@ -65,6 +71,18 @@ mod TestDocs {
     def testViewmodelOverridesOneField(): Unit \ Assert =
         Assert.assertEq(expected = Some((40.0, FpViewmodelDoc.rec(FpViewmodelDoc.defaults())#near)),
             FpViewmodelDoc.fromJson("{\"fovY\": 40.0}") |> Option.map(d -> (FpViewmodelDoc.rec(d)#fovY, FpViewmodelDoc.rec(d)#near)))
+
+    /// 材質の名前の末尾が _steel_dark の面は、_steel でなく steelDark の値を引く。
+    @Test
+    def testViewmodelSteelDarkIsNotSteel(): Unit \ Assert =
+        let vm = { steel = { metallic = 1.0, roughness = 0.1 }, steelDark = { metallic = 0.5, roughness = 0.6 } | FpViewmodelDoc.rec(FpViewmodelDoc.defaults()) };
+        Assert.assertEq(expected = Some((0.5, 0.6)), FpViewmodelDoc.surfaceOf(vm, "vm_rifle_steel_dark") |> Option.map(s -> (s#metallic, s#roughness)))
+
+    /// pbr が偽なら、どの面にも値を付けない（拡散の光だけの絵に戻す）。
+    @Test
+    def testViewmodelPbrOffHasNoSurface(): Unit \ Assert =
+        let vm = { pbr = false | FpViewmodelDoc.rec(FpViewmodelDoc.defaults()) };
+        Assert.assertEq(expected = None, FpViewmodelDoc.surfaceOf(vm, "vm_pistol_steel") |> Option.map(s -> (s#metallic, s#roughness)))
 
     /// 粒の欄の 1 つだけを上書きすると、同じ粒のほかの欄は既定のまま。
     @Test

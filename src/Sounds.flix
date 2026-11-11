@@ -8,7 +8,7 @@
 // 鳴り続ける音（Game の App.withSustained）: 足元の区画の環境音 3 本と、近い敵の唸り（距離で量を下げる）。
 // volume に sustainedScale を掛ける（ポーズ・終了の確認の間は 0）。タイトルとクリアの画面は部屋の環境音を menuAmbience の倍率で小さく流す。
 mod Sounds {
-    use fge::{App, Hash01, Num}
+    use fge::{App, Hash01, Num, Sort}
     use Events.Event
 
     // ── 名前 ──
@@ -202,7 +202,7 @@ mod Sounds {
         let near = Horde.aliveEnemies(World.hordeOf(s))
             |> List.map(e -> (distanceOf(me#x, me#z, e#x, e#z), e#id))
             |> List.filter(p -> fst(p) < sd#growlFar)
-            |> List.sort;
+            |> Sort.sortStable;
         let (voiced, _) = near |> List.foldLeft((acc, p) -> {
             let (out, used) = acc;
             let (d, id) = p;

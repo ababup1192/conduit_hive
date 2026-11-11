@@ -45,6 +45,20 @@ mod FpViewmodel {
             muzzle <- Model3d.findNode("MUZZLE", model) |> Option.toOk("${path}: MUZZLE の点が無い")
         ) yield { model = model, skin = skin, gunJoint = gun, muzzleLocal = muzzle#local }
 
+    /// 部品の材質に、glb の材質の名前の面の金属っぽさと粗さ（Doc）を付ける。Doc に無い面と pbr が偽の時は拡散の光だけの材質に戻す（何度掛けても同じ）。
+    // WhyNot: glb の metallicFactor を Gltf.loadTexturedPbrUsing で読まない — 値を Doc で保存即反映に調整したい。glb の値は Blender で見る時のためだけ。
+    pub def withSurfaces(vm: FpViewmodelDoc.Rec, rigs: Viewmodels): Viewmodels =
+        rigs |> Map.map(rig -> { model = { parts = rig#model#parts |> List.map(surfacedPart(vm)) | rig#model } | rig })
+
+    def surfacedPart(vm: FpViewmodelDoc.Rec, part: Model3d.ModelPart): Model3d.ModelPart =
+        let surface = part#gltfMaterial |> Option.flatMap(g -> FpViewmodelDoc.surfaceOf(vm, g#name));
+        { material = part#material |> Option.map(m -> surfaced(surface, m)) | part }
+
+    def surfaced(surface: Option[LookDoc.Surface], m: Scene3d.Material3d): Scene3d.Material3d = match surface {
+        case Some(s) => Scene3d.withMetallicRoughness(s#metallic, s#roughness, m)
+        case None    => Scene3d.withoutMetallicRoughness(m)
+    }
+
     // ── 今のクリップ ──
 
     /// 今流すクリップ: 名前・始まりからの秒・伸び縮みさせる長さ（None ならクリップのまま）・ループするか。

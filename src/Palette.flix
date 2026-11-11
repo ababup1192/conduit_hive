@@ -11,7 +11,7 @@
 // テーマの色を変えたら作り直す — 忘れても TestPalette が食い違いを見つける。
 mod Palette {
 
-    use fge::{Color, PxSpriteDoc, RenderUtil}
+    use fge::{Color, PxSpriteDoc, RenderUtil, Sort}
 
     pub def path(): String = "assets/conduit_hive.palette.json"
 
@@ -21,7 +21,7 @@ mod Palette {
         sprites#legend
             |> Map.valuesOf
             |> List.distinct
-            |> List.sort
+            |> Sort.sortStable
             |> List.map(key -> (key, ThemeDoc.resolver(theme, key)))
 
     /// 表を JSON のテキストへ。色は {"rgb":[…]} で書く — Studio の色解決が受け付ける形の中で、

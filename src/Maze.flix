@@ -8,7 +8,7 @@
 //   2. 見通し: その区画のマスの真ん中から、見える距離の内のほかの区画のマスの真ん中へ、壁のマスを通らずに線が引ける区画
 //      （区画に分けた真っすぐ長い通路で、3 段より先の奥が欠けないため）
 mod Maze {
-    use fge::Num
+    use fge::{Num, Sort}
 
     /// マス（列・行。左上が 0, 0）。
     pub type alias Cell = { col = Int32, row = Int32 }
@@ -169,8 +169,8 @@ mod Maze {
     /// 区画 id のマスの並びの真ん中に近いマス（列と行それぞれの真ん中。区画が無ければ None）。
     pub def middleCellOf(m: Maze, id: Char): Option[Cell] =
         let cells = Map.get(id, m#zones) |> Option.map(z -> z#cells) |> Option.getWithDefault(Nil);
-        let cols = cells |> List.map(c -> c#col) |> List.sort;
-        let rows = cells |> List.map(c -> c#row) |> List.sort;
+        let cols = cells |> List.map(c -> c#col) |> Sort.sortStable;
+        let rows = cells |> List.map(c -> c#row) |> Sort.sortStable;
         forM (
             col <- List.drop(List.length(cols) / 2, cols) |> List.head;
             row <- List.drop(List.length(rows) / 2, rows) |> List.head

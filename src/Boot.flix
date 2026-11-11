@@ -74,9 +74,10 @@ mod Boot {
         })
 
     /// 蹴りの進み k（0..1）の脚の置いた物: 腿を前へ振り上げ、膝から先を伸ばして靴底で前を突き、膝を曲げて画面の下へ引く。
-    pub def instancesAt(art: Art, k: Float64): List[Scene3d.Instance3d] =
+    /// eyeToWorld = 目の座標から置く先の座標への行列（目の座標のままなら単位行列）。
+    pub def instancesAt(eyeToWorld: Mat4.Mat4, art: Art, k: Float64): List[Scene3d.Instance3d] =
         let p = poseAt(Num.clamp01(k));
-        let thigh = Mat4.mul(hip(p#push), Mat4.rotateX(0.0 - p#swing));
+        let thigh = Mat4.mul(eyeToWorld, Mat4.mul(hip(p#push), Mat4.rotateX(0.0 - p#swing)));
         let shin = Mat4.mul(thigh, Mat4.mul(Mat4.translate(Vec3.v3(0.0, 0.0 - thighLength(), 0.0)), Mat4.rotateX(p#bend)));
         List.append(placed(thigh, art#thigh), placed(shin, art#shin))
 }

@@ -29,8 +29,10 @@ mod Particles3dDoc {
     /// 撃った瞬間だけ点ける灯り（ステージとビューモデルの両方の場面に 1 本ずつ）。
     pub type alias Flash = { color = Color, intensity = Float64, range = Float64, life = Float64 }
 
-    /// ranged が吐く projectile の見え方: 光る玉の大きさ（m）・色・明るさの線形の倍率と、玉に付ける点光源の強さと届く距離。
-    pub type alias Glow = { size = Float64, color = Color, intensity = Float64, lightIntensity = Float64, lightRange = Float64 }
+    /// ranged が吐く projectile の見え方: 頭の光る粒の大きさ（m）・色・明るさの線形の倍率と、粒に付ける点光源の強さと届く距離、
+    /// 進む向きの後ろへ伸びる光る尾（長さと芯の太さ m・芯の色・にじむ外側の太さ（芯の何倍）と濃さ・外側がゆらめく速さ（1 秒の回数））。
+    pub type alias Glow = { size = Float64, color = Color, intensity = Float64, lightIntensity = Float64, lightRange = Float64,
+                            length = Float64, width = Float64, core = Color, glowWidth = Float64, glowAlpha = Float64, wobble = Float64 }
 
     /// 武器ごとのマズルフラッシュ（JSON では muzzle が拳銃・muzzleShotgun・muzzleRifle）。
     pub type alias Muzzles = { pistol = Burst, shotgun = Burst, rifle = Burst }
@@ -38,9 +40,20 @@ mod Particles3dDoc {
     /// ranged の溜めの光: 口に出す光る玉の大きさ（m。溜め切った時）・色・明るさの線形の倍率。
     pub type alias Charge = { size = Float64, color = Color, intensity = Float64 }
 
-    /// 連射銃の曳光弾: 何発に 1 発か・飛ぶ速さ（m/秒）・光る線の長さと太さ（m）・色・明るさの線形の倍率・濃さ（0..1）・同時に飛ぶ数の上限。
-    pub type alias Tracer = { every = Int32, speed = Float64, length = Float64, width = Float64, color = Color, intensity = Float64,
-                              alpha = Float64, limit = Int32 }
+    /// 武器 1 つの曳光弾: 何発に 1 発か（0 で出さない）・1 回に出す本数（散弾の粒の当たった所へ前から）・飛ぶ速さ（m/秒）・光る芯の長さと太さ（m）・色・
+    /// 明るさの線形の倍率・濃さ（0..1）・同時に飛ぶ数の上限・にじむ外側の太さ（芯の何倍か）と濃さ（0..1。0 で外側を描かない）。
+    pub type alias Tracer = { every = Int32, count = Int32, speed = Float64, length = Float64, width = Float64, color = Color, intensity = Float64,
+                              alpha = Float64, limit = Int32, glowWidth = Float64, glowAlpha = Float64 }
+
+    /// 武器ごとの曳光弾（JSON では tracer が連射銃・tracerPistol・tracerShotgun）。
+    pub type alias Tracers = { pistol = Tracer, shotgun = Tracer, rifle = Tracer }
+
+    /// 武器 w の曳光弾。
+    pub def tracerOf(r: Rec, w: WeaponsDoc.Weapon): Tracer = match w {
+        case WeaponsDoc.Weapon.Pistol  => r#tracers#pistol
+        case WeaponsDoc.Weapon.Shotgun => r#tracers#shotgun
+        case WeaponsDoc.Weapon.Rifle   => r#tracers#rifle
+    }
 
     /// 爆発の火の玉の塊（形で描く）: puff = 塊 1 つずつの出し方（color = 真ん中の殻の橙）・hot = 中心の白に近い色・cool = 外の殻の冷めた暗い赤。
     pub type alias Fireball = { puff = Burst, hot = Color, cool = Color }
@@ -49,9 +62,10 @@ mod Particles3dDoc {
     /// 膨らんで崩れる火の玉の塊・床の焦げ跡（scorch の intensity = 焦げの中の残り火の明るさ）。
     pub type alias Blast = { flash = Burst, ring = Burst, smoke = Burst, debris = Burst, fireball = Fireball, scorch = Burst }
 
-    /// limit = 同時に出ている粒の上限（越えたら古い物から消す）。
-    pub type alias Rec = { version = Int32, muzzle = Muzzles, spark = Burst, smoke = Burst, light = Flash, ichor = Burst, gore = Burst,
-                           ring = Burst, spit = Glow, charge = Charge, tracer = Tracer, blast = Blast, limit = Int32 }
+    /// limit = 同時に出ている粒の上限（越えたら古い物から消す）・muzzleFlicker = マズルフラッシュの形が次の形へ替わるまでの秒（0 で替えない）。
+    /// muzzleSmoke = 撃った後に銃口からうっすら上る煙。
+    pub type alias Rec = { version = Int32, muzzle = Muzzles, muzzleFlicker = Float64, muzzleSmoke = Burst, spark = Burst, smoke = Burst, light = Flash, ichor = Burst, gore = Burst,
+                           ring = Burst, spit = Glow, charge = Charge, tracers = Tracers, blast = Blast, limit = Int32 }
     pub enum Doc(Rec)
     pub def rec(d: Doc): Rec = match d { case Doc.Doc(r) => r }
 
@@ -62,18 +76,23 @@ mod Particles3dDoc {
     /// コード側の既定値（assets/conduit_hive.particles3d.json と同じ値から出発する）。
     pub def defaults(): Doc =
         Doc.Doc({ version = 1,
-                  muzzle = { pistol  = { count = 5, life = 0.05, lifeJitter = 0.3, speed = 0.5, spread = 15.0, size = 0.11, grow = 0.6, aspect = 1.0, gravity = 0.0, color = hx("#ffd090"), intensity = 4.5 },
-                             shotgun = { count = 9, life = 0.08, lifeJitter = 0.3, speed = 2.2, spread = 30.0, size = 0.2, grow = 1.3, aspect = 2.4, gravity = 0.0, color = hx("#ffa860"), intensity = 3.5 },
-                             rifle   = { count = 3, life = 0.035, lifeJitter = 0.3, speed = 1.0, spread = 12.0, size = 0.1, grow = 0.5, aspect = 1.3, gravity = 0.0, color = hx("#ffcf90"), intensity = 4.0 } },
-                  spark  = { count = 18, life = 0.4, lifeJitter = 0.5, speed = 7.5, spread = 75.0, size = 0.07, grow = 0.5, aspect = 1.0, gravity = 9.8, color = hx("#ffc070"), intensity = 3.5 },
+                  muzzle = { pistol  = { count = 0, life = 0.05, lifeJitter = 0.3, speed = 0.2, spread = 5.0, size = 0.1, grow = 1.4, aspect = 1.0, gravity = 0.0, color = hx("#fff2cc"), intensity = 4.0 },
+                             shotgun = { count = 0, life = 0.065, lifeJitter = 0.3, speed = 0.3, spread = 6.0, size = 0.17, grow = 1.5, aspect = 1.3, gravity = 0.0, color = hx("#ffeec0"), intensity = 4.5 },
+                             rifle   = { count = 0, life = 0.04, lifeJitter = 0.3, speed = 0.2, spread = 4.0, size = 0.085, grow = 1.3, aspect = 1.0, gravity = 0.0, color = hx("#fff4d6"), intensity = 4.0 } },
+                  spark  = { count = 22, life = 0.4, lifeJitter = 0.5, speed = 7.5, spread = 75.0, size = 0.08, grow = 0.5, aspect = 1.0, gravity = 9.8, color = hx("#ffc070"), intensity = 6.0 },
                   smoke  = { count = 3, life = 0.7, lifeJitter = 0.4, speed = 0.6, spread = 50.0, size = 0.16, grow = 2.2, aspect = 1.0, gravity = -1.2, color = hx("#4a4f57"), intensity = 0.6 },
-                  light  = { color = hx("#ffc890"), intensity = 1.6, range = 5.0, life = 0.05 },
-                  ichor  = { count = 16, life = 0.55, lifeJitter = 0.5, speed = 4.5, spread = 65.0, size = 0.06, grow = 0.5, aspect = 1.0, gravity = 9.8, color = hx("#ff7a2a"), intensity = 2.5 },
-                  gore   = { count = 30, life = 0.8, lifeJitter = 0.5, speed = 7.0, spread = 180.0, size = 0.05, grow = 0.5, aspect = 1.0, gravity = 9.8, color = hx("#ff6a20"), intensity = 2.8 },
+                  light  = { color = hx("#ffc890"), intensity = 1.8, range = 6.5, life = 0.07 },
+                  ichor  = { count = 7, life = 0.55, lifeJitter = 0.5, speed = 4.5, spread = 55.0, size = 0.035, grow = 0.5, aspect = 1.0, gravity = 9.8, color = hx("#ff7a2a"), intensity = 2.0 },
+                  gore   = { count = 12, life = 0.8, lifeJitter = 0.5, speed = 7.0, spread = 180.0, size = 0.03, grow = 0.5, aspect = 1.0, gravity = 9.8, color = hx("#ff6a20"), intensity = 2.2 },
                   ring   = { count = 1, life = 0.15, lifeJitter = 0.0, speed = 0.0, spread = 0.0, size = 0.3, grow = 5.0, aspect = 1.0, gravity = 0.0, color = hx("#d8602a"), intensity = 0.9 },
-                  spit   = { size = 0.32, color = hx("#ff8a3c"), intensity = 5.0, lightIntensity = 2.5, lightRange = 4.0 },
+                  spit   = { size = 0.14, color = hx("#ffb040"), intensity = 6.0, lightIntensity = 1.0, lightRange = 4.0,
+                             length = 0.9, width = 0.06, core = hx("#fff0a0"), glowWidth = 3.5, glowAlpha = 0.3, wobble = 14.0 },
+                  muzzleSmoke = { count = 3, life = 0.6, lifeJitter = 0.4, speed = 0.35, spread = 40.0, size = 0.05, grow = 3.0, aspect = 1.0, gravity = -0.6, color = hx("#5a5d62"), intensity = 0.35 },
                   charge = { size = 0.42, color = hx("#ff8a3c"), intensity = 5.0 },
-                  tracer = { every = 1, speed = 110.0, length = 3.5, width = 0.022, color = hx("#ffb060"), intensity = 2.0, alpha = 0.85, limit = 8 },
+                  tracers = { pistol  = { every = 1, count = 1, speed = 90.0, length = 2.5, width = 0.02, color = hx("#ffc070"), intensity = 3.0, alpha = 0.9, limit = 4, glowWidth = 4.0, glowAlpha = 0.25 },
+                              shotgun = { every = 1, count = 5, speed = 80.0, length = 1.4, width = 0.012, color = hx("#ffa850"), intensity = 3.0, alpha = 0.85, limit = 12, glowWidth = 4.0, glowAlpha = 0.2 },
+                              rifle   = { every = 1, count = 1, speed = 110.0, length = 3.5, width = 0.022, color = hx("#ffb060"), intensity = 3.0, alpha = 0.9, limit = 8, glowWidth = 4.0, glowAlpha = 0.25 } },
+                  muzzleFlicker = 0.016,
                   blast = { flash  = { count = 5, life = 0.1, lifeJitter = 0.4, speed = 1.5, spread = 180.0, size = 0.7, grow = 1.6, aspect = 1.0, gravity = 0.0, color = hx("#ffe2b0"), intensity = 2.0 },
                             ring   = { count = 1, life = 0.42, lifeJitter = 0.0, speed = 0.0, spread = 0.0, size = 0.6, grow = 11.0, aspect = 1.0, gravity = 0.0, color = hx("#ff9a50"), intensity = 1.6 },
                             smoke  = { count = 30, life = 2.6, lifeJitter = 0.4, speed = 1.6, spread = 75.0, size = 0.8, grow = 3.4, aspect = 1.0, gravity = -0.9, color = hx("#6e6862"), intensity = 1.0 },
@@ -130,7 +149,9 @@ mod Particles3dDoc {
         let o = objectOf(key, root);
         let f = (k, d) -> JsonCodec.floatOr(k, d, o);
         { size = f("size", fallback#size), color = colorOr(fallback#color, "color", o), intensity = f("intensity", fallback#intensity),
-          lightIntensity = f("lightIntensity", fallback#lightIntensity), lightRange = f("lightRange", fallback#lightRange) }
+          lightIntensity = f("lightIntensity", fallback#lightIntensity), lightRange = f("lightRange", fallback#lightRange),
+          length = f("length", fallback#length), width = f("width", fallback#width), core = colorOr(fallback#core, "core", o),
+          glowWidth = f("glowWidth", fallback#glowWidth), glowAlpha = f("glowAlpha", fallback#glowAlpha), wobble = f("wobble", fallback#wobble) }
 
     def chargeOr(fallback: Charge, key: String, root: Map[String, Json]): Charge =
         let o = objectOf(key, root);
@@ -139,9 +160,10 @@ mod Particles3dDoc {
     def tracerOr(fallback: Tracer, key: String, root: Map[String, Json]): Tracer =
         let o = objectOf(key, root);
         let f = (k, d) -> JsonCodec.floatOr(k, d, o);
-        { every = JsonCodec.intOr("every", fallback#every, o), speed = f("speed", fallback#speed), length = f("length", fallback#length),
-          width = f("width", fallback#width), color = colorOr(fallback#color, "color", o), intensity = f("intensity", fallback#intensity),
-          alpha = f("alpha", fallback#alpha), limit = JsonCodec.intOr("limit", fallback#limit, o) }
+        { every = JsonCodec.intOr("every", fallback#every, o), count = JsonCodec.intOr("count", fallback#count, o), speed = f("speed", fallback#speed),
+          length = f("length", fallback#length), width = f("width", fallback#width), color = colorOr(fallback#color, "color", o),
+          intensity = f("intensity", fallback#intensity), alpha = f("alpha", fallback#alpha), limit = JsonCodec.intOr("limit", fallback#limit, o),
+          glowWidth = f("glowWidth", fallback#glowWidth), glowAlpha = f("glowAlpha", fallback#glowAlpha) }
 
     def fromRoot(root: Map[String, Json]): Doc =
         let d = rec(defaults());
@@ -150,7 +172,10 @@ mod Particles3dDoc {
                              rifle = burstOr(d#muzzle#rifle, "muzzleRifle", root) },
                   spark = burstOr(d#spark, "spark", root), smoke = burstOr(d#smoke, "smoke", root), light = flashOr(d#light, "light", root),
                   ichor = burstOr(d#ichor, "ichor", root), gore = burstOr(d#gore, "gore", root), ring = burstOr(d#ring, "ring", root),
-                  spit = glowOr(d#spit, "spit", root), charge = chargeOr(d#charge, "charge", root), tracer = tracerOr(d#tracer, "tracer", root),
+                  muzzleFlicker = JsonCodec.floatOr("muzzleFlicker", d#muzzleFlicker, root), muzzleSmoke = burstOr(d#muzzleSmoke, "muzzleSmoke", root),
+                  spit = glowOr(d#spit, "spit", root), charge = chargeOr(d#charge, "charge", root),
+                  tracers = { pistol = tracerOr(d#tracers#pistol, "tracerPistol", root), shotgun = tracerOr(d#tracers#shotgun, "tracerShotgun", root),
+                              rifle = tracerOr(d#tracers#rifle, "tracer", root) },
                   blast = { flash = burstOr(d#blast#flash, "blastFlash", root), ring = burstOr(d#blast#ring, "blastRing", root),
                             smoke = burstOr(d#blast#smoke, "blastSmoke", root), debris = burstOr(d#blast#debris, "blastDebris", root),
                             fireball = fireballOr(d#blast#fireball, "blastFireball", root), scorch = burstOr(d#blast#scorch, "blastScorch", root) },

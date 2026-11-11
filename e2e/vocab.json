@@ -37,7 +37,17 @@
     {"name": "shot:blast", "doc": "ギャラリーの場面（gallery/blast.png）", "args": {}},
     {"name": "shot:title", "doc": "ギャラリーの場面（gallery/title.png）", "args": {}},
     {"name": "shot:pickups", "doc": "ギャラリーの場面（gallery/pickups.png）", "args": {}},
-    {"name": "shot:clear", "doc": "ギャラリーの場面（gallery/clear.png）", "args": {}}
+    {"name": "shot:clear", "doc": "ギャラリーの場面（gallery/clear.png）", "args": {}},
+    {"name": "shot:pipes", "doc": "ギャラリーの場面（gallery/pipes.png）", "args": {}},
+    {"name": "shot:exit", "doc": "ギャラリーの場面（gallery/exit.png）", "args": {}},
+    {"name": "shot:beacon", "doc": "ギャラリーの場面（gallery/beacon.png）", "args": {}},
+    {"name": "shot:panel", "doc": "ギャラリーの場面（gallery/panel.png）", "args": {}},
+    {"name": "shot:tank", "doc": "ギャラリーの場面（gallery/tank.png）", "args": {}},
+    {"name": "shot:dark", "doc": "ギャラリーの場面（gallery/dark.png）", "args": {}},
+    {"name": "shot:marks", "doc": "ギャラリーの場面（gallery/marks.png）", "args": {}},
+    {"name": "shot:puddle", "doc": "ギャラリーの場面（gallery/puddle.png）", "args": {}},
+    {"name": "shot:overview", "doc": "ギャラリーの場面（gallery/overview.png）", "args": {}},
+    {"name": "shot:spit", "doc": "ギャラリーの場面（gallery/spit.png）", "args": {}}
   ],
   "keys": ["A", "B", "C", "D", "E", "F", "G", "H", "I", "J", "K", "L", "M", "N", "O", "P", "Q", "R", "S", "T", "U", "V", "W", "X", "Y", "Z", "Digit0", "Digit1", "Digit2", "Digit3", "Digit4", "Digit5", "Digit6", "Digit7", "Digit8", "Digit9", "Up", "Down", "Left", "Right", "Enter", "Space", "Escape", "Tab", "Backspace", "Insert", "Delete", "PageUp", "PageDown", "Home", "End", "CapsLock", "F1", "F2", "F3", "F4", "F5", "F6", "F7", "F8", "F9", "F10", "F11", "F12", "Apostrophe", "Comma", "Minus", "Period", "Slash", "Semicolon", "Equal", "LeftBracket", "Backslash", "RightBracket", "GraveAccent", "LeftShift", "LeftCtrl", "LeftAlt", "LeftSuper", "RightShift", "RightCtrl", "RightAlt", "RightSuper", "Menu", "Numpad0", "Numpad1", "Numpad2", "Numpad3", "Numpad4", "Numpad5", "Numpad6", "Numpad7", "Numpad8", "Numpad9", "NumpadDecimal", "NumpadDivide", "NumpadMultiply", "NumpadSubtract", "NumpadAdd", "NumpadEnter", "NumpadEqual"],
   "ready": false,

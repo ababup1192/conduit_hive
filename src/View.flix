@@ -9,7 +9,7 @@
 // HUD（照準・体力・武器の並び・弾の数・拾った知らせ・被弾の赤み・F3 の診断の行）は App.withHudView に繋ぐ hudFrame（HudView）。
 mod View {
 
-    use fge::{App, Camera3d, Color, Frustum, Mat4, Num, Render, Scene3d, SortingLayer, TextDraw, Vec2, Vec3, ZStack}
+    use fge::{App, Camera3d, Color, Frustum, Mat4, Num, Render, Scene3d, Sort, SortingLayer, TextDraw, Vec2, Vec3, ZStack}
     use ZOrder.Layer
 
     /// 描くのに要る値。部品は World でなくこれを読む（lint/rules.flix の view-no-world）。
@@ -112,7 +112,7 @@ mod View {
         let motion = { phase = Walker.stridePhase(WalkDoc.rec(res#walk), body),
                        sway = { y = lag#y - dodgeTilt() * Moves.dodgeSwell(dd, t, World.movesOf(s)) | lag } };
         let kick = Moves.kickProgress(MovesDoc.rec(res#moves)#kick, t, World.movesOf(s));
-        let viewmodel = viewmodelIn(res, a, particles, motion, kick, t);
+        let viewmodel = viewmodelIn(res, camera, a, particles, motion, kick, t);
         let grenades = World.grenadesOf(s);
         let horde = World.hordeOf(s);
         let frustum = Camera3d.frustum(camera, World.width() / World.height());
@@ -129,22 +129,26 @@ mod View {
           billboards = List.flatten(
               (shots |> List.filterMap(p -> Particles3d.spitBillboard(res#particles, Particles3d.textureName(), Res.particleRegion(res, Particles3d.Kind.Spark), p#at)))
               :: chargeGlowsOf(res, t, enemies)
-              :: (Tracers.headsOf(Particles3dDoc.rec(res#particles)#tracer, t, World.tracersOf(s))
-                    |> List.filterMap(at -> Particles3d.tracerHead(res#particles, Particles3d.textureName(), Res.particleRegion(res, Particles3d.Kind.Spark), at)))
-              :: Particles3d.billboards(res#particles, Particles3d.textureName(), Res.particleRegion(res), Particles3d.Space.World, Mat4.identity(), t, particles) :: Nil),
+              :: (Tracers.headsOf(Particles3dDoc.rec(res#particles)#tracers, t, World.tracersOf(s))
+                    |> List.filterMap(head -> Particles3d.tracerHead(snd(head), Particles3d.textureName(), Res.particleRegion(res, Particles3d.Kind.Spark), fst(head))))
+              :: Particles3d.billboards(res#particles, Particles3d.textureName(), Res.particleFrame(res), Particles3d.Space.World, Mat4.identity(), t, particles) :: Nil),
           flash = List.flatten((viewmodel |> Option.toList |> List.flatMap(h -> flashLights(res, a, t, StageView.fromEye(camera, fst(h)))))
                                :: Gibs.lightsOf(JuiceDoc.rec(res#juice)#gib, t, World.gibsOf(s))
                                :: Grenades.lightsOf(GrenadeDoc.rec(res#grenade)#light, t, grenades) :: Nil),
           creatures = creaturesIn(res, t, enemies),
           pickups = List.append(items#instances, props),
           effects = List.flatten(Gibs.instancesOf(JuiceDoc.rec(res#juice)#gib, res#gibArt, t, World.gibsOf(s))
-                                 :: Tracers.instancesOf(Particles3dDoc.rec(res#particles)#tracer, res#tracerArt, t, World.tracersOf(s))
+                                 :: Tracers.instancesOf(Particles3dDoc.rec(res#particles)#tracers, res#tracerArt, t, World.tracersOf(s))
+                                 :: Tracers.spitInstancesOf(Particles3dDoc.rec(res#particles)#spit, res#tracerArt, t, shots)
                                  :: Grenades.instancesOf(GrenadeDoc.rec(res#grenade)#flight, res#grenadeModel, grenades)
-                                 :: BlastFx.instancesOf(res#particles, res#blastArt, camera#eye, t, particles) :: Nil),
+                                 :: BlastFx.instancesOf(res#particles, res#blastArt, camera#eye, t, particles)
+                                 :: FixtureLights.instancesOf(LookDoc.rec(res#look), t, fixturesIn(res, drawn)) :: Nil),
           textures = List.flatten(res#stageTextures :: (res#creatures |> Map.valuesOf |> List.flatMap(b -> b#model#textures)) :: res#pickupArt#textures
                                   :: res#gibArt#textures :: (res#grenadeModel |> Option.toList |> List.flatMap(m -> m#textures)) :: Nil),
           glows = List.append(shots |> List.map(p -> Particles3d.spitLight(res#particles, p#at)), items#lights),
-          viewmodel = viewmodel |> Option.map(snd) }
+          viewmodel = viewmodel |> Option.map(snd), environment = Res.environmentAt(res, body#x, body#z),
+          alarms = FixtureLights.pointLightsOf(LookDoc.rec(res#look), t, fixturesIn(res, drawn)),
+          beams = FixtureLights.beamsOf(LookDoc.rec(res#look), t, camera#eye, fixturesIn(res, drawn)) }
 
     /// 緊急回避の間に腕と銃が遅れて傾く角（度。見回しの遅れと同じ向きで、跳ぶ山の頂で最大）。
     // WhyNot: Doc へ出さない — 回避の見え方は目の沈みと画角を MovesDoc で調整し、腕はそれに付いてくる従の動き。
@@ -156,8 +160,14 @@ mod View {
         let items = pickupsIn(res, t, camera, drawn, res#pickupPoints);
         { t = t, camera = camera, look = LookDoc.rec(res#look), post = res#post,
           zones = drawn |> Set.toList |> List.filterMap(id -> Map.get(id, res#art)),
-          billboards = Nil, flash = Nil, creatures = Nil, pickups = items#instances, effects = Nil, textures = List.append(res#stageTextures, res#pickupArt#textures),
-          glows = items#lights, viewmodel = None }
+          billboards = Nil, flash = Nil, creatures = Nil, pickups = items#instances, effects = FixtureLights.instancesOf(LookDoc.rec(res#look), t, fixturesIn(res, drawn)),
+          textures = List.append(res#stageTextures, res#pickupArt#textures),
+          glows = items#lights, viewmodel = None, environment = Res.environmentAt(res, camera#eye#x, camera#eye#z),
+          alarms = FixtureLights.pointLightsOf(LookDoc.rec(res#look), t, fixturesIn(res, drawn)),
+          beams = FixtureLights.beamsOf(LookDoc.rec(res#look), t, camera#eye, fixturesIn(res, drawn)) }
+
+    /// 描く区画の毎コマ光る物（回転灯と明滅する蛍光灯）。
+    def fixturesIn(res: Res.Res, drawn: Set[Char]): List[FixtureLights.Light] = res#fixtureLights |> List.filter(l -> Set.memberOf(l#zone, drawn))
 
     /// 見回しの速さ（度/秒）・目の傾き（度。負で少し見上げる）・タイトルの見回しの始めの向き（度。最後の部屋の長い向き）。
     // WhyNot: Doc へ出さない — 背景の演出の形で、遊びの手触りとして調整する値ではない。
@@ -192,7 +202,7 @@ mod View {
         let here = lying |> List.filter(p -> Set.memberOf(p#zone, drawn));
         let shown = here |> List.filter(p -> Frustum.intersectsSphere(frustum, Vec3.v3(p#x, doc#hover, p#z), 0.9));
         let distance = (p: Pickups.Point) -> { let (dx, dz) = (p#x - camera#eye#x, p#z - camera#eye#z); dx * dx + dz * dz };
-        let lit = here |> List.sortBy(p -> (distance(p), p#id)) |> List.take(doc#lights);
+        let lit = here |> Sort.sortStableBy(p -> (distance(p), p#id)) |> List.take(doc#lights);
         { instances = shown |> List.flatMap(p ->
               PickupModels.instancesAt(res#pickupArt, p#kind, { x = p#x, z = p#z, y = Pickups.hoverAt(res#pickups, t, p), yaw = Pickups.spinAt(res#pickups, t, p), scale = doc#scale })),
           lights = lit |> List.map(p -> { position = Vec3.v3(p#x, doc#hover, p#z), color = look#stripColor, intensity = doc#lightIntensity, range = doc#lightRange }) }
@@ -218,18 +228,22 @@ mod View {
             Particles3d.chargeBillboard(res#particles, Particles3d.textureName(), Res.particleRegion(res, Particles3d.Kind.Spark), Horde.mouthOf(e), k)))
 
     /// 手前の腕と銃: 今の銃口（目の座標）と、場面に入れる物（蹴りの進み kick がある間は画面の下から出る脚も）。構えている武器の glb が読めていなければ None。
-    def viewmodelIn(res: Res.Res, a: Arsenal.Arsenal, particles: List[Particles3d.Particle], motion: FpViewmodel.Motion, kick: Option[Float64], t: Float64): Option[(Vec3.Vec3, StageView.Viewmodel)] =
+    /// 場面に入れる物は目の座標で組み、照準のカメラ camera の目の座標 → ステージの座標の行列で置く（StageView の頭）。
+    def viewmodelIn(res: Res.Res, camera: Camera3d.Camera3d, a: Arsenal.Arsenal, particles: List[Particles3d.Particle], motion: FpViewmodel.Motion, kick: Option[Float64], t: Float64): Option[(Vec3.Vec3, StageView.Viewmodel)] =
         let hd = FpViewmodelDoc.rec(res#viewmodel);
+        let toWorld = StageView.eyeToWorld(camera);
         Map.get(a#current, res#viewmodels) |> Option.map(model -> {
             let pose = FpViewmodel.poseOf(model, FpViewmodel.playingAt(hd, FpViewmodel.clipLength(model, "fire"), t, a));
             let place = FpViewmodel.placeOf(hd, motion);
             let frame = FpViewmodel.muzzleFrame(model, pose, place);
             let muzzle = Mat4.apply(frame, Vec3.zero());
-            let leg = kick |> Option.map(Boot.instancesAt(res#bootArt)) |> Option.getWithDefault(Nil);
-            (muzzle, { instances = List.append(FpViewmodel.instancesOf(model, pose, place), leg), textures = List.append(model#model#textures, res#bootArt#textures),
-                       billboards = Particles3d.billboards(res#particles, Particles3d.textureName(), Res.particleRegion(res), Particles3d.Space.Muzzle, frame, t, particles),
-                       flash = flashLights(res, a, t, muzzle), fovY = hd#fovY, near = hd#near, far = hd#far,
-                       ambientScale = hd#ambientScale, lampScale = hd#lampScale })
+            let leg = kick |> Option.map(Boot.instancesAt(toWorld, res#bootArt)) |> Option.getWithDefault(Nil);
+            // WhyNot: 光を銃口の点そのものに置かない — 半透明の光は深度を書かずに銃の後に描かれ、芯が銃身の先に隠れて黒い輪に見える。銃身の向きへ出す。
+            let flashArt = MuzzleFlash.instancesOf(res#particles, res#muzzleFlashArt, camera, Mat4.apply(toWorld, Mat4.apply(frame, Vec3.v3(0.0, 0.0, 0.16))), t, a);
+            (muzzle, { instances = List.flatten(FpViewmodel.instancesOf(model, pose, Mat4.mul(toWorld, place)) :: leg :: flashArt :: Nil), textures = List.append(model#model#textures, res#bootArt#textures),
+                       billboards = Particles3d.billboards(res#particles, Particles3d.textureName(), Res.particleFrame(res), Particles3d.Space.Muzzle, Mat4.mul(toWorld, frame), t, particles),
+                       flash = flashLights(res, a, t, Mat4.apply(toWorld, muzzle)), fovY = hd#fovY, near = hd#near, far = hd#far,
+                       ambientScale = hd#ambientScale, lampScale = hd#lampScale, envScale = hd#envScale })
         })
 
     /// 撃った瞬間の灯り（点 at に 1 本。最後に撃ってから light の life の間だけ）。

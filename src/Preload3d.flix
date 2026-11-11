@@ -12,7 +12,7 @@ mod Preload3d {
     /// 先に上げる物。
     // WhyNot: 骨つきの物の姿勢を外さない — 外すと骨の無い版のプログラムだけが組まれ、本当に描く版が初めて出るコマへ残る。
     def instancesOf(res: Res.Res): List[Scene3d.Instance3d] =
-        List.flatten(creatures(res#creatures, res#timing) :: viewmodels(res#viewmodels) :: Boot.instancesAt(res#bootArt, 0.3) :: pickups(res#pickupArt)
+        List.flatten(creatures(res#creatures, res#timing) :: viewmodels(res#viewmodels) :: Boot.instancesAt(Mat4.identity(), res#bootArt, 0.3) :: pickups(res#pickupArt)
             :: gibs(res#gibArt) :: blast(res#blastArt) :: tracer(res#tracerArt) :: grenade(res#grenadeModel) :: Nil)
 
     /// 先に上げる物の材質が読む絵。
@@ -52,7 +52,8 @@ mod Preload3d {
             |> List.map(mesh -> Scene3d.meshInstance(mesh, Mat4.identity()) |> Scene3d.withMaterial(art#fire))
 
     def tracer(art: Tracers.Art): List[Scene3d.Instance3d] =
-        (Scene3d.meshInstance(art#mesh, Mat4.identity()) |> Scene3d.withMaterial(art#material)) :: Nil
+        (art#spit :: Map.valuesOf(art#materials)) |> List.flatMap(m -> m#core :: m#glow :: Nil)
+            |> List.map(material -> Scene3d.meshInstance(art#mesh, Mat4.identity()) |> Scene3d.withMaterial(material))
 
     def grenade(model: Option[Model3d.Model3d]): List[Scene3d.Instance3d] =
         model |> Option.toList |> List.flatMap(Model3d.partInstances(Mat4.identity()))

@@ -12,7 +12,8 @@ mod MazeMesh {
 
     /// 区画 1 つの絵: 置いた物・場面に入れる灯り・天井の灯具の灯り（lightmap の付かない手前の腕と銃へ写す）。
     /// 灰色の箱の道は lights と lamps が同じ。ベイクしたステージ（StageModel）は lights が空で、lamps だけを持つ。
-    pub type alias ZoneArt = { instances = List[Scene3d.Instance3d], lights = List[Scene3d.PointLight], lamps = List[Scene3d.PointLight] }
+    /// environment = その区画に立った時の映り込みの景色（ベイクしたステージだけ。灰色の箱は None）。
+    pub type alias ZoneArt = { instances = List[Scene3d.Instance3d], lights = List[Scene3d.PointLight], lamps = List[Scene3d.PointLight], environment = Option[Scene3d.EnvironmentMap] }
 
     /// 四角 1 枚: 頂点 4 つ（表から見て時計回り）と頂点ごとの色。
     type alias Quad = { points = List[Vec3.Vec3], colors = List[Color] }
@@ -41,7 +42,7 @@ mod MazeMesh {
             else (place(name, meshOf(quads)) |> Scene3d.withMaterial(glowMaterial("conduit_${name}", c, look#stripIntensity))) :: Nil;
         let lit = lamps |> List.map(l -> l#light);
         { instances = place("shell", meshOf(shell)) :: List.append(glowing("strip", strips, look#stripColor), glowing("lamp", lamps |> List.map(l -> l#panel), lampColorOf(look, zone))),
-          lights = lit, lamps = lit }
+          lights = lit, lamps = lit, environment = None }
 
     /// 区画の天井の灯具の灯り（灰色の箱の灯具と、stage.py が灯具を吊るマスは同じ決め方）。
     pub def lampLightsOf(look: LookDoc.Rec, m: Maze.Maze, zone: Maze.Zone): List[Scene3d.PointLight] =

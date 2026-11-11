@@ -5,7 +5,7 @@ mod Shots {
     use fge::{Hash01, Num, Vec3}
 
     /// 描き出せる場面の名前（この並びが source of truth。Makefile の SHOTS と assets/*.scenes.json もそろえる）。
-    pub def names(): List[String] = "corridor" :: "hall" :: "fire" :: "wall" :: "horde" :: "fight" :: "gib" :: "fling" :: "tracer" :: "dodge" :: "kick" :: "blast" :: "title" :: "pickups" :: "clear" :: Nil
+    pub def names(): List[String] = "corridor" :: "hall" :: "fire" :: "wall" :: "horde" :: "fight" :: "gib" :: "fling" :: "tracer" :: "dodge" :: "kick" :: "blast" :: "title" :: "pickups" :: "clear" :: "pipes" :: "exit" :: "beacon" :: "panel" :: "tank" :: "dark" :: "marks" :: "puddle" :: "overview" :: "spit" :: Nil
 
     /// 構図: 立つマス（列・行）・マスの真ん中から東へずらす距離（m）・向き（度。0 が北・90 が東）・見下ろす角（度）。
     type alias Shot = { col = Int32, row = Int32, dx = Float64, yaw = Float64, pitch = Float64 }
@@ -20,7 +20,13 @@ mod Shots {
     /// dodge = 同じ所で迫る群れから後ろへ緊急回避して 0.12 秒たった所（目が沈み画角が広がる・スタミナが減っている）・
     /// kick = 同じ所で目の前まで詰めた 5 体を蹴って 0.13 秒たった所（脚・体液と埃・押し返された群れ）・
     /// blast = 同じ所で 8 m 先の群れの真ん中で手榴弾が爆発して 0.08 秒たった所（火の玉・輪・煙・破片・肉片・吹っ飛ぶ体・爆発の光）・
-    /// pickups = 最初の部屋から東の通路を抜けた先の部屋の入口から北東を見る（散弾銃と、その奥に弾倉が浮いている）。
+    /// pickups = 最初の部屋から東の通路を抜けた先の部屋の入口から北東を見る（散弾銃と、その奥に弾倉が浮いている）・
+    /// pipes = 東の長い通路の途中で天井際のパイプの束を見上げる（パイプの金属の照りを見る 1 枚）・
+    /// exit = 最初の部屋から東の扉の上の赤い非常口の灯りを見る・beacon = ポンプ室（B）の東の壁の琥珀色の回転灯・
+    /// panel = 中継室（C）の西の壁の緑の制御盤・tank = ろ過室（D）の西の壁の薬品のタンク・
+    /// dark = 薄暗い通路（c）で灯りの溜まりと暗がり・明滅する蛍光灯を見る・marks = 最初の部屋の床の区画の文字と帯を見下ろす・
+    /// puddle = 最初の部屋の西の壁の青い端末の前の水たまり・overview = ろ過室（D）を北東の隅から見渡す（タンクの緑・非常口の赤など色の光が散らばった様子）・
+    /// spit = 最後の部屋の西の端から東を向き、ranged の吐いた projectile が 3 つ飛んでくる所。
     /// title と clear は構図を持たない画面（titleWorld・clearWorld）。
     def shotOf(name: String): Option[Shot] = match name {
         case "corridor" => Some({ col = 38, row = 34, dx = 0.0, yaw = 0.0, pitch = -2.0 })
@@ -36,6 +42,16 @@ mod Shots {
         case "kick"     => Some({ col = 16, row = 6, dx = 0.0, yaw = 90.0, pitch = 8.0 })
         case "blast"    => Some({ col = 16, row = 6, dx = 0.0, yaw = 90.0, pitch = 2.0 })
         case "pickups"  => Some({ col = 15, row = 34, dx = 0.0, yaw = 45.0, pitch = 12.0 })
+        case "pipes"    => Some({ col = 38, row = 27, dx = -0.6, yaw = 15.0, pitch = -32.0 })
+        case "exit"     => Some({ col = 5, row = 34, dx = 0.0, yaw = 90.0, pitch = -6.0 })
+        case "beacon"   => Some({ col = 17, row = 35, dx = 0.0, yaw = 90.0, pitch = -4.0 })
+        case "panel"    => Some({ col = 29, row = 31, dx = 0.0, yaw = 270.0, pitch = 10.0 })
+        case "tank"     => Some({ col = 4, row = 18, dx = 0.0, yaw = 300.0, pitch = 6.0 })
+        case "dark"     => Some({ col = 4, row = 29, dx = 0.0, yaw = 0.0, pitch = 2.0 })
+        case "marks"    => Some({ col = 5, row = 36, dx = 0.0, yaw = 0.0, pitch = 38.0 })
+        case "puddle"   => Some({ col = 4, row = 33, dx = 0.0, yaw = 300.0, pitch = 18.0 })
+        case "spit"     => Some({ col = 16, row = 6, dx = 0.0, yaw = 90.0, pitch = 0.0 })
+        case "overview" => Some({ col = 8, row = 16, dx = 0.0, yaw = 225.0, pitch = 4.0 })
         case _          => None
     }
 
@@ -61,6 +77,7 @@ mod Shots {
             match name {
                 case "fire"  => fired(res, placed)
                 case "horde" => crowded(res, 40, viewer, placed)
+                case "spit"  => spat(viewer, crowded(res, 15, viewer, placed))
                 case "fight"  => fired(res, felled(res, crowded(res, 22, viewer, placed)))
                 case "gib"    => popped(res, viewer, crowded(res, 14, viewer, armed(res, WeaponsDoc.Weapon.Shotgun, placed)))
                 case "fling"  => flung(res, viewer, crowded(res, 16, viewer, armed(res, WeaponsDoc.Weapon.Shotgun, placed)))
@@ -71,6 +88,19 @@ mod Shots {
                 case _        => placed
             }
         })
+
+    /// ranged の吐いた projectile が 3 つ、横から斜めに飛んでくる所（3・6・10 m 先・吐いてから 0.4 秒たって尾が伸び切った所。
+    /// 尾が見えるよう、目の横 2.5 m を狙った向きにする）。
+    def spat(b: { x = Float64, z = Float64, yaw = Float64 }, w: World.World): World.World =
+        let (fx, fz) = (Num.sin(b#yaw), Num.cos(b#yaw));
+        let shots = List.range(0, 3) |> List.map(i -> {
+            let ahead = 3.0 + Int32.toFloat64(i) * 3.5;
+            let side = (Int32.toFloat64(i) - 1.0) * 2.2;
+            let aim = Vec3.v3(b#x - fz * 2.5, 1.5, b#z + fx * 2.5);
+            let at = Vec3.v3(b#x + fx * ahead + fz * side, 1.4 + 0.15 * Int32.toFloat64(i), b#z + fz * ahead - fx * side);
+            { id = 900 + i, at = at, velocity = Vec3.mul(Vec3.normalized(Vec3.sub(aim, at)), 9.0), born = -0.4 }
+        });
+        World.mapHorde(h -> { projectiles = shots | h }, w)
 
     /// 前に count 体の群れを置く: 目の前 4〜22 m の扇に、列ごとに左右へ散らす（5 体に 1 体が ranged）。
     /// 群れは湧いた時の walk の構えで、1 コマ考えさせて（時計は進めない）向きと構えを決める。
@@ -138,7 +168,7 @@ mod Shots {
         let tracers = World.sessionOf(w) |> Option.toList |> List.flatMap(s -> {
             let aim = World.aimCameraOf(res, 0.0, s);
             let targets = List.append(Horde.targetsOf(World.hordeOf(s)), res#hitTargets);
-            List.range(0, 6) |> List.map(i -> World.tracerOf(aim, rifle#range, Hitscan.fire(targets, aim, rifle, i), -0.02 * Int32.toFloat64(i) - 0.012))
+            List.range(0, 6) |> List.map(i -> World.tracerOf(aim, rifle#range, Hitscan.fire(targets, aim, rifle, i), -0.02 * Int32.toFloat64(i) - 0.012, WeaponsDoc.Weapon.Rifle))
         });
         let flash = Particles3d.emit(res#particles, Particles3d.Kind.Muzzle(WeaponsDoc.Weapon.Rifle), Particles3d.Space.Muzzle,
             Vec3.v3(0.0, 0.0, Particles3d.muzzleOf(res#particles, WeaponsDoc.Weapon.Rifle)#size * 0.5), Vec3.v3(0.0, 0.0, 1.0), 0.0, 6);

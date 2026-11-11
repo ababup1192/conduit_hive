@@ -86,6 +86,13 @@ mod Creatures {
             _ <- if (List.isEmpty(missing)) Ok(()) else Err("${path}: クリップ ${List.join(", ", missing)} が無い")
         ) yield { model = model, skin = skin, clips = found |> List.filterMap(e -> snd(e) |> Option.map(clip -> (fst(e), clip))) |> List.toMap }
 
+    /// 体の材質に濡れた肌の金属っぽさと粗さ（look の creatureSurface）を付ける。look の creaturePbr が偽なら拡散の光だけの材質に戻す（何度掛けても同じ）。
+    pub def withSkin(look: LookDoc.Rec, bodies: Bodies): Bodies =
+        let skin = (m: Scene3d.Material3d) ->
+            if (look#creaturePbr) Scene3d.withMetallicRoughness(look#creatureSurface#metallic, look#creatureSurface#roughness, m)
+            else Scene3d.withoutMetallicRoughness(m);
+        bodies |> Map.map(body -> { model = { parts = body#model#parts |> List.map(p -> { material = p#material |> Option.map(skin) | p }) | body#model } | body })
+
     // ── クリップの長さ ──
 
     /// glb が読めない時のクリップの長さ（秒。Blender で作った長さと同じ）。

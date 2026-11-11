@@ -1,32 +1,32 @@
 {
   "version": 1,
   "title": "敵の粒",
-  "note": "敵に当たった所と projectile が弾けた所の体液の飛沫（ichor）・敵が弾けた時の体液（gore）と衝撃の輪（ring。grow = 寿命の終わりの大きさの倍率で広がる）・ranged が吐く projectile の光る玉と点光源（spit）・ranged の溜めの口の光（charge）。形は conduit_hive.particles3d.json の粒と同じ（count・life・speed・spread・size・grow・aspect・gravity・color・intensity）。読むのは src/Particles3dDoc.flix で、particles3d.json と一緒に読む。",
+  "note": "敵に当たった所と projectile が弾けた所の体液の飛沫（ichor）・敵が弾けた時の体液（gore）と衝撃の輪（ring。grow = 寿命の終わりの大きさの倍率で広がる）・ranged が吐く projectile の光る玉と点光源（spit）・ranged の溜めの口の光（charge）。形は conduit_hive.particles3d.json の粒と同じ（count・life・speed・spread・size・grow・aspect・gravity・color・intensity）。読むのは src/Particles3dDoc.flix で、particles3d.json と一緒に読む。 spit の length・width・core・glowWidth・glowAlpha・wobble = projectile の進む向きの後ろへ伸びる光る尾（長さと芯の太さ m・芯の色・にじむ外側の太さ（芯の何倍）と濃さ・ゆらめく速さ 1 秒の回数）。size は頭の光る粒。",
   "ichor": {
-    "count": 16,
+    "count": 7,
     "life": 0.55,
     "lifeJitter": 0.5,
     "speed": 4.5,
-    "spread": 65.0,
-    "size": 0.06,
+    "spread": 55.0,
+    "size": 0.035,
     "grow": 0.5,
     "aspect": 1.0,
     "gravity": 9.8,
     "color": "#ff7a2a",
-    "intensity": 2.5
+    "intensity": 2.0
   },
   "gore": {
-    "count": 30,
+    "count": 12,
     "life": 0.8,
     "lifeJitter": 0.5,
     "speed": 7.0,
     "spread": 180.0,
-    "size": 0.05,
+    "size": 0.03,
     "grow": 0.5,
     "aspect": 1.0,
     "gravity": 9.8,
     "color": "#ff6a20",
-    "intensity": 2.8
+    "intensity": 2.2
   },
   "ring": {
     "count": 1,
@@ -42,11 +42,17 @@
     "intensity": 0.9
   },
   "spit": {
-    "size": 0.32,
-    "color": "#ff8a3c",
-    "intensity": 5.0,
-    "lightIntensity": 2.5,
-    "lightRange": 4.0
+    "size": 0.14,
+    "color": "#ffb040",
+    "intensity": 6.0,
+    "lightIntensity": 1.0,
+    "lightRange": 4.0,
+    "length": 0.9,
+    "width": 0.06,
+    "core": "#fff0a0",
+    "glowWidth": 3.5,
+    "glowAlpha": 0.3,
+    "wobble": 14.0
   },
   "charge": {
     "size": 0.42,

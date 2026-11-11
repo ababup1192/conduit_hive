@@ -265,6 +265,553 @@
       "type": "float",
       "min": 0,
       "max": 0.2
+    },
+    "envMaps": {
+      "kind": "field",
+      "type": "bool",
+      "label": "映り込みの景色（環境マップ）を使う",
+      "group": "映り込み",
+      "default": true,
+      "order": 29
+    },
+    "envIntensity": {
+      "kind": "field",
+      "type": "float",
+      "label": "映り込みの明るさ（線形。4.0 が Blender のまま）",
+      "group": "映り込み",
+      "default": 4.0,
+      "min": 0,
+      "max": 8,
+      "order": 30
+    },
+    "envBox": {
+      "kind": "field",
+      "type": "bool",
+      "label": "区画を囲む箱で景色の位置を合わせる",
+      "group": "映り込み",
+      "default": true,
+      "order": 31
+    },
+    "envFinal": {
+      "kind": "field",
+      "type": "string",
+      "label": "最後の部屋のパノラマ（stage_env/<名前>.png）",
+      "group": "映り込み",
+      "default": "hive",
+      "order": 32
+    },
+    "envRoom": {
+      "kind": "field",
+      "type": "string",
+      "label": "ほかの部屋のパノラマ（stage_env/<名前>.png）",
+      "group": "映り込み",
+      "default": "room",
+      "order": 33
+    },
+    "envCorridor": {
+      "kind": "field",
+      "type": "string",
+      "label": "通路のパノラマ（stage_env/<名前>.png）",
+      "group": "映り込み",
+      "default": "corridor",
+      "order": 34
+    },
+    "stagePbr": {
+      "kind": "field",
+      "type": "bool",
+      "label": "壁・床・天井・パイプに金属っぽさと粗さを付ける",
+      "order": 35,
+      "group": "ステージの材質",
+      "default": true
+    },
+    "floorSurface": {
+      "kind": "record",
+      "label": "床の板と格子",
+      "order": 36,
+      "group": "ステージの材質",
+      "fields": {
+        "metallic": {
+          "type": "float",
+          "label": "金属っぽさ（0 絶縁体〜1 金属）",
+          "order": 1,
+          "default": 0.4,
+          "min": 0,
+          "max": 1
+        },
+        "roughness": {
+          "type": "float",
+          "label": "粗さ（0 鏡〜1 ざらざら）",
+          "order": 2,
+          "default": 0.34,
+          "min": 0,
+          "max": 1
+        }
+      }
+    },
+    "ceilingSurface": {
+      "kind": "record",
+      "label": "天井",
+      "order": 37,
+      "group": "ステージの材質",
+      "fields": {
+        "metallic": {
+          "type": "float",
+          "label": "金属っぽさ（0 絶縁体〜1 金属）",
+          "order": 1,
+          "default": 0.1,
+          "min": 0,
+          "max": 1
+        },
+        "roughness": {
+          "type": "float",
+          "label": "粗さ（0 鏡〜1 ざらざら）",
+          "order": 2,
+          "default": 0.8,
+          "min": 0,
+          "max": 1
+        }
+      }
+    },
+    "panelSurface": {
+      "kind": "record",
+      "label": "壁の板",
+      "order": 38,
+      "group": "ステージの材質",
+      "fields": {
+        "metallic": {
+          "type": "float",
+          "label": "金属っぽさ（0 絶縁体〜1 金属）",
+          "order": 1,
+          "default": 0.6,
+          "min": 0,
+          "max": 1
+        },
+        "roughness": {
+          "type": "float",
+          "label": "粗さ（0 鏡〜1 ざらざら）",
+          "order": 2,
+          "default": 0.5,
+          "min": 0,
+          "max": 1
+        }
+      }
+    },
+    "kickSurface": {
+      "kind": "record",
+      "label": "腰板と目地",
+      "order": 39,
+      "group": "ステージの材質",
+      "fields": {
+        "metallic": {
+          "type": "float",
+          "label": "金属っぽさ（0 絶縁体〜1 金属）",
+          "order": 1,
+          "default": 0.5,
+          "min": 0,
+          "max": 1
+        },
+        "roughness": {
+          "type": "float",
+          "label": "粗さ（0 鏡〜1 ざらざら）",
+          "order": 2,
+          "default": 0.55,
+          "min": 0,
+          "max": 1
+        }
+      }
+    },
+    "trimSurface": {
+      "kind": "record",
+      "label": "暗い金物（面取り・柱・梁・扉の枠）",
+      "order": 40,
+      "group": "ステージの材質",
+      "fields": {
+        "metallic": {
+          "type": "float",
+          "label": "金属っぽさ（0 絶縁体〜1 金属）",
+          "order": 1,
+          "default": 0.9,
+          "min": 0,
+          "max": 1
+        },
+        "roughness": {
+          "type": "float",
+          "label": "粗さ（0 鏡〜1 ざらざら）",
+          "order": 2,
+          "default": 0.4,
+          "min": 0,
+          "max": 1
+        }
+      }
+    },
+    "pipeSteelSurface": {
+      "kind": "record",
+      "label": "パイプ（鋼）",
+      "order": 41,
+      "group": "ステージの材質",
+      "fields": {
+        "metallic": {
+          "type": "float",
+          "label": "金属っぽさ（0 絶縁体〜1 金属）",
+          "order": 1,
+          "default": 1.0,
+          "min": 0,
+          "max": 1
+        },
+        "roughness": {
+          "type": "float",
+          "label": "粗さ（0 鏡〜1 ざらざら）",
+          "order": 2,
+          "default": 0.25,
+          "min": 0,
+          "max": 1
+        }
+      }
+    },
+    "pipePaintSurface": {
+      "kind": "record",
+      "label": "パイプ（塗装）",
+      "order": 42,
+      "group": "ステージの材質",
+      "fields": {
+        "metallic": {
+          "type": "float",
+          "label": "金属っぽさ（0 絶縁体〜1 金属）",
+          "order": 1,
+          "default": 0.1,
+          "min": 0,
+          "max": 1
+        },
+        "roughness": {
+          "type": "float",
+          "label": "粗さ（0 鏡〜1 ざらざら）",
+          "order": 2,
+          "default": 0.5,
+          "min": 0,
+          "max": 1
+        }
+      }
+    },
+    "pipeGraphiteSurface": {
+      "kind": "record",
+      "label": "パイプ（黒鉛）",
+      "order": 43,
+      "group": "ステージの材質",
+      "fields": {
+        "metallic": {
+          "type": "float",
+          "label": "金属っぽさ（0 絶縁体〜1 金属）",
+          "order": 1,
+          "default": 0.6,
+          "min": 0,
+          "max": 1
+        },
+        "roughness": {
+          "type": "float",
+          "label": "粗さ（0 鏡〜1 ざらざら）",
+          "order": 2,
+          "default": 0.4,
+          "min": 0,
+          "max": 1
+        }
+      }
+    },
+    "hazardSurface": {
+      "kind": "record",
+      "label": "警告の縞",
+      "order": 44,
+      "group": "ステージの材質",
+      "fields": {
+        "metallic": {
+          "type": "float",
+          "label": "金属っぽさ（0 絶縁体〜1 金属）",
+          "order": 1,
+          "default": 0.0,
+          "min": 0,
+          "max": 1
+        },
+        "roughness": {
+          "type": "float",
+          "label": "粗さ（0 鏡〜1 ざらざら）",
+          "order": 2,
+          "default": 0.6,
+          "min": 0,
+          "max": 1
+        }
+      }
+    },
+    "ventSurface": {
+      "kind": "record",
+      "label": "換気の羽根",
+      "order": 45,
+      "group": "ステージの材質",
+      "fields": {
+        "metallic": {
+          "type": "float",
+          "label": "金属っぽさ（0 絶縁体〜1 金属）",
+          "order": 1,
+          "default": 0.8,
+          "min": 0,
+          "max": 1
+        },
+        "roughness": {
+          "type": "float",
+          "label": "粗さ（0 鏡〜1 ざらざら）",
+          "order": 2,
+          "default": 0.45,
+          "min": 0,
+          "max": 1
+        }
+      }
+    },
+    "creaturePbr": {
+      "kind": "field",
+      "type": "bool",
+      "label": "敵の体に金属っぽさと粗さを付ける（濡れた肌）",
+      "order": 46,
+      "group": "敵の材質",
+      "default": false
+    },
+    "creatureSurface": {
+      "kind": "record",
+      "label": "敵の体",
+      "order": 47,
+      "group": "敵の材質",
+      "fields": {
+        "metallic": {
+          "type": "float",
+          "label": "金属っぽさ（0 絶縁体〜1 金属）",
+          "order": 1,
+          "default": 0.0,
+          "min": 0,
+          "max": 1
+        },
+        "roughness": {
+          "type": "float",
+          "label": "粗さ（0 鏡〜1 ざらざら）",
+          "order": 2,
+          "default": 0.25,
+          "min": 0,
+          "max": 1
+        }
+      }
+    },
+    "envPerZone": {
+      "kind": "field",
+      "type": "bool",
+      "label": "区画ごとのパノラマを使う",
+      "order": 29,
+      "group": "映り込み",
+      "default": true
+    },
+    "grooveRoughness": {
+      "kind": "field",
+      "type": "float",
+      "label": "継ぎ目・溝に足す粗さ",
+      "order": 999,
+      "group": "ステージの材質",
+      "default": 0.35,
+      "min": 0,
+      "max": 1
+    },
+    "grooveMetal": {
+      "kind": "field",
+      "type": "float",
+      "label": "継ぎ目・溝で金属っぽさを下げる割合",
+      "order": 1000,
+      "group": "ステージの材質",
+      "default": 0.6,
+      "min": 0,
+      "max": 1
+    },
+    "zoneLights": {
+      "kind": "field",
+      "type": "json",
+      "label": "区画ごとの天井の灯り（区画の文字 → { color, intensity }）",
+      "order": 1001,
+      "group": "光の場所"
+    },
+    "fixtures": {
+      "kind": "list",
+      "label": "色の光を出す物",
+      "order": 1002,
+      "group": "光の場所",
+      "fields": {
+        "kind": {
+          "type": {
+            "enum": [
+              "exit",
+              "beacon",
+              "panel",
+              "tank",
+              "hydrant",
+              "flicker"
+            ]
+          },
+          "label": "種類（exit 非常口・beacon 回転灯・panel 制御盤・tank 薬品のタンク・hydrant 消火栓・flicker 明滅する蛍光灯）",
+          "order": 1,
+          "default": "panel"
+        },
+        "x": {
+          "type": "int",
+          "label": "列",
+          "order": 2,
+          "min": 0,
+          "required": true
+        },
+        "y": {
+          "type": "int",
+          "label": "行",
+          "order": 3,
+          "min": 0,
+          "required": true
+        },
+        "side": {
+          "type": {
+            "enum": [
+              "n",
+              "e",
+              "s",
+              "w"
+            ]
+          },
+          "label": "付ける壁の向き（exit は扉の向き）",
+          "order": 4,
+          "default": "n"
+        },
+        "color": {
+          "type": "color",
+          "label": "光の色",
+          "order": 5,
+          "default": "#39ff88"
+        }
+      }
+    },
+    "beacon": {
+      "kind": "record",
+      "label": "回転灯の毎コマの光",
+      "order": 1003,
+      "group": "光の場所",
+      "fields": {
+        "intensity": {
+          "type": "float",
+          "label": "灯の点光源の強さ",
+          "order": 1,
+          "default": 1.5,
+          "min": 0,
+          "max": 20
+        },
+        "range": {
+          "type": "float",
+          "label": "灯の届く距離（m）",
+          "order": 2,
+          "default": 5.0,
+          "min": 0,
+          "max": 30
+        },
+        "spin": {
+          "type": "float",
+          "label": "回る速さ（rad/秒）",
+          "order": 3,
+          "default": 1.6,
+          "min": 0,
+          "max": 10
+        },
+        "beamFov": {
+          "type": "float",
+          "label": "筋の円錐の角（rad）",
+          "order": 4,
+          "default": 0.55,
+          "min": 0,
+          "max": 2
+        },
+        "beamIntensity": {
+          "type": "float",
+          "label": "筋の強さ",
+          "order": 5,
+          "default": 5.0,
+          "min": 0,
+          "max": 50
+        },
+        "beamRange": {
+          "type": "float",
+          "label": "筋の届く距離（m）",
+          "order": 6,
+          "default": 12.0,
+          "min": 0,
+          "max": 40
+        }
+      }
+    },
+    "flicker": {
+      "kind": "record",
+      "label": "明滅する蛍光灯",
+      "order": 1004,
+      "group": "光の場所",
+      "fields": {
+        "intensity": {
+          "type": "float",
+          "label": "強さ",
+          "order": 1,
+          "default": 2.5,
+          "min": 0,
+          "max": 20
+        },
+        "range": {
+          "type": "float",
+          "label": "届く距離（m）",
+          "order": 2,
+          "default": 7.0,
+          "min": 0,
+          "max": 30
+        },
+        "rate": {
+          "type": "float",
+          "label": "1 秒に切り替わる回数",
+          "order": 3,
+          "default": 9.0,
+          "min": 0,
+          "max": 60
+        },
+        "dark": {
+          "type": "float",
+          "label": "消えている割合",
+          "order": 4,
+          "default": 0.35,
+          "min": 0,
+          "max": 1
+        }
+      }
+    },
+    "decalRoughness": {
+      "kind": "field",
+      "type": "float",
+      "label": "床の標示の塗料の粗さ",
+      "order": 1005,
+      "group": "ステージの材質",
+      "default": 0.55,
+      "min": 0,
+      "max": 1
+    },
+    "puddleRoughness": {
+      "kind": "field",
+      "type": "float",
+      "label": "水たまりの粗さ",
+      "order": 1006,
+      "group": "ステージの材質",
+      "default": 0.05,
+      "min": 0,
+      "max": 1
+    },
+    "envFade": {
+      "kind": "field",
+      "type": "float",
+      "label": "区画の境目の手前で映り込みを弱める距離（m）",
+      "order": 30,
+      "group": "映り込み",
+      "default": 1.6,
+      "min": 0,
+      "max": 4
     }
   }
 }

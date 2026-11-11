@@ -323,6 +323,52 @@
           "default": 4.0,
           "min": 0.5,
           "max": 20
+        },
+        "length": {
+          "type": "float",
+          "label": "尾の長さ（m）",
+          "order": 6,
+          "default": 0.9,
+          "min": 0,
+          "max": 5
+        },
+        "width": {
+          "type": "float",
+          "label": "尾の芯の太さ（m）",
+          "order": 7,
+          "default": 0.06,
+          "min": 0,
+          "max": 0.5
+        },
+        "core": {
+          "type": "color",
+          "label": "尾の芯の色",
+          "order": 8,
+          "default": "#fff0a0"
+        },
+        "glowWidth": {
+          "type": "float",
+          "label": "にじむ外側の太さ（芯の何倍）",
+          "order": 9,
+          "default": 3.5,
+          "min": 1,
+          "max": 20
+        },
+        "glowAlpha": {
+          "type": "float",
+          "label": "にじむ外側の濃さ",
+          "order": 10,
+          "default": 0.3,
+          "min": 0,
+          "max": 1
+        },
+        "wobble": {
+          "type": "float",
+          "label": "外側がゆらめく速さ（1 秒の回数）",
+          "order": 11,
+          "default": 14.0,
+          "min": 0,
+          "max": 60
         }
       }
     },

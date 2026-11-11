@@ -17,6 +17,8 @@ import numpy as np
 from mathutils import Vector
 sys.path.insert(0, os.path.dirname(os.path.abspath(__file__)))
 import stagehash
+import floormarks as FM
+import fixtures as FX
 
 HERE = os.path.dirname(os.path.abspath(__file__))
 ROOT = os.path.normpath(os.path.join(HERE, ".."))
@@ -281,7 +283,9 @@ def make_trim(path):
     img[1504:1632] = rgb(graphite * 1.2, k)
 
     # パイプ 3 種: 長さの向きに筋。
-    for r0, base, chip in ((1632, np.array([0.42, 0.45, 0.48]), 0.0),
+    # 鋼のパイプはゲームで金属っぽさ 1 にする（look の pipeSteelSurface）。金属の映り込みの強さは地の色で決まるので、磨いた鋼の明るさにしておく。
+    # WhyNot: 塗った鋼の暗さ（0.42）のままにしない — 金属っぽさ 1 では拡散の光が消え、映り込みが地の色の 15% ほどしか返らず、パイプが黒く沈む。
+    for r0, base, chip in ((1632, np.array([0.74, 0.77, 0.80]), 0.0),
                            (1696, np.array([0.21, 0.245, 0.255]), 0.12),
                            (1760, graphite, 0.0)):
         h = 64
@@ -362,6 +366,18 @@ def make_materials(trim, look):
 
 
 MAT_INDEX = {"hull": 0, "strip": 1, "lamp": 2}
+
+
+def zone_lamp_material(base, look, zid):
+    """区画の灯具の光る面の材質（色は look の zoneLights の色・名前は M_lamp_<文字の番号>）。"""
+    col, k = zone_light(look, zid)
+    m = base.copy()
+    m.name = "M_lamp_%02x" % ord(zid)
+    p = m.node_tree.nodes.get("Principled BSDF")
+    p.inputs["Base Color"].default_value = (*[c * 0.3 for c in col], 1.0)
+    p.inputs["Emission Color"].default_value = (*col, 1.0)
+    p.inputs["Emission Strength"].default_value = 3.0 * min(1.0, 0.4 + 0.6 * k)
+    return m
 
 
 # ───────────────────────── 形を組む道具 ─────────────────────────
@@ -750,6 +766,10 @@ def build_zone(doc, zone, look, rng):
         lamps.append({"pos": (cx, yp - 0.01, cz), "size": 2 * half, "room": room, "kind": "ceiling"})
     lamps += wall_lamps
 
+    # 色の光を出す物（非常口の灯り・制御盤・タンク・消火栓・回転灯の腕・蛍光灯の枠）
+    for fl in FX.build(bld, doc, zone, look.get("fixtures", []), center):
+        lamps.append(dict(fl, kind="fx", room=room))
+
     # パイプ
     pipes(bld, doc, zone, E, rng)
 
@@ -1089,7 +1109,7 @@ def to_object(bld, name, mats):
     me = bpy.data.meshes.new(name)
     bm.to_mesh(me)
     bm.free()
-    for key in ("hull", "strip", "lamp"):
+    for key, _ in sorted(MAT_INDEX.items(), key=lambda kv: kv[1]):
         me.materials.append(mats[key])
     ob = bpy.data.objects.new(name, me)
     bpy.context.scene.collection.objects.link(ob)
@@ -1184,15 +1204,31 @@ def setup_cycles(samples):
     w.node_tree.nodes["Background"].inputs[1].default_value = 0.0
 
 
+def zone_light(look, zid):
+    """区画の灯りの色（線形）と強さの倍率（look の zoneLights。無い区画は roomLightColor と 1）。"""
+    z = look.get("zoneLights", {}).get(zid, {})
+    return hex_lin(z.get("color", look["roomLightColor"])), float(z.get("intensity", 1.0))
+
+
 def add_bake_lights(lamps, look):
-    col_room = hex_lin(look["roomLightColor"])
     col_strip = hex_lin(look["stripColor"])
-    col_corr = tuple(0.75 * a + 0.25 * b for a, b in zip(col_room, col_strip))
     objs = []
     for lp in lamps:
+        if lp["kind"] == "fx":
+            pd = bpy.data.lights.new("F", "POINT")
+            pd.energy = lp["energy"]
+            pd.shadow_soft_size = lp["radius"]
+            pd.color = hex_lin(lp["color"])
+            po = bpy.data.objects.new("BAKE_LIGHT", pd)
+            po.location = B(lp["pos"])
+            bpy.context.scene.collection.objects.link(po)
+            objs.append(po)
+            continue
+        col_room, k = zone_light(look, lp["zone"])
+        col_corr = tuple(0.75 * a + 0.25 * b for a, b in zip(col_room, col_strip))
         if lp["kind"] == "wall":
             pd = bpy.data.lights.new("W", "POINT")
-            pd.energy = 120.0
+            pd.energy = 120.0 * k
             pd.shadow_soft_size = 0.15
             pd.color = col_room
             po = bpy.data.objects.new("BAKE_LIGHT", pd)
@@ -1203,7 +1239,7 @@ def add_bake_lights(lamps, look):
         ld = bpy.data.lights.new("L", "AREA")
         ld.shape = "SQUARE"
         ld.size = lp["size"]
-        ld.energy = 3600.0 if lp["room"] else 300.0
+        ld.energy = (3600.0 if lp["room"] else 300.0) * k
         ld.color = col_room if lp["room"] else col_corr
         ob = bpy.data.objects.new("BAKE_LIGHT", ld)
         ob.location = B(lp["pos"])
@@ -1211,7 +1247,7 @@ def add_bake_lights(lamps, look):
         objs.append(ob)
         # WhyNot: 下向きの面の光だけにしない — 壁の上半分と天井際のパイプが真っ暗になる（灯具の横へ漏れる光の代わり）
         pd = bpy.data.lights.new("P", "POINT")
-        pd.energy = 1000.0 if lp["room"] else 90.0
+        pd.energy = (1000.0 if lp["room"] else 90.0) * k
         pd.shadow_soft_size = 0.4
         pd.color = ld.color
         po = bpy.data.objects.new("BAKE_LIGHT", pd)
@@ -1392,6 +1428,19 @@ def main():
     only = [z for z in a.zones.split(",") if z] or sorted(doc["zones"].keys())
     trim = make_trim(TRIM_PATH)
     mats = make_materials(trim, look)
+    for f in look.get("fixtures", []):
+        key = FX.color_key(f["color"])
+        if key not in mats:
+            m = bpy.data.materials.new("M_" + key)
+            p = m.node_tree.nodes.get("Principled BSDF")
+            col = hex_lin(f["color"])
+            p.inputs["Base Color"].default_value = (*[c * 0.3 for c in col], 1.0)
+            p.inputs["Emission Color"].default_value = (*col, 1.0)
+            p.inputs["Emission Strength"].default_value = 6.0
+            p.inputs["Roughness"].default_value = 0.4
+            mats[key] = m
+            MAT_INDEX[key] = len(MAT_INDEX)
+    marks = FM.make_materials(FM.make_atlas(os.path.join(DEBUG, "stage_floor_marks.png")))
 
     built = {}
     all_lamps = []
@@ -1400,6 +1449,9 @@ def main():
         rng = random.Random("zone-" + zid)
         bld, lamps = build_zone(doc, zone, look, rng)
         ob = to_object(bld, "ZONE_" + zid, mats)
+        ob.data.materials[MAT_INDEX["lamp"]] = zone_lamp_material(mats["lamp"], look, zid)
+        for lp in lamps:
+            lp["zone"] = zid
         all_lamps += lamps
         built[zid] = ob
     targets = {z: built[z] for z in only}
@@ -1435,6 +1487,14 @@ def main():
                 m.node_tree.nodes.remove(nd)
         for l in lights:
             bpy.data.objects.remove(l, do_unlink=True)
+
+    # 床の標示と水たまり（ベイクの後に足す: 床に影を落とさず、下の床の lightmap を引く）
+    zone_order = [z["id"] for z in json.load(open(DOC_PATH, encoding="utf-8"))["zones"]]
+    for zid, ob in targets.items():
+        zone = doc["zones"][zid]
+        decals = FM.plan(doc, zone, zone_order.index(zid), FX.puddle_spots(doc, zone, look.get("fixtures", []), center),
+                         zone_edges(doc, zone), corner, center, np.random.default_rng(ord(zid) * 7919 + 13))
+        print("  marks %s %d" % (zid, FM.append(ob, decals, marks, doc, corner, B)))
 
     empty = bpy.data.objects.new("DOCHASH_" + h16, None)
     bpy.context.scene.collection.objects.link(empty)

@@ -5,7 +5,7 @@
 // → 囲まれたら（crowdRange の内に crowdCount 体以上）蹴るか群れから離れる向きへ緊急回避（交互に）→ 前の群れの塊に手榴弾を投げる。
 // 出すのはキーとマウスと同じ入力（Command = World.Input と同じ形）なので、当たり判定・弾・拾う・音は手で遊ぶ時と同じ規則を通る。
 mod Pilot {
-    use fge::{Num, Vec3}
+    use fge::{Num, Sort, Vec3}
     use WeaponsDoc.Weapon
 
     /// 何番目の点へ向かっているか・着いたか・その点で待った秒・その点へ向かい始めてからの秒・狙っている敵の id・
@@ -71,7 +71,7 @@ mod Pilot {
         let candidates = Horde.aliveEnemies(at#horde) |> List.filter(e -> distanceTo(eye, e) <= reach(e)) |> List.map(e -> aimOf(tour, eye, at#walker, e));
         let visible = a -> Collider.isLineClear(res#collision, eye, a#point);
         let kept = previous |> Option.flatMap(id -> candidates |> List.find(a -> a#id == id)) |> Option.filter(visible);
-        kept |> Option.withDefault(default = candidates |> List.sortBy(a -> a#distance) |> List.find(visible))
+        kept |> Option.withDefault(default = candidates |> Sort.sortStableBy(a -> a#distance) |> List.find(visible))
 
     /// 目から敵の足元までの水平の距離（m）。
     def distanceTo(eye: Vec3.Vec3, e: Horde.Enemy): Float64 = Num.sqrt((e#x - eye#x) * (e#x - eye#x) + (e#z - eye#z) * (e#z - eye#z))
